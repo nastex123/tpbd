@@ -24,14 +24,16 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 - **CA-03:** existe explicación textual para resultados significativos, no significativos y no evaluables.
 - **CA-04:** controles principales se pueden usar con ratón y muestran foco visible.
 
-### HU-01 — Inicio y estructura Tauri [P0]
+### ~~HU-01 — Inicio y estructura Electron [P0]~~
+
+**Estado:** completada. La ventana de Electron abre en Windows. La comprobación con la API real se retoma cuando HU-02 exponga `GET /health`.
 **Como** usuario, **quiero** abrir TPBD como aplicación de escritorio, **para** explorar el análisis sin depender de una pestaña web.
 
 - **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** ninguna.
-- **Tareas:** Tauri 2 + React/TypeScript/Vite, scripts, ventana, seguridad inicial y prueba de WebGL/sidecar.
+- **Tareas:** Electron + React/TypeScript/Vite, scripts, ventana, seguridad inicial y prueba de WebGL y conexión con FastAPI.
 - **CA-01:** el comando de desarrollo abre la aplicación con navegación inicial.
 - **CA-02:** el frontend compila y puede llamar al backend local en desarrollo.
-- **CA-03:** se valida pronto el empaquetado del backend o se documenta un plan B.
+- **CA-03:** se documenta el arranque independiente de FastAPI para desarrollo y demo.
 - **CA-04:** configuración inicial no contiene secretos.
 
 ### HU-05 — Globo planetario 3D [P0]
@@ -234,7 +236,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 | HU | Nombre | Responsable | Horas | Dependencias |
 |---|---|---|---:|---|
 | HU-00 | Sistema visual Data Detective | Brandon | 2 | — |
-| HU-01 | Base Tauri | Brandon | 4 | — |
+| ~~HU-01~~ | ~~Base Electron~~ | Brandon | 4 | Completada |
 | HU-02 | API y catálogo | Daniel | 5 | — |
 | HU-03 | Series históricas | Daniel | 6 | HU-02 |
 | HU-04 | Calidad y caché | Daniel | 4 | HU-03 |
@@ -253,7 +255,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ## Orden recomendado de implementación
 
 1. Validar dataset, cobertura, comunidades, método y variables candidatas (Gate G0).
-2. Abrir HU-00, HU-01 y HU-02 en paralelo; congelar contratos y fixtures.
+2. Avanzar HU-00 y HU-02 en paralelo y acordar contratos y fixtures. La base Electron de HU-01 ya está completada.
 3. HU-03/04 y HU-05/06: vertical slice de datos y geografía.
 4. HU-07/08/09: período, catálogo y series.
 5. HU-25: método estadístico reproducible; bloquear el veredicto hasta cerrar validación.
