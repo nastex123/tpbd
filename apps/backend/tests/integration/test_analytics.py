@@ -86,3 +86,33 @@ def test_post_analytics_compare_success(client):
     assert data["trend_region_b"]["direction"] == "increasing_significant"
     assert "Opposing Regional Trends" in data["comparative_summary"]
     assert "teleconnections" in data["drivers_explanation"].lower() or "itcz" in data["drivers_explanation"].lower()
+
+
+def test_post_analytics_anomalies_success(client):
+    """Verify POST /api/v1/analytics/anomalies endpoint calculates climatology and anomalies."""
+    points = []
+    for y in range(1991, 2021):
+        for m in range(1, 13):
+            # Include variance across years so std dev is non-zero
+            val = 25.0 + (m * 0.5) + (0.5 if y % 2 == 0 else -0.5)
+            points.append({"date": f"{y}-{m:02d}", "value": val, "quality": "observed"})
+
+    # Add an extreme anomaly in 2024 (mean for month 6 is 28.0, std is ~0.5 -> 40.0 is massive z > 20)
+    points.append({"date": "2024-06", "value": 40.0, "quality": "observed"})
+
+    payload = {
+        "variable_id": "T2M",
+        "threshold": 2.0,
+        "points": points,
+    }
+
+    res = client.post("/api/v1/analytics/anomalies", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["variable_id"] == "T2M"
+    assert len(data["monthly_climatology"]) == 12
+    assert "Standardized Monthly Climatology" in data["method"]
+    assert "scientific_caveat" in data
+    assert data["severe_anomaly_count"] >= 1
+

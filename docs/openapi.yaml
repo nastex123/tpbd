@@ -288,6 +288,34 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /api/v1/analytics/anomalies:
+    post:
+      tags:
+        - Analytics
+      summary: Detect seasonal standardized Z-score anomalies
+      description: |
+        Calculates standardized monthly climatological anomalies relative to a 30-year WMO baseline (default 1991–2020):
+        - Partitions series into 12 calendar months.
+        - Computes baseline mean and standard deviation per calendar month.
+        - Calculates standardized departure Z = (X - mean) / std.
+        - Categorizes severity (normal, moderate, severe, extreme, not_evaluable).
+      operationId: detectAnomalies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnomalyDetectionRequest'
+      responses:
+        '200':
+          description: Standardized anomalies calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnomalyDetectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/v1/integrations/appeears/tasks:
     post:
       tags:
@@ -796,6 +824,120 @@ components:
         drivers_explanation:
           type: string
           example: "Differential shifts in the Intertropical Convergence Zone (ITCZ) can induce simultaneous rainfall deficits in equatorial South America while modulating monsoon influx in the Sahel."
+
+    AnomalySeverity:
+      type: string
+      enum:
+        - normal
+        - moderate_anomaly
+        - severe_anomaly
+        - extreme_anomaly
+        - not_evaluable
+      example: severe_anomaly
+
+    MonthlyClimatology:
+      type: object
+      required:
+        - month
+        - baseline_mean
+        - baseline_std
+        - sample_count
+      properties:
+        month:
+          type: integer
+          example: 7
+        baseline_mean:
+          type: number
+          example: 26.4
+        baseline_std:
+          type: number
+          example: 0.85
+        sample_count:
+          type: integer
+          example: 30
+
+    AnomalyDataPoint:
+      type: object
+      required:
+        - date
+        - value
+        - anomaly_z
+        - severity
+      properties:
+        date:
+          type: string
+          example: "2023-07"
+        value:
+          type: number
+          nullable: true
+          example: 28.9
+        anomaly_z:
+          type: number
+          nullable: true
+          example: 2.94
+        severity:
+          $ref: '#/components/schemas/AnomalySeverity'
+
+    AnomalyDetectionRequest:
+      type: object
+      required:
+        - variable_id
+        - points
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        baseline_start_year:
+          type: integer
+          default: 1991
+          example: 1991
+        baseline_end_year:
+          type: integer
+          default: 2020
+          example: 2020
+        threshold:
+          type: number
+          default: 2.0
+          example: 2.0
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    AnomalyDetectionResponse:
+      type: object
+      required:
+        - variable_id
+        - baseline_range
+        - monthly_climatology
+        - anomalies
+        - severe_anomaly_count
+        - method
+        - scientific_caveat
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        baseline_range:
+          type: string
+          example: "1991 to 2020"
+        monthly_climatology:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlyClimatology'
+        anomalies:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnomalyDataPoint'
+        severe_anomaly_count:
+          type: integer
+          example: 4
+        method:
+          type: string
+          example: "Standardized Monthly Climatology Z-Score (1991-2020 Baseline)"
+        scientific_caveat:
+          type: string
+          example: "Z-score anomalies quantify statistical departures from the reference climatology, but do not prove physical disaster impact without in-situ validation."
 
     AppEEARSTaskRequest:
       type: object

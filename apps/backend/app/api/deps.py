@@ -5,7 +5,9 @@ from fastapi import Depends
 from app.services.catalog_service import CatalogService
 from app.services.series_service import SeriesService
 from app.services.trend_service import TrendService
+from app.services.anomaly_service import AnomalyService
 from app.repositories.region_repository import RegionRepository
+
 from app.repositories.cache_repository import CacheRepository
 from app.clients.power_client import PowerClient
 from app.clients.appeears_client import AppEEARSClient
@@ -30,6 +32,12 @@ def get_trend_service(
     """Singleton instance of TrendService."""
     cs = catalog_service or get_catalog_service()
     return TrendService(cs)
+
+
+@lru_cache
+def get_anomaly_service() -> AnomalyService:
+    """Singleton instance of AnomalyService."""
+    return AnomalyService()
 
 
 

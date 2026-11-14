@@ -79,3 +79,54 @@ class RegionalComparisonResponse(BaseModel):
     trend_region_b: TrendAnalysisResponse = Field(..., description="Trend outcome for region B")
     comparative_summary: str = Field(..., description="High-level narrative of differences or opposing trends")
     drivers_explanation: str = Field(..., description="Scientific context explaining potential shared mechanisms")
+
+
+class AnomalySeverity(str, Enum):
+    """Classification of standardized anomaly severity."""
+
+    NORMAL = "normal"
+    MODERATE_ANOMALY = "moderate_anomaly"
+    SEVERE_ANOMALY = "severe_anomaly"
+    EXTREME_ANOMALY = "extreme_anomaly"
+    NOT_EVALUABLE = "not_evaluable"
+
+
+class MonthlyClimatology(BaseModel):
+    """Climatological reference statistics for a calendar month."""
+
+    month: int = Field(..., ge=1, le=12, description="Calendar month (1..12)")
+    baseline_mean: float = Field(..., description="Mean value across reference period")
+    baseline_std: float = Field(..., description="Standard deviation across reference period")
+    sample_count: int = Field(..., description="Number of baseline samples available")
+
+
+class AnomalyDataPoint(BaseModel):
+    """Observation with calculated standardized Z-score anomaly."""
+
+    date: str = Field(..., description="Observation date (YYYY-MM)")
+    value: float | None = Field(default=None, description="Observed parameter value")
+    anomaly_z: float | None = Field(default=None, description="Standardized Z-score relative to monthly climatology")
+    severity: AnomalySeverity = Field(..., description="Categorical anomaly severity")
+
+
+class AnomalyDetectionRequest(BaseModel):
+    """Request payload for computing standardized seasonal anomalies."""
+
+    variable_id: str = Field(..., description="Canonical variable identifier")
+    baseline_start_year: int = Field(default=1991, ge=1981, le=2026, description="Climatology reference start year")
+    baseline_end_year: int = Field(default=2020, ge=1981, le=2026, description="Climatology reference end year")
+    threshold: float = Field(default=2.0, ge=1.0, le=5.0, description="Severe anomaly threshold (standard deviations)")
+    points: list[DataPoint] = Field(..., max_length=2400, description="Monthly observations to evaluate")
+
+
+class AnomalyDetectionResponse(BaseModel):
+    """Complete seasonal anomaly detection result."""
+
+    variable_id: str = Field(..., description="Canonical variable identifier")
+    baseline_range: str = Field(..., description="Reference climatological period")
+    monthly_climatology: list[MonthlyClimatology] = Field(..., description="12-month baseline mean and std")
+    anomalies: list[AnomalyDataPoint] = Field(..., description="Time series with Z-score anomalies")
+    severe_anomaly_count: int = Field(..., description="Count of observations exceeding anomaly threshold")
+    method: str = Field(..., description="Method applied")
+    scientific_caveat: str = Field(..., description="Scientific limitations and caveats")
+
