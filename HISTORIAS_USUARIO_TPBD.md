@@ -102,7 +102,9 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 
 ## Épica E2 — Datos y análisis científico
 
-### HU-02 — Contratos, API y metadatos de catálogo [P0]
+### ~~HU-02 — Contratos, API y metadatos de catálogo [P0]~~
+**Estado:** completada (PR #3). FastAPI en `apps/backend/`, esquemas Pydantic v2 derivados de OpenAPI 3.1, endpoints `/health`, `/api/v1/catalog/variables`, `/api/v1/catalog/products`, `/api/v1/regions`, y suite de pruebas pasando al 100%.
+
 **Como** frontend, **quiero** contratos estables para variables, ubicaciones, series y resultados, **para** integrar UI y backend sin supuestos improvisados.
 
 - **Responsable:** Daniel. **Estimación:** 5 h. **Depende de:** ninguna.
@@ -237,7 +239,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 |---|---|---|---:|---|
 | HU-00 | Sistema visual Data Detective | Brandon | 2 | — |
 | ~~HU-01~~ | ~~Base Electron~~ | Brandon | 4 | Completada |
-| HU-02 | API y catálogo | Daniel | 5 | — |
+| ~~HU-02~~ | ~~API y catálogo~~ | Daniel | 5 | Completada |
 | HU-03 | Series históricas | Daniel | 6 | HU-02 |
 | HU-04 | Calidad y caché | Daniel | 4 | HU-03 |
 | HU-05 | Globo 3D | Brandon | 4 | HU-01 |
