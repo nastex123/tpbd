@@ -115,7 +115,9 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 - **CA-04:** se publica contrato API y ejemplos JSON.
 - **CA-05:** respuestas conservan procedencia y calidad.
 
-### HU-03 — Consulta de series históricas NASA [P0]
+### ~~HU-03 — Consulta de series históricas NASA [P0]~~
+**Estado:** completada. Cliente asíncrono para NASA POWER Monthly API, normalización de mes 13 y nulos (-999 -> null con quality: "missing"), integración con caché SQLite, fixtures auténticos y endpoint `GET /api/v1/series`.
+
 **Como** investigador, **quiero** consultar series históricas documentadas, **para** analizar valores reales de NASA y sus modelos.
 
 - **Responsable:** Daniel. **Estimación:** 6 h. **Depende de:** HU-02.
@@ -240,7 +242,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 | HU-00 | Sistema visual Data Detective | Brandon | 2 | — |
 | ~~HU-01~~ | ~~Base Electron~~ | Brandon | 4 | Completada |
 | ~~HU-02~~ | ~~API y catálogo~~ | Daniel | 5 | Completada |
-| HU-03 | Series históricas | Daniel | 6 | HU-02 |
+| ~~HU-03~~ | ~~Series históricas~~ | Daniel | 6 | Completada |
 | HU-04 | Calidad y caché | Daniel | 4 | HU-03 |
 | HU-05 | Globo 3D | Brandon | 4 | HU-01 |
 | HU-06 | Lugares y coordenadas | Brandon | 3 | HU-02, HU-05 |
