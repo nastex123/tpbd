@@ -9,6 +9,12 @@ env/
 venv/
 ENV/
 
+# Environment variables & secrets (NEVER commit)
+.env
+*.env
+.env.*
+!.env.example
+
 # Testing & Coverage
 .pytest_cache/
 .coverage
