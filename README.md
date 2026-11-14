@@ -1,57 +1,50 @@
 # TPBD — The Pale Blue Dot
 
-TPBD es el concepto de un observatorio ambiental interactivo para explorar datos climáticos históricos, detectar anomalías estadísticas y comparar escenarios de cambio climático hasta 2050. La propuesta plantea una aplicación de escritorio para Windows con un globo 3D y un panel científico.
+**Data Detective para explorar tendencias en datos del sistema terrestre.**
 
-> **Estado:** planificación del MVP para una hackathon de 30 horas. Este repositorio contiene el roadmap y el backlog de producto; todavía no incluye la aplicación ni una implementación ejecutable.
+TPBD es una propuesta de aplicación de escritorio para el reto [NASA Space Apps Challenge 2026: Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/). Ayudará a elegir variables y ubicaciones, explorar series históricas, cuantificar tendencias y revisar su significancia estadística.
 
-## Qué propone el MVP
+> **Estado:** planificación v2.0. Este repositorio contiene el roadmap y el backlog; todavía no incluye una implementación ejecutable.
 
-- Explorar cuatro ubicaciones de estudio en un globo 3D.
-- Consultar series mensuales históricas de temperatura, precipitación y humedad relativa.
-- Revisar anomalías estacionales con una línea base 1991–2020 y z-scores documentados.
-- Comparar proyecciones CMIP6 bajo SSP1-2.6, SSP2-4.5 y SSP3-7.0 hasta 2050.
-- Consultar procedencia, unidades, calidad y valores ausentes; usar datos en caché para una demostración sin conexión.
+## Qué responderá
 
-Las ubicaciones propuestas son la Amazonía (Manaos), La Guajira (Riohacha), el Sahel (Níger) y el sureste de Australia. Se deben validar las series disponibles antes de presentarlas como parte de la demo.
+1. **¿Qué cambia?** Catálogo de variables con definición, unidad y fuente.
+2. **¿Dónde cambia?** Globo 3D, lugares de ejemplo y selección de coordenadas.
+3. **¿Cuánto cambia?** Pendiente robusta en unidades por década e intervalo de confianza.
+4. **¿Es significativa la tendencia?** Método, evidencia, supuestos y límites en lenguaje claro.
 
-## Diseño previsto
+## MVP propuesto
 
-- **Aplicación de escritorio:** Tauri 2, React, TypeScript y Vite.
-- **Motor de datos:** Python y FastAPI.
-- **Visualización:** `react-globe.gl` y Recharts.
-- **Caché local:** SQLite o archivos JSON, según la decisión de implementación.
-- **Fuentes climáticas:** NASA POWER Monthly Point para el contexto histórico y NASA POWER Projection API basada en NEX-GDDP-CMIP6 para escenarios futuros.
+- Aplicación Windows con Tauri 2, React, TypeScript y Vite; API local FastAPI.
+- Series históricas NASA POWER con períodos y faltantes explícitos.
+- Catálogo inicial curado: temperatura a 2 m (T2M), precipitación corregida (PRECTOTCORR) y humedad relativa a 2 m (RH2M), sujetas a validación por ubicación y período.
+- Análisis de tendencias mensuales que trata estacionalidad y autocorrelación, con pendiente de Sen y significancia estadística.
+- Comparación de la misma variable entre dos ubicaciones compatibles.
+- Caché y casos de demostración verificables.
 
-La arquitectura, el stack y las rutas de API descritos en los documentos son propuestas de planificación, no componentes ya implementados.
+GWETROOT y EVPTRNS son candidatas hidrológicas, sujetas a validar disponibilidad, resolución, comunidad, cobertura y unidades antes de incorporarlas. CMIP6 pasa a P2; anomalías Z-score y explicación asistida pasan a P1.
 
 ## Documentos
 
-- [Roadmap técnico y de producto](ROADMAP_TPBD.md): visión, alcance, arquitectura propuesta, fases de trabajo, riesgos y criterios de entrega.
-- [Historias de usuario y backlog](HISTORIAS_USUARIO_TPBD.md): requisitos, criterios de aceptación, estimaciones, dependencias y casos de prueba.
+- [Roadmap técnico y de producto v2.0](ROADMAP_TPBD.md)
+- [Historias de usuario y backlog v2.0](HISTORIAS_USUARIO_TPBD.md)
 
-## Consideraciones científicas
+## Criterios científicos
 
-- Los escenarios CMIP6 son resultados condicionales de modelos, no predicciones exactas.
-- Los datos históricos pueden combinar observaciones, satélites y reanálisis según la variable; no se deben describir todos como mediciones directas.
-- Una anomalía estadística señala un patrón inusual y no demuestra su causa ni confirma un desastre.
-- Los códigos de ausencia, como `-999`, deben normalizarse a valores nulos y excluirse de cálculos.
-- Temperatura del aire no mide directamente el deshielo glaciar ni la temperatura del mar.
-- Resolución espacial, incertidumbre, período disponible, modelo y fuente deben mostrarse junto a los resultados.
+- Las coordenadas se asocian a celdas y resoluciones de la fuente; no equivalen a mediciones exactas del punto.
+- Los códigos de ausencia se convierten a valores nulos y no entran en los cálculos.
+- Un resultado no significativo no demuestra que no haya cambio; datos o supuestos insuficientes producen “no evaluable”.
+- La significancia estadística no demuestra causalidad ni importancia práctica.
+- Cada resultado muestra fuente, período, método, unidad y limitaciones.
 
-## Fuentes de referencia
+## Fuentes
 
-- [NASA POWER — Monthly API](https://power.larc.nasa.gov/docs/services/api/temporal/monthly/)
-- [NASA POWER — Projection API](https://power.larc.nasa.gov/docs/services/api/projection/)
-- [Tauri — Sidecars](https://v2.tauri.app/develop/sidecar/)
-
-## Próximos pasos propuestos
-
-1. Validar disponibilidad, unidades y períodos de las variables para cada ubicación.
-2. Definir contratos API y fixtures tipados.
-3. Probar el riesgo de empaquetar FastAPI como sidecar de Tauri.
-4. Implementar una primera experiencia vertical: seleccionar una región y visualizar una serie verificable.
-5. Avanzar por las prioridades y criterios de aceptación documentados en el backlog.
+- [Desafío oficial](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)
+- [NASA POWER Monthly API](https://power.larc.nasa.gov/docs/services/api/temporal/monthly/)
+- [Comunidades de datos NASA POWER](https://power.larc.nasa.gov/docs/methodology/communities/)
+- [Fuentes hidrológicas NASA POWER](https://power.larc.nasa.gov/docs/methodology/data/sources_hydrology/)
+- [Artículo SeaWiFS/Giovanni de NASA NTRS](https://ntrs.nasa.gov/api/citations/20090042747/downloads/20090042747.pdf)
 
 ## Licencia
 
-No se ha definido una licencia todavía.
+Pendiente de definir.
