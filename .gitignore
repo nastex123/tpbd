@@ -23,6 +23,7 @@ htmlcov/
 # Local agent skills & caches (kept local, not in repo)
 .agents/
 skills-lock.json
+.tools/
 
 # Local databases and caches
 *.sqlite
