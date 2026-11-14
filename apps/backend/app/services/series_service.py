@@ -5,7 +5,7 @@ from app.repositories.region_repository import RegionRepository
 from app.services.catalog_service import CatalogService
 from app.schemas.series import TimeSeriesResponse, DataPoint
 from app.schemas.common import Coordinates
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, NASAUpstreamTimeoutError, UpstreamServiceError
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -34,30 +34,51 @@ class SeriesService:
         start_year: int,
         end_year: int,
         location_name: str | None = None,
+        offline_only: bool = False,
     ) -> TimeSeriesResponse:
-        """Acquire normalized historical time series with cache-first lookup."""
+        """Acquire normalized historical time series with cache-first lookup and offline resilience."""
         var_meta = self.catalog_service.get_variable_by_id(variable_id)
         if not var_meta:
             raise NotFoundError(resource="Variable", identifier=variable_id)
 
-        # 1. Check local cache
+        # 1. Check local cache (exact match)
         cached_dict = self.cache_repo.get_series(variable_id, lat, lon, start_year, end_year)
         if cached_dict:
             logger.info("Serving %s series for (%.2f, %.2f) from SQLite cache", variable_id, lat, lon)
             cached_dict["is_cached"] = True
             return TimeSeriesResponse.model_validate(cached_dict)
 
-        # 2. Cache miss: Fetch from upstream NASA POWER
+        if offline_only:
+            # Fallback to any cached period for location if exact match missing
+            any_cached = self.cache_repo.find_any_series(variable_id, lat, lon)
+            if any_cached:
+                any_cached["is_cached"] = True
+                return TimeSeriesResponse.model_validate(any_cached)
+            raise NotFoundError(resource="Cached observations for", identifier=f"{variable_id} at ({lat:.2f}, {lon:.2f})")
+
+        # 2. Cache miss: Fetch from upstream NASA POWER with fallback
         logger.info("Fetching %s from NASA POWER for (%.2f, %.2f) [%d-%d]", variable_id, lat, lon, start_year, end_year)
         community_code = var_meta.data_community.split()[0] if getattr(var_meta, "data_community", None) else "AG"
-        raw_data = await self.power_client.fetch_monthly_point(
-            variable_id=variable_id,
-            latitude=lat,
-            longitude=lon,
-            start_year=start_year,
-            end_year=end_year,
-            community=community_code,
-        )
+
+        try:
+            raw_data = await self.power_client.fetch_monthly_point(
+                variable_id=variable_id,
+                latitude=lat,
+                longitude=lon,
+                start_year=start_year,
+                end_year=end_year,
+                community=community_code,
+            )
+        except (NASAUpstreamTimeoutError, UpstreamServiceError) as upstream_err:
+            fallback = self.cache_repo.find_any_series(variable_id, lat, lon)
+            if fallback:
+                logger.warning(
+                    "NASA POWER failed (%s). Serving fallback cached observations for %s (%.2f, %.2f)",
+                    upstream_err, variable_id, lat, lon
+                )
+                fallback["is_cached"] = True
+                return TimeSeriesResponse.model_validate(fallback)
+            raise upstream_err
 
         # 3. Normalize series
         normalized_response = self._normalize_power_payload(
@@ -144,3 +165,20 @@ class SeriesService:
             is_cached=False,
             points=data_points,
         )
+
+    @staticmethod
+    def validate_series_compatibility(series_a: TimeSeriesResponse, series_b: TimeSeriesResponse) -> None:
+        """Ensure two time series are scientifically compatible for comparison (CA-05)."""
+        from app.core.exceptions import AppException
+        from fastapi import status
+
+        if series_a.unit != series_b.unit:
+            raise AppException(
+                title="Incompatible Series Units",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Cannot compare variables with incompatible units: '{series_a.variable_id}' ({series_a.unit}) "
+                    f"vs '{series_b.variable_id}' ({series_b.unit})."
+                ),
+                error_type="https://tpbd.nasa.gov/errors/incompatible-units",
+            )

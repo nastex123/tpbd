@@ -128,7 +128,9 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 - **CA-04:** timeout, ausencia o error no tumban FastAPI; se sirve caché verificable o mensaje claro.
 - **CA-05:** una muestra se contrasta con la respuesta original del proveedor.
 
-### HU-04 — Normalización, faltantes y caché [P0]
+### ~~HU-04 — Normalización, faltantes y caché [P0]~~
+**Estado:** completada. Caché SQLite optimizado con fallback local, query offline=true, conversión de -999 a null/missing, manifiesto de procedencia de fixtures (manifest.json) y validación de compatibilidad dimensional entre series.
+
 **Como** usuario, **quiero** consultar datos con rapidez y conocer su calidad, **para** explorar incluso con conectividad intermitente.
 
 - **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-03.
