@@ -47,6 +47,26 @@ class NonEvaluableTrendError(AppException):
         )
 
 
+class NASAUpstreamTimeoutError(AppException):
+    def __init__(self, provider: str = "NASA POWER", timeout_seconds: float = 15.0):
+        super().__init__(
+            title="Upstream Service Timeout",
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"The upstream provider '{provider}' timed out after {timeout_seconds} seconds.",
+            error_type="https://tpbd.nasa.gov/errors/upstream-timeout",
+        )
+
+
+class UpstreamServiceError(AppException):
+    def __init__(self, provider: str, detail: str, status_code: int = status.HTTP_502_BAD_GATEWAY):
+        super().__init__(
+            title="Upstream Provider Error",
+            status_code=status_code,
+            detail=f"Error communicating with '{provider}': {detail}",
+            error_type="https://tpbd.nasa.gov/errors/upstream-error",
+        )
+
+
 def register_exception_handlers(app):
     """Register RFC 7807 error handlers on the FastAPI application."""
 
