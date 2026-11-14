@@ -33,7 +33,7 @@ To maximize velocity during the hackathon and prevent code collisions, responsib
 | **Daniel (Backend & Data Science)** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall & Sen's slope engine | `apps/backend/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
 | **Brandon (Desktop Core & Spatial)** | Tauri 2 runtime, window management, WebGL 3D Globe, geolocation state | `apps/desktop/src-tauri/**`, `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts` | `apps/backend/**`, `apps/desktop/src/components/charts/**` |
 | **Dylan (UI/UX & Visual Analytics)** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets | `apps/desktop/src/components/{charts,catalog,layout}/**`, `apps/desktop/src/styles/**` | `apps/backend/**`, `apps/desktop/src-tauri/**` |
-| **Shared / Architecture** | Global documentation, API contracts, ADRs | `docs/**`, `README.md`, `ROADMAP_TPBD.md`, `HISTORIAS_USUARIO_TPBD.md` | — |
+| **Shared / Architecture** | Global documentation, API contracts, ADRs, Done Reports | `docs/**`, `documentation/**`, `README.md`, `ROADMAP_TPBD.md`, `HISTORIAS_USUARIO_TPBD.md` | — |
 
 ### Code Collision Rule:
 - **Never overwrite another team member's code** without prior consultation and explicit authorization.
@@ -56,6 +56,18 @@ To maximize velocity during the hackathon and prevent code collisions, responsib
    - `feat: add seasonal mann-kendall statistical test`
    - `fix: treat -999 as null in NASA POWER adapter`
    - `docs: update openapi specification with appeears schemas`
+
+### 4.1 Mandatory User Story Completion Reports (`documentation/done/[hu]/`)
+
+Upon completing each User Story (HU) and before/during its Pull Request:
+1. **Creation:** A comprehensive completion report must be placed in `documentation/done/<hu-id>/<hu-id>-<title>.md` (e.g., `documentation/done/hu-02/hu-02-api-catalog-architecture.md`).
+2. **Mandatory Sections:**
+   - **Header & Metadata:** Epic, HU ID, owner, branch, PR number, status.
+   - **User Story & Acceptance Criteria:** Checklist verifying every criterion (CA-01, CA-02, ...).
+   - **Technical Implementation Details:** Modules, architectural compliance, safety, and security.
+   - **Automated Verification & Tests:** Exact commands and test execution results.
+   - **Completed Deliverables:** Clear itemization of what was delivered.
+   - **Justified Pending Items:** Explicit list of deferred items with technical rationale and the specific subsequent HU that owns them (to prevent bloat, untested stubs, or loose ends).
 
 ---
 
