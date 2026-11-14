@@ -27,7 +27,9 @@ class TrendAnalysisRequest(BaseModel):
     variable_id: str = Field(..., description="Canonical variable identifier")
     alpha: float = Field(default=0.05, ge=0.001, le=0.20, description="Significance threshold (alpha)")
     method: str = Field(default="seasonal_mann_kendall", description="Statistical test method")
-    points: list[DataPoint] = Field(..., description="Historical data points to analyze")
+    points: list[DataPoint] = Field(
+        ..., max_length=2400, description="Historical data points to analyze (max 200 years of monthly data)"
+    )
 
 
 class TrendAnalysisResponse(BaseModel):
@@ -55,7 +57,9 @@ class RegionalLocationPoints(BaseModel):
     """Region payload for comparative trend analysis."""
 
     location_name: str = Field(..., description="Region title")
-    points: list[DataPoint] = Field(..., description="Ordered observations")
+    points: list[DataPoint] = Field(
+        ..., max_length=2400, description="Ordered observations (max 200 years of monthly data)"
+    )
 
 
 class RegionalComparisonRequest(BaseModel):
