@@ -7,7 +7,7 @@
 2026-11-14
 
 ## Context
-The backend service (`services/climate-engine/`) must serve historical Earth science observations, calculate non-parametric trend statistics (Seasonal Mann-Kendall test, Sen's slope, autocorrelation adjustments), manage local SQLite caching, and interface with NASA POWER and NASA AppEEARS APIs.
+The backend service (`apps/backend/`) must serve historical Earth science observations, calculate non-parametric trend statistics (Seasonal Mann-Kendall test, Sen's slope, autocorrelation adjustments), manage local SQLite caching, and interface with NASA POWER and NASA AppEEARS APIs.
 
 Under a 30-hour hackathon timeframe and a single backend developer (Daniel), the architecture must satisfy four critical constraints:
 1. **Mathematical Isolation:** Statistical functions must be pure, testable with `pytest`, and completely decoupled from HTTP frameworks.

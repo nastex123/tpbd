@@ -28,7 +28,7 @@ We establish the following non-negotiable operational standards:
    - Every unit of work occurs on an isolated branch named `feature/<feature-name>`.
    - Merging into `dev` requires an approved Pull Request (PR) with passing contract validation and unit tests.
 4. **Domain and Path Partitioning:**
-   - `services/climate-engine/**` is owned exclusively by Backend/Data Science.
+   - `apps/backend/**` is owned exclusively by Backend/Data Science.
    - `apps/desktop/src-tauri/**` and `apps/desktop/src/components/globe/**` are owned by Desktop/Spatial Core.
    - `apps/desktop/src/components/{charts,catalog,layout}/**` is owned by UI/UX Visual Analytics.
    - Direct modifications outside an assigned domain require prior authorization.

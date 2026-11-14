@@ -30,9 +30,9 @@ To maximize velocity during the hackathon and prevent code collisions, responsib
 
 | Role / Owner | Domain Ownership | Allowed File Scopes | Forbidden Scopes |
 |---|---|---|---|
-| **Daniel (Backend & Data Science)** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall & Sen's slope engine | `services/climate-engine/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
-| **Brandon (Desktop Core & Spatial)** | Tauri 2 runtime, window management, WebGL 3D Globe, geolocation state | `apps/desktop/src-tauri/**`, `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts` | `services/climate-engine/**`, `apps/desktop/src/components/charts/**` |
-| **Dylan (UI/UX & Visual Analytics)** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets | `apps/desktop/src/components/{charts,catalog,layout}/**`, `apps/desktop/src/styles/**` | `services/climate-engine/**`, `apps/desktop/src-tauri/**` |
+| **Daniel (Backend & Data Science)** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall & Sen's slope engine | `apps/backend/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
+| **Brandon (Desktop Core & Spatial)** | Tauri 2 runtime, window management, WebGL 3D Globe, geolocation state | `apps/desktop/src-tauri/**`, `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts` | `apps/backend/**`, `apps/desktop/src/components/charts/**` |
+| **Dylan (UI/UX & Visual Analytics)** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets | `apps/desktop/src/components/{charts,catalog,layout}/**`, `apps/desktop/src/styles/**` | `apps/backend/**`, `apps/desktop/src-tauri/**` |
 | **Shared / Architecture** | Global documentation, API contracts, ADRs | `docs/**`, `README.md`, `ROADMAP_TPBD.md`, `HISTORIAS_USUARIO_TPBD.md` | — |
 
 ### Code Collision Rule:
@@ -78,3 +78,27 @@ When an AI agent operates autonomously on the repository:
 2. **Contract Compliance Verification:** Before generating backend endpoints or frontend query hooks, verify against `docs/openapi.yaml`.
 3. **Test-Driven Delivery:** An agent's task is only complete when corresponding unit/contract tests pass cleanly and edge cases (missing data, non-evaluable states, network timeouts) are handled.
 4. **Zero Hallucination of Data:** Never generate synthetic or mock numbers as real NASA observations. If data is unavailable, return explicit nulls with `"quality": "missing"` or `"status": "not_evaluable"`.
+
+---
+
+## 7. Engineering Philosophy & Minimalist Execution (Ponytail Mode)
+
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+
+### 7.1 Before You Write
+- Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports.
+- Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+
+### 7.2 The Smallest Complete Change
+Take the first option that fully works:
+1. **Does it need to exist?** Skip features, options, and flexibility nobody asked for. A vague request gets the smallest version that does the core job.
+2. **Already in this codebase?** Use it the way surrounding code does (helpers, services, patterns).
+3. **Standard library or platform feature?** Use it unless the project has its own.
+4. **An installed dependency?** Use it. Never add a dependency for a few lines.
+5. **Can it be one line a reader gets at a glance?** One line.
+6. **Otherwise:** The minimum code that works.
+
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including callers, tests, and fixtures.
+- No premature abstractions, wrappers, type conversions, options, or "for later" code. Deletion beats addition.
+- Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, and anything the user asked for.
+
