@@ -19,6 +19,24 @@
       "fill_value": -999.0
     },
     {
+      "file": "power_prectotcorr_amazon.json",
+      "variable_id": "PRECTOTCORR",
+      "display_name": "Precipitation Corrected",
+      "unit": "mm/month",
+      "provider": "NASA_POWER",
+      "source_model": "MERRA-2 / GEOS-5.12.4",
+      "spatial_resolution": "0.5° x 0.625°",
+      "location": {
+        "region_id": "amazon",
+        "name": "Amazon Basin (Manaus)",
+        "latitude": -3.1,
+        "longitude": -60.0
+      },
+      "temporal_range": "1990-01 to 2024-12",
+      "downloaded_at": "2026-11-14T23:32:00Z",
+      "fill_value": -999.0
+    },
+    {
       "file": "power_prectotcorr_guajira.json",
       "variable_id": "PRECTOTCORR",
       "display_name": "Precipitation Corrected",
@@ -34,6 +52,42 @@
       },
       "temporal_range": "1990-01 to 2024-12",
       "downloaded_at": "2026-11-14T23:13:00Z",
+      "fill_value": -999.0
+    },
+    {
+      "file": "power_prectotcorr_sahel.json",
+      "variable_id": "PRECTOTCORR",
+      "display_name": "Precipitation Corrected",
+      "unit": "mm/month",
+      "provider": "NASA_POWER",
+      "source_model": "MERRA-2 / GEOS-5.12.4",
+      "spatial_resolution": "0.5° x 0.625°",
+      "location": {
+        "region_id": "sahel",
+        "name": "Sahel (Niamey, Niger)",
+        "latitude": 13.5,
+        "longitude": 2.1
+      },
+      "temporal_range": "1990-01 to 2024-12",
+      "downloaded_at": "2026-11-14T23:32:00Z",
+      "fill_value": -999.0
+    },
+    {
+      "file": "power_t2m_australia.json",
+      "variable_id": "T2M",
+      "display_name": "Surface Air Temperature (2m)",
+      "unit": "°C",
+      "provider": "NASA_POWER",
+      "source_model": "MERRA-2 / GEOS-5.12.4",
+      "spatial_resolution": "0.5° x 0.625°",
+      "location": {
+        "region_id": "australia_se",
+        "name": "Southeast Australia (Murray-Darling)",
+        "latitude": -35.0,
+        "longitude": 145.0
+      },
+      "temporal_range": "1990-01 to 2024-12",
+      "downloaded_at": "2026-11-14T23:32:00Z",
       "fill_value": -999.0
     }
   ]
