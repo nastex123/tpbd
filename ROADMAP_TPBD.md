@@ -1,268 +1,231 @@
 # TPBD — The Pale Blue Dot
-## Roadmap técnico y de producto | Hackathon de 30 horas
+## Roadmap técnico y de producto | v2.0 | NASA Space Apps Challenge 2026
 
-**Versión:** 1.0  
-**Fecha de planificación:** 14 de noviembre de 2026  
-**Equipo:** Daniel (Datos/IA), Brandon (Frontend Core/Tauri), Dylan (UX/UI/Visualización)  
-**Producto:** Aplicación de escritorio para Windows x64  
-**Stack:** Tauri 2, React, TypeScript, Vite, Python, FastAPI, react-globe.gl, Recharts, SQLite o JSON cacheado.
+**Fecha:** 14 de noviembre de 2026  
+**Estado:** planificación revisada; implementación aún no incluida en este repositorio.  
+**Reto:** [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)  
+**Equipo:** Daniel (datos y análisis), Brandon (Tauri y experiencia geográfica), Dylan (UX/UI y visualización).
 
 ## 1. Visión
 
-TPBD es un observatorio ambiental interactivo. El usuario explora cuatro ubicaciones representativas en un globo 3D, examina series históricas de variables climáticas, identifica anomalías estadísticas y compara escenarios climáticos hasta 2050 utilizando datos y proyecciones documentados por la NASA.
+TPBD convierte la exploración de datos del sistema terrestre en una investigación guiada y accesible. El usuario selecciona una variable y una ubicación, examina una serie histórica, calcula cuánto cambia y ve si la evidencia respalda una tendencia estadísticamente significativa.
 
-**Flujo central:** DETECTAR → INVESTIGAR → SIMULAR → EXPLICAR.
+**Flujo principal:** elegir variable → elegir lugar → explorar la serie → cuantificar la tendencia → revisar la evidencia y sus límites.
 
-**Promesa del MVP:** En una sola sesión, un evaluador puede abrir la aplicación, seleccionar una región, mover el timeline, ver variables reales históricas, detectar una anomalía, alternar tres escenarios futuros y consultar su significado, aun si se interrumpe la conexión para la demostración precargada.
+El producto conserva el concepto Mission Control y lo enfoca como **Data Detective**. El globo y las gráficas ayudan a investigar; el análisis estadístico es tan importante como la visualización.
 
-## 2. Alcance
+### Preguntas que responde
 
-### P0: indispensable en 30 horas
-1. Shell Tauri ejecutable y frontend React + TS.
-2. Diseño funcional y navegación Mission Control.
-3. Globo 3D optimizado con cuatro marcadores de regiones.
-4. Consulta y normalización de datos mensuales históricos NASA POWER.
-5. Timeline histórico 1990–2025 y años de escenario 2027–2050. El año 2026 se etiqueta según disponibilidad de datos: no se inventan meses faltantes.
-6. Tres indicadores inicialmente: temperatura del aire a 2 m (`T2M`), precipitación (`PRECTOTCORR`) y humedad relativa (`RH2M`). La humedad del suelo no se equipara a RH2M.
-7. Panel científico con gráficos, unidades, fuente y fecha.
-8. Detección de anomalía compuesta: desviaciones estacionales de temperatura y precipitación.
-9. Escenarios climáticos oficiales SSP1-2.6, SSP2-4.5 y SSP3-7.0, siempre rotulados como proyecciones de modelos CMIP6.
-10. Caché y cuatro datasets de demostración.
-11. Prueba integrada y entrega demostrable.
+1. **¿Qué cambia?** Variable, unidad y fuente.
+2. **¿Dónde cambia?** Coordenadas o región preparada, con la celda de datos usada.
+3. **¿Cuánto cambia?** Pendiente robusta en unidades por década y su intervalo de confianza.
+4. **¿La tendencia es significativa?** Prueba, valor p, supuestos y limitaciones en lenguaje claro.
 
-### P1: si hay holgura
-- Diagnósticos explicativos mediante LLM con evidencia, sin afirmar causalidad.
-- Comparador de dos fechas / regiones.
-- Búsqueda arbitraria de coordenadas.
-- Animación de timeline con controles de reproducción.
+## 2. Alcance priorizado
 
-### P2: posteriores a la hackathon
-- Exportación PDF, investigaciones guardadas, mapa global de calor continuo, índice exploratorio de estrés ambiental, capas ráster avanzadas, reportes por lotes, alertas y escenarios paramétricos de intervención calibrados por fuentes externas.
+### P0 — MVP de 30 horas
 
-**Criterio de corte:** a partir de la hora 23 no se agrega alcance nuevo; a partir de la hora 26 solo se corrigen errores críticos y se ensaya la demostración.
+1. Aplicación de escritorio Windows con Tauri 2, React, TypeScript y Vite; API local FastAPI.
+2. Globo 3D con cuatro lugares de ejemplo y selección de coordenadas geográficas.
+3. Catálogo curado de variables NASA, con definiciones, unidad, comunidad, resolución, cobertura y fuente.
+4. Series históricas mensuales consultables en coordenadas y lugares preparados; faltantes y cobertura explícitos.
+5. Visualización de la serie con fecha, unidades, procedencia, período y línea de tendencia.
+6. Análisis de tendencia: método estacional para series mensuales, pendiente de Sen, incertidumbre, significancia y revisión de autocorrelación.
+7. Comparación de la misma variable entre dos ubicaciones con período, unidad, fuente y resolución compatibles.
+8. Veredicto científico comprensible, estados no evaluables y modo demo con datos validados.
+9. Documentación metodológica, referencias y demostración reproducible.
 
-## 3. Fundamento científico
+**Variables iniciales:** temperatura del aire a 2 m (T2M), precipitación corregida (PRECTOTCORR) y humedad relativa del aire a 2 m (RH2M), sujetas a validar disponibilidad real por lugar y período. **GWETROOT** (fracción de humedad del suelo en zona radicular) y **EVPTRNS** (transpiración) son candidatas del catálogo hidrológico: solo entran al MVP si se valida su comunidad, frecuencia, cobertura, unidades y compatibilidad con el endpoint. No confundir fracción de humedad del suelo con contenido volumétrico.
 
-- **Histórico:** NASA POWER Monthly Point, datos de reanálisis/modelos y observaciones satelitales según variable. No llamar a todos los valores «mediciones directas». El servicio mensual documenta meteorología desde 1981 y disponibilidad hasta el año anterior; verificar los años concretos al construir el fixture.
-- **Proyecciones:** NASA POWER Projection API basada en NEX-GDDP-CMIP6. Escenarios oficiales: `ssp126`, `ssp245`, `ssp370`. Datos mensuales 2015–2100; resolución aproximada 0.25° con selección de la celda más cercana; evitar afirmar precisión puntual.
-- **Variables comunes para histórico/futuro:** `T2M`, `PRECTOTCORR`, `RH2M`, sujetas a comprobación de series reales al implementar.
-- **Anomalías:** calcular medias y desviaciones estándar por mes calendario en la climatología de referencia 1991–2020. No comparar agosto directamente con todos los meses del año. Umbrales iniciales: `z(T2M) >= +2` y `z(PRECTOTCORR) <= -1.5` simultáneamente; son heurísticos visibles y configurables, no indicadores de incendios o desastres confirmados.
-- **Futuros:** no extrapolar ingenuamente una regresión hasta 2050 si ya hay escenarios climáticos publicados; en la interfaz distinguir claramente «histórico» de «proyección». No convertir un slider de emisiones en °C sin un modelo causal calibrado.
-- **Casos de estudio:** seleccionar ubicaciones terrestres donde las variables atmosféricas expliquen razonablemente el caso. Propuesta: Amazonía (Manaos), La Guajira (Riohacha), Sahel (Níger) y sureste de Australia. Si se usa Groenlandia, declarar que la temperatura del aire NO mide directamente derretimiento glaciar; si se usan arrecifes, no confundir temperatura del aire con temperatura del mar.
-- **Valores ausentes:** la NASA puede devolver códigos de ausencia como `-999`; normalizarlos a `null`, nunca incluirlos en promedios.
+### P1 — Si el P0 está estable
 
-Fuentes oficiales:
-- https://power.larc.nasa.gov/docs/services/api/temporal/monthly/
-- https://power.larc.nasa.gov/docs/services/api/projection/
-- https://v2.tauri.app/develop/sidecar/
+- Detector estacional de anomalías Z-score como herramienta complementaria a las tendencias.
+- Asistente explicativo opcional, anclado en resultados calculados y fuentes visibles.
+- Comparador temporal, reproducción de la serie y búsqueda asistida de variables.
+- Ampliación del catálogo con datasets NASA ya validados.
+
+### P2 — Después de la hackathon
+
+- Proyecciones NASA POWER CMIP6 hasta 2100, rotuladas como escenarios condicionales.
+- Exportación PDF, investigaciones guardadas, análisis por lotes y mapa continuo de tendencias.
+- Índices compuestos y simulaciones paramétricas, solo con metodología y datos apropiados.
+
+## 3. Base científica y tratamiento de datos
+
+- **Fuente de MVP:** NASA POWER Monthly Point para variables y períodos disponibles. POWER sirve parámetros de distintas comunidades; la disponibilidad temporal y espacial cambia según parámetro. No asumir que todas las variables empiezan en el mismo año ni comparten resolución.
+- **Localización:** la API usa una celda de grilla para las coordenadas solicitadas. Mostrar coordenada consultada, coordenada/celda representativa y resolución cuando la respuesta lo permita; no describir el resultado como medición exacta del punto.
+- **Catálogo:** consultar metadatos de comunidad y nivel temporal antes de ofrecer una variable. Para hidrología, registrar fuente, resolución, cobertura y posibles cambios de producto. Si se combinan productos, señalar los límites de comparabilidad.
+- **Estacionalidad:** aplicar un método estacional a datos mensuales o retirar/documentar el ciclo estacional antes de evaluar tendencia. No mezclar meses con ciclos distintos en una sola prueba sin ajuste.
+- **Autocorrelación:** comprobar dependencia serial (al menos lag 1) y utilizar una corrección estadística documentada compatible con el método. Si no se puede evaluar o corregir de forma defendible, no emitir un veredicto de significancia; mostrar el resultado como exploratorio/no evaluable.
+- **Pendiente:** estimador de Sen en unidades originales por década. Mostrar intervalo de confianza del 95% cuando el método lo permita. No presentar una tasa como evidencia por sí sola.
+- **Significancia:** nivel nominal inicial alfa=0.05, método y valor p visibles. La significancia estadística no implica importancia práctica, causalidad ni atribución de causa. Advertir sobre pruebas múltiples cuando se exploran muchas variables/lugares.
+- **Calidad:** normalizar códigos de ausencia, por ejemplo -999, a null. No interpolar ni rellenar valores en silencio; no incluir ausencias en cálculos. La cobertura corta, huecos, varianza cero o datos insuficientes producen estado no evaluable y motivo.
+- **Alcance del método:** el reto admite métodos básicos y cita t-test, Mann–Kendall o intervalos de confianza como ejemplos. TPBD propone una prueba estacional de Mann–Kendall y pendiente de Sen, pero no las presenta como método obligatorio de NASA. La implementación debe fijar y validar el método de ajuste por autocorrelación antes de publicar resultados.
 
 ## 4. Arquitectura propuesta
 
-```mermaid
+~~~mermaid
 flowchart TD
-    U[Investigador] --> T[Tauri 2 / WebView]
+    U[Usuario Data Detective] --> T[Tauri 2 / WebView]
     T --> R[React + TypeScript]
-    R --> G[Globo 3D WebGL + timeline + paneles]
-    R --> F[FastAPI local 127.0.0.1]
-    F --> S[Normalización + anomalías + escenarios]
-    S --> C[Caché local SQLite/JSON]
-    S --> H[NASA POWER histórico]
-    S --> P[NASA POWER proyecciones CMIP6]
-    F -. P1 .-> L[Servicio LLM externo opcional]
-```
+    R --> V[Globo + selector + series + comparador]
+    R --> F[FastAPI local en 127.0.0.1]
+    F --> C[Catálogo, validación y procedencia]
+    C --> D[Cliente NASA POWER histórico]
+    C --> K[Caché local SQLite o JSON]
+    D --> N[Normalización y control de calidad]
+    N --> S[Prueba estacional + pendiente de Sen]
+    S --> R
+    F -. P1 .-> A[Explicación asistida opcional]
+    F -. P2 .-> P[NASA POWER CMIP6]
+~~~
 
-**Desarrollo:** iniciar frontend y servidor Python separadamente; definir contratos antes de integrar.  
-**Distribución:** Tauri puede incluir ejecutables externos tipo *sidecar*, por ejemplo un servidor Python empaquetado con PyInstaller. Probarlo en las primeras 2 horas; requiere configurar `bundle.externalBin`, permisos del plugin shell, arranque/parada de proceso y empaquetado por plataforma. No asumir que Tauri incluye Python automáticamente.  
-**Seguridad:** API local escuchando únicamente en `127.0.0.1`, validar argumentos, políticas CORS restrictivas, no incrustar claves LLM en el frontend o repositorio y no exponerlas en el instalador.
+**Seguridad local:** API enlazada únicamente a 127.0.0.1; validar entradas, limitar CORS, no incluir secretos en frontend, repositorio o instalador.
 
 ### Estructura sugerida
 
-```text
+~~~text
 TPBD/
-├── apps/
-│   └── desktop/
-│       ├── src/
-│       │   ├── components/{globe,timeline,charts,layout}/
-│       │   ├── features/{regions,anomalies,scenarios}/
-│       │   ├── services/api.ts
-│       │   ├── stores/
-│       │   └── types/
-│       └── src-tauri/
-├── services/
-│   └── climate-engine/
-│       ├── app/{api,clients,schemas,services,models}/
-│       ├── tests/
-│       └── requirements.txt
-├── data/fixtures/
-├── docs/{api-contract,methodology,decisions}/
+├── apps/desktop/            # Tauri 2 + React + TypeScript
+├── services/climate-engine/ # FastAPI, clientes, análisis y pruebas
+├── data/fixtures/            # Ejemplos con procedencia
+├── docs/                     # contrato API, catálogo y metodología
 └── README.md
-```
+~~~
 
-### Modelo de datos básico
+### Contratos de datos
 
-- `Region`: `id`, `name`, `lat`, `lon`, `description`, `variables_supported`.
-- `ClimateObservation`: `region_id`, `date` (YYYY-MM), `parameter`, `value|null`, `unit`, `source`, `quality`.
-- `ClimateProjection`: anterior + `scenario`, `model`, `is_projection=true`.
-- `Anomaly`: `region_id`, `date`, `z_temperature`, `z_precipitation`, `is_composite`, `severity`, `explanation`, `baseline_period`.
-- `DataProvenance`: `provider`, `endpoint`, `requested_at`, `source_range`, `method`, `model`, `scenario`.
+- **Variable:** identificador, nombre legible, unidad, comunidad, resolución, período y fuente.
+- **Serie:** parámetro, ubicación, coordenada/celda consultada, fechas, valores nullable, calidad y procedencia.
+- **Resultado de tendencia:** dirección (increasing, decreasing, no_trend, not_evaluable), método, pendiente/unidad/década, intervalo, estadístico, p-valor, alfa, cobertura y diagnóstico de autocorrelación.
+- **Comparación:** dos resultados calculados con el mismo parámetro, método, unidades compatibles y período comparable.
 
-### Contrato API mínimo (acordar en la hora 2)
+## 5. Capacidad y estimación inicial
 
-| Método | Ruta | Respuesta esperada |
-|---|---|---|
-| GET | `/health` | Estado, versión, disponibilidad de caché |
-| GET | `/api/regions` | Lista de regiones y coordenadas |
-| GET | `/api/history?region_id=amazon&start=1990&end=2025` | Series mensuales, unidades y fuente |
-| GET | `/api/anomalies?region_id=amazon` | Anomalías, z-scores y período base |
-| GET | `/api/projections?region_id=amazon&start=2027&end=2050` | Tres series SSP, modelo, unidades |
-| GET | `/api/status` | Estado de fuentes, última actualización y modo offline |
-| POST | `/api/insights` | (P1) Texto de interpretación anclado a evidencia |
+El evento dura 30 horas transcurridas; capacidad máxima teórica: 90 horas-persona. El backlog v2.0 estima **77 horas-persona P0** y reserva **13 horas-persona** para incertidumbre, integración y descansos.
 
-Contrato de serie estándar (ejemplo de forma, no dato real):
+| Integrante | Foco | Horas P0 estimadas |
+|---|---|---:|
+| Daniel | API, datos, catálogo, calidad y estadística | 25 |
+| Brandon | Tauri, globo, coordenadas e integración | 18 |
+| Dylan | sistema visual, gráficas, veredicto y demo | 16 |
+| Equipo | comparación regional, QA e integración | 18 |
+| **Total** | | **77** |
 
-```json
-{
-  "region_id": "amazon",
-  "parameter": "T2M",
-  "unit": "°C",
-  "source": "NASA_POWER_HISTORICAL",
-  "scenario": null,
-  "model": null,
-  "points": [
-    {"date": "2020-08", "value": null, "quality": "missing"}
-  ]
-}
-```
+Las estimaciones son horas-persona orientativas, no resultados ni garantía de entrega. Si el análisis estadístico o los datos reales fallan, reducir variables y casos antes que simular significancia.
 
-La API NO debe retornar una cifra inventada si NASA no provee el dato.
+## 6. Plan de ejecución por ventanas
 
-## 5. Responsables y capacidad
+### H00–H02 | Validar riesgos
 
-| Integrante | Responsabilidades principales | Horas P0 estimadas | Reserva |
-|---|---|---:|---:|
-| Daniel | API, fuentes NASA, normalización, anomalías y CMIP6 | 27 | 3 |
-| Brandon | Estructura Tauri/React, globo, selección, timeline, orquestación | 27 | 3 |
-| Dylan | UX/UI, capas, gráficas, escenarios visuales, caché de demo y pitch | 24 | 6 |
-| **Total** | **3 personas × 30 h** | **78 h/persona** | **12 h/persona** |
+- Daniel: consultar disponibilidad real de T2M, PRECTOTCORR, RH2M y candidatas hidrológicas en dos coordenadas; registrar unidades, comunidad, cobertura y resolución.
+- Brandon: crear shell Tauri, probar WebGL, selector de coordenadas y riesgo de sidecar.
+- Dylan: diseñar flujo Data Detective, catálogo y estados de evidencia/no evaluación.
+- **Gate G0:** fuente y variables mínimas confirmadas; método estadístico preliminar documentado; aplicación arranca.
 
-Las 30 horas se refieren a tiempo transcurrido del evento. El esfuerzo acumulado del equipo alcanza como máximo 90 horas-persona, antes de descansos y otras interrupciones. Las estimaciones son orientativas y no garantizan la entrega.
+### H02–H07 | Contratos y primera vertical
 
-## 6. Roadmap por ventanas de ejecución
+- Congelar contrato de variable, serie, ubicación y procedencia.
+- Consultar una variable histórica de un punto y verla en el panel.
+- Selección del globo vinculada al estado de ubicación.
+- **Gate G1:** una consulta verificable se puede explorar sin refrescar la app.
 
-### Fase 0 — H00 a H02 | Definición y prueba de riesgo
-- **Daniel:** verificar respuesta real de POWER histórico y proyecciones para UNA región; revisar parámetros y unidades.
-- **Brandon:** inicializar Tauri + React + TypeScript; probar WebGL, tamaño de ventana y viabilidad de sidecar en el PC de demo.
-- **Dylan:** definir layout, componentes esenciales y prototipo del flujo de 4 pantallas/estados.
-- **Gate G0:** repositorio arranca; un dataset real es legible; interfaz, contratos y alcance congelados.
+### H07–H13 | Histórico y geografía
 
-### Fase 1 — H02 a H06 | Vertical slice mínima
-- **Daniel:** FastAPI `/health`, `/api/regions`, endpoint `/api/history` con fixture + primera consulta real.
-- **Brandon:** globo con cuatro puntos de prueba y selección compartida en React.
-- **Dylan:** panel de detalle con gráfica conectada inicialmente a fixtures.
-- **Gate G1:** elegir Amazonas en globo y ver una serie mensual representada, aunque sea precargada.
+- Añadir normalización, faltantes, caché y catálogo curado.
+- Seleccionar lugar preparado o coordenadas; mostrar resolución y período.
+- Graficar fechas, unidades, fuente y huecos.
+- **Gate G2:** dos lugares y una variable, con respuestas trazables y compatibles.
 
-### Fase 2 — H06 a H12 | Histórico y análisis
-- **Daniel:** normalizar unidades, faltantes y caché; implementar cálculo Z-Score estacional con pruebas.
-- **Brandon:** timeline 1990–2025, marcador del año, estados y llamadas a API.
-- **Dylan:** capas con leyenda, tarjetas de valores y gráficas históricas.
-- **Gate G2:** una anomalía histórica se reproduce consistentemente y muestra los números usados.
+### H13–H19 | Estadística
 
-### Fase 3 — H12 a H18 | Escenarios futuros
-- **Daniel:** integrar Projection API, validar escenarios `ssp126/ssp245/ssp370`, cachear 4 ubicaciones.
-- **Brandon:** extender timeline a 2050 con distinción histórica/proyección; vincular datos al globo.
-- **Dylan:** selector de escenarios y gráfica de curvas comparadas con metadatos.
-- **Gate G3:** en una región, alternar escenarios cambia únicamente datos proyectados y refleja la fuente real.
+- Implementar prueba estacional, ajuste/diagnóstico de autocorrelación y pendiente de Sen.
+- Validar series con tendencia positiva, negativa, nula, autocorrelación, faltantes y cobertura insuficiente.
+- Mostrar pendiente por década, intervalo, p-valor, método y limitaciones.
+- **Gate G3:** el resultado se reproduce desde fixtures y está respaldado por metodología explicable.
 
-### Fase 4 — H18 a H23 | Mission Control y resiliencia
-- **Daniel:** endpoints estables, errores legibles, trazabilidad de fuentes y verificación de caché.
-- **Brandon:** integrar selección → historial → anomalía → escenario; optimización de render.
-- **Dylan:** cuatro casos precargados, modo demostración, estados vacíos/carga/error, pulido visual.
-- **Gate G4:** flujo completo sin pantallas rotas; seleccionar una región y recorrer la historia en menos de 2 minutos.
+### H19–H25 | Comparación y flujo
 
-### Fase 5 — H23 a H27 | Integración, QA y empaquetado
-- Probar instalación y arranque en Windows, incluyendo sidecar cuando se haya validado su empaquetado.
-- Verificar sincronización de timeline, unidades, etiquetas de escenarios, desconexión de red y precisión de datos.
-- Comprobar funcionamiento sin depender de solicitudes NASA durante la demo.
-- Congelar nuevas funciones; se permite P1 únicamente si P0 está estable.
-- **Gate G5:** aplicación demostrable sobre PC de presentación y datasets precargados verificados.
+- Comparar dos ubicaciones para una variable y período compatibles.
+- Distinguir diferencias en dirección y magnitud sin atribución causal.
+- Integrar catálogo → mapa → serie → resultado → comparación.
+- **Gate G4:** demo completa en menos de 2 minutos y con resultado honesto si no hay evidencia.
 
-### Fase 6 — H27 a H30 | Presentación y contingencia
-- Preparar guion de pitch de 2 minutos con cuatro acciones visibles: detectar, investigar, simular y explicar.
-- Grabar un video corto de respaldo y capturas de pantalla.
-- Ensayar demo completa con Wi-Fi desconectado y modo de bajo rendimiento.
-- Entregar README, ejecutable/paquete disponible, referencias de datos y metodología breve.
-- **Gate G6:** el equipo puede hacer la demo incluso si NASA o el LLM no responden.
+### H25–H30 | Resiliencia y entrega
 
-## 7. Dependencias críticas
+- Modo demo local, QA, prueba de WebGL reducido y estados de error.
+- Verificar metadatos, unidades, faltantes, metodología y documentación.
+- Congelar alcance, ensayar pitch y preparar video/capturas de respaldo.
+- **Gate G5:** aplicación demostrable con datos y resultados precargados verificables.
 
-```mermaid
+## 7. Dependencias
+
+~~~mermaid
 flowchart LR
-  A[HU-01 Base Tauri] --> E[HU-05 Globo]
-  B[HU-02 Contratos API] --> C[HU-03 Histórico]
-  B --> D[HU-04 Normalización y caché]
-  C --> G[HU-10 Anomalías]
-  D --> G
-  C --> H[HU-11 Proyecciones]
-  E --> F[HU-06 Regiones]
-  F --> I[HU-07 Timeline]
-  J[HU-00 Sistema visual] --> K[HU-09 Gráficas]
-  I --> L[HU-13 Flujo Mission Control]
-  G --> L
-  H --> L
-  K --> L
-  L --> M[HU-15 QA y release]
-```
+  A[HU-01 Shell] --> B[HU-05 Globo]
+  C[HU-02 API y catálogo] --> D[HU-03 Histórico]
+  D --> E[HU-04 Calidad y caché]
+  B --> F[HU-06 Ubicación]
+  D --> G[HU-09 Series]
+  E --> H[HU-25 Tendencias]
+  G --> H
+  F --> I[HU-18 Comparación]
+  H --> I
+  G --> J[HU-08 Veredicto UI]
+  H --> J
+  I --> K[HU-13 Flujo Data Detective]
+  J --> K
+  K --> L[HU-14 Demo]
+  L --> M[HU-15 QA y entrega]
+~~~
 
-**Regla de integración:** ningún módulo espera por el backend para iniciar UI: desarrollar contra fixtures tipados con el mismo contrato JSON. Integración temprana a horas 6, 12, 18 y 23.
+## 8. Rendimiento y degradación
 
-## 8. Presupuesto de rendimiento objetivo (no resultados medidos)
+- Perfil gráfico bajo; cuatro presets y consulta por coordenadas.
+- Catálogo pequeño y validado, no un selector de cientos de variables sin soporte.
+- Debounce del mapa/selector y caché local para la demo.
+- Sin red: etiquetar datos precargados como demo y conservar procedencia.
+- Sin WebGL: lista/selector 2D mantiene acceso a las mismas series y resultados.
+- Sin cobertura, sin muestras suficientes o con supuestos no válidos: explicar “no evaluable”.
 
-- PC de demostración: probar en la máquina real y activar perfil de gráficos reducidos.
-- Evitar un mapa de calor global continuo: 4 puntos/zonas de estudio P0.
-- Renderizar el globo sólo cuando sea necesario; limitar efectos, sombras, partículas y texturas pesadas.
-- Interacción de timeline con debounce o filtrado local; no disparar una petición de red por cada píxel arrastrado.
-- Respuesta con datos cacheados: objetivo de interfaz perceptiblemente inmediata (< 1 s para selección precargada, tras primera carga). Medir y ajustar.
-- En fallas de WebGL: vista 2D/lista de regiones funcional.
-- Procesar análisis en backend sin bloquear el hilo de UI.
-
-## 9. Riesgos y plan B
+## 9. Riesgos y mitigaciones
 
 | Riesgo | Mitigación | Plan B |
 |---|---|---|
-| NASA responde lento/no disponible | Pre-descargar datasets y metadatos | Modo demostración 100% local |
-| Projection API no ofrece una combinación prevista | Comprobar al principio región, fecha, parámetro | Reducir variables/escenarios solo a los realmente validados; no inventar |
-| Empaquetado Python sidecar falla | Prototipo técnico desde H00 | Demo en PC configurado, Tauri + servidor local iniciado por script, y explicar límite de distribución |
-| GPU/WebGL insuficiente | Globo simple + perfil bajo | Mapa/lista 2D de ubicaciones |
-| Exceso de alcance | P0/P1/P2 y ventanas de corte | Omitir IA generativa, comparaciones y exportación |
-| Resultados científicamente engañosos | Fuentes, modelo, unidades, fecha, etiquetas y faltantes visibles | Ocultar resultado no validado |
-| LLM alucina causalidad | Solo interpretación con evidencia, validación | Mensajes estadísticos deterministas |
+| Parámetro ausente para lugar/período | Validar temprano por comunidad y nivel temporal | Reducir catálogo a parámetros probados |
+| Resolución o fuente inconsistente | Mostrar metadata y bloquear comparaciones incompatibles | Comparar solo series homologables |
+| Estacionalidad/autocorrelación distorsionan p | Método y corrección documentados; pruebas y diagnóstico | Resultado exploratorio o no evaluable |
+| Huecos o registro demasiado corto | Reportar cobertura y requerir mínimo documentado | Mostrar serie sin significancia |
+| Sidecar de Python falla | Probarlo en H00–H02 | Demo en equipo configurado con backend local |
+| WebGL/GPU no disponible | Perfil bajo y fallback | Lista geográfica 2D |
+| Alcance excedido | Proteger el P0 y las gates | Retirar IA, CMIP6 y variables no validadas |
+| Narrativa causal sin evidencia | Redacción de asociación/tendencia únicamente | Retirar explicaciones causales |
 
-## 10. Definición de terminado (Definition of Done)
+## 10. Definición de terminado
 
-Una HU se cierra cuando: código revisado por otro integrante; compila sin errores; tipos coherentes con el contrato; funciona en fixture y datos reales cuando aplica; muestra carga/error/datos faltantes; posee al menos prueba técnica relevante o procedimiento manual reproducible; y está integrada en la rama principal sin romper otras funciones.
+Una historia se cierra cuando sus criterios son reproducibles, los errores y faltantes son visibles, tipos y contratos coinciden, los datos llevan procedencia, el análisis tiene método documentado y otro integrante revisa el resultado. Toda cifra de tendencia debe poder rastrearse a la serie y versión de datos que la originaron.
 
-### Entregables finales
-- Proyecto Tauri/React ejecutable para la presentación.
-- Backend FastAPI funcional, con pruebas básicas.
-- Fixtures/caché de cuatro regiones con origen registrado.
-- README con instalación, ejecución y limitaciones.
-- Documento corto de metodología: NASA histórico, CMIP6, estadística de anomalías, incertidumbre.
-- Script de demo y video de respaldo.
+### Entregables
+
+- Aplicación Tauri/React ejecutable para la demo y API FastAPI.
+- Catálogo de variables realmente validadas, fixtures con procedencia y método estadístico reproducible.
+- README, contrato API, metodología y limitaciones.
+- Guion Data Detective de 2 minutos, modo demo local y video de respaldo.
 
 ## 11. Indicadores de éxito
 
-1. Seleccionar una región en el globo actualiza título, valores, gráficas y anomalías sin inconsistencia.
-2. El histórico y las proyecciones están visualmente separados y correctamente rotulados.
-3. Cambiar de `ssp126` a `ssp370` modifica series provenientes del escenario correspondiente.
-4. La anomalía enseña z-scores, fecha, línea base y no afirma causas no comprobadas.
-5. Los cuatro casos de estudio funcionan sin red tras precargarse.
-6. El equipo completa el flujo principal en una demo de hasta 2 minutos.
-7. Aplicación estable durante tres ejecuciones consecutivas en el PC de presentación.
+1. Elegir variable y ubicación actualiza serie, unidades, fuente y cobertura.
+2. Una serie mensual válida muestra tendencia, pendiente por década, incertidumbre y prueba.
+3. La salida distingue tendencia significativa, no significativa y no evaluable.
+4. La autocorrelación y estacionalidad se controlan o se declaran limitaciones.
+5. Dos regiones se comparan con variable, unidades, período y método compatibles.
+6. Los datos del demo y resultados estadísticos se reproducen sin red.
+7. La demo responde las cuatro preguntas del reto sin atribuir causas no demostradas.
 
-## 12. Evolución posterior a la hackathon
+## 12. Después de la hackathon
 
-- **v1.1:** IA explicativa basada en evidencias, comparadores y exportación PDF.
-- **v1.2:** investigaciones guardadas, búsquedas geográficas y análisis parametrizables.
-- **v2.0:** distribución multiplataforma, análisis de más puntos/rasters, motor de capas geoespaciales e intervenciones simuladas con modelos validados.
+- **P1:** anomalías estacionales, asistente basado en evidencia, catálogo extendido.
+- **P2:** proyecciones CMIP6, mapa continuo, exportación e investigaciones guardadas.
+- Investigar variables y productos hidrológicos de mayor resolución con comparabilidad y cobertura documentadas.
 
-> Nota: «predicción de catástrofes» o «causalidad del cambio climático local» NO debe afirmarse a partir de correlaciones y z-scores. La aplicación es un observatorio exploratorio con escenarios, no un sistema de alerta temprana validado.
+**Fuentes principales:** [Desafío oficial](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/), [NASA POWER Monthly API](https://power.larc.nasa.gov/docs/services/api/temporal/monthly/), [comunidades de datos POWER](https://power.larc.nasa.gov/docs/methodology/communities/), [fuentes hidrológicas POWER](https://power.larc.nasa.gov/docs/methodology/data/sources_hydrology/), [artículo SeaWiFS/Giovanni de NASA NTRS](https://ntrs.nasa.gov/api/citations/20090042747/downloads/20090042747.pdf).
