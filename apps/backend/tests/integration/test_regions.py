@@ -1,5 +1,4 @@
-"""Tests for /api/v1/regions endpoints and RegionRepository."""
-from app.repositories.region_repository import RegionRepository
+"""Integration tests for /api/v1/regions endpoints."""
 
 
 def test_list_regions_returns_200_and_curated_regions(client):
@@ -34,21 +33,3 @@ def test_regions_schema_integrity(client):
         assert "representative_cell" in region
         assert "description" in region
         assert "scientific_context" in region
-
-
-def test_region_repository_unit():
-    """Unit test for RegionRepository lookup."""
-    repo = RegionRepository()
-    all_regions = repo.list_all()
-    assert len(all_regions) == 4
-
-    amazon = repo.get_by_id("amazon")
-    assert amazon is not None
-    assert amazon.name == "Amazon Basin (Manaus)"
-    assert amazon.center_coordinates.latitude == -3.1
-
-    # Case-insensitive check
-    assert repo.get_by_id("GUAJIRA") is not None
-
-    # Missing region
-    assert repo.get_by_id("non_existent_region") is None

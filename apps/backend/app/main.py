@@ -3,17 +3,21 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.logging import setup_logging, get_logger
 from app.core.exceptions import register_exception_handlers
 from app.api.v1.health import router as health_router
 from app.api.v1.router import api_router
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events (startup & shutdown)."""
-    # Startup: ensure cache directories exist, log operational parameters
+    setup_logging()
+    logger.info("Initializing %s v%s...", settings.PROJECT_NAME, settings.VERSION)
     yield
-    # Shutdown: clean up any active connection pools
+    logger.info("Shutting down %s...", settings.PROJECT_NAME)
 
 
 def create_app() -> FastAPI:
