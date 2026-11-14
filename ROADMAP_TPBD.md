@@ -25,7 +25,7 @@ El producto conserva el concepto Mission Control y lo enfoca como **Data Detecti
 
 ### P0 — MVP de 30 horas
 
-1. Aplicación de escritorio Windows con Tauri 2, React, TypeScript y Vite; API local FastAPI.
+1. Aplicación de escritorio Windows con Electron, React, TypeScript y Vite; API local FastAPI.
 2. Globo 3D con cuatro lugares de ejemplo y selección de coordenadas geográficas.
 3. Catálogo curado de variables NASA, con definiciones, unidad, comunidad, resolución, cobertura y fuente.
 4. Series históricas mensuales consultables en coordenadas y lugares preparados; faltantes y cobertura explícitos.
@@ -66,7 +66,7 @@ El producto conserva el concepto Mission Control y lo enfoca como **Data Detecti
 
 ~~~mermaid
 flowchart TD
-    U[Usuario Data Detective] --> T[Tauri 2 / WebView]
+    U[Usuario Data Detective] --> T[Electron / Chromium]
     T --> R[React + TypeScript]
     R --> V[Globo + selector + series + comparador]
     R --> F[FastAPI local en 127.0.0.1]
@@ -86,7 +86,7 @@ flowchart TD
 
 ~~~text
 TPBD/
-├── apps/desktop/            # Tauri 2 + React + TypeScript
+├── apps/desktop/            # Electron + React + TypeScript
 ├── services/climate-engine/ # FastAPI, clientes, análisis y pruebas
 ├── data/fixtures/            # Ejemplos con procedencia
 ├── docs/                     # contrato API, catálogo y metodología
@@ -106,7 +106,7 @@ El evento dura 30 horas. El equipo dispone de 60 horas-persona y planifica 56 pa
 
 | Integrante | Foco | Horas P0 |
 |---|---|---:|
-| Brandon | Tauri, globo, coordenadas, interfaz, gráficas, comparación, integración y QA | 28 |
+| Brandon | Electron, globo, coordenadas, interfaz, gráficas, comparación, integración y QA | 28 |
 | Daniel | API, catálogo, series, caché, estadística, datos de demo y QA | 28 |
 | **Total** | | **56** |
 
@@ -117,7 +117,7 @@ Las estimaciones son horas-persona orientativas, no resultados ni garantía de e
 ### H00–H02 | Validar riesgos
 
 - Daniel: consultar disponibilidad real de T2M, PRECTOTCORR, RH2M y candidatas hidrológicas en dos coordenadas; registrar unidades, comunidad, cobertura y resolución.
-- Brandon: crear shell Tauri, probar WebGL, selector de coordenadas y riesgo de sidecar.
+- Brandon: ~~crear la base Electron (HU-01)~~. La ventana abre en Windows y el README documenta el arranque separado de FastAPI. Daniel habilitará `GET /health` en HU-02 para comprobar la conexión real.
 - Brandon: bosquejar una sola pantalla de investigación con catálogo corto y estados de evidencia.
 - **Gate G0:** fuente y variables mínimas confirmadas; método estadístico preliminar documentado; aplicación arranca.
 
@@ -194,7 +194,7 @@ flowchart LR
 | Resolución o fuente inconsistente | Mostrar metadata y bloquear comparaciones incompatibles | Comparar solo series homologables |
 | Estacionalidad/autocorrelación distorsionan p | Método y corrección documentados; pruebas y diagnóstico | Resultado exploratorio o no evaluable |
 | Huecos o registro demasiado corto | Reportar cobertura y requerir mínimo documentado | Mostrar serie sin significancia |
-| Sidecar de Python falla | Probarlo en H00–H02 | Demo en equipo configurado con backend local |
+| FastAPI no arranca en el equipo de demo | Preparar y documentar el entorno Python | Usar el caso precargado |
 | WebGL/GPU no disponible | Perfil bajo y fallback | Lista geográfica 2D |
 | Alcance excedido | Proteger el P0 y las gates | Retirar IA, CMIP6 y variables no validadas |
 | Narrativa causal sin evidencia | Redacción de asociación/tendencia únicamente | Retirar explicaciones causales |
@@ -205,7 +205,7 @@ Una historia se cierra cuando sus criterios son reproducibles, los errores y fal
 
 ### Entregables
 
-- Aplicación Tauri/React ejecutable para la demo y API FastAPI.
+- Aplicación Electron/React ejecutable para la demo y API FastAPI.
 - Catálogo de variables realmente validadas, fixtures con procedencia y método estadístico reproducible.
 - README, contrato API, metodología y limitaciones.
 - Guion Data Detective de 2 minutos, modo demo local y video de respaldo.

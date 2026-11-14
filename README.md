@@ -4,7 +4,21 @@
 
 TPBD es una propuesta de aplicación de escritorio para el reto [NASA Space Apps Challenge 2026: Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/). Ayudará a elegir variables y ubicaciones, explorar series históricas, cuantificar tendencias y revisar su significancia estadística.
 
-> **Estado:** planificación v2.0. Este repositorio contiene el roadmap y el backlog; todavía no incluye una implementación ejecutable.
+> **Estado:** HU-01 completada. La base Electron abre en Windows. La prueba con FastAPI queda pendiente de `GET /health` en HU-02.
+
+## Desarrollo local en Windows
+
+Instala Node.js 22.12 o superior con npm.
+
+```powershell
+cd apps/desktop
+npm.cmd install
+npm.cmd run desktop
+```
+
+En **Diagnóstico**, comprueba WebGL 2 y la API local. Para la API, arranca FastAPI por separado en `127.0.0.1:8000` con un endpoint `GET /health` que devuelva JSON con el campo `status`. Vite reenvía la solicitud durante el desarrollo. También puedes abrir solo el frontend con `npm.cmd run dev`.
+
+**Demo:** ejecuta FastAPI por separado. Para abrir la versión compilada de la interfaz, ejecuta primero `npm.cmd run build` y luego `npm.cmd start`. El diagnóstico de API se usa en modo desarrollo.
 
 ## Qué responderá
 
@@ -15,7 +29,7 @@ TPBD es una propuesta de aplicación de escritorio para el reto [NASA Space Apps
 
 ## MVP propuesto
 
-- Aplicación Windows con Tauri 2, React, TypeScript y Vite; API local FastAPI.
+- Aplicación Windows con Electron, React, TypeScript y Vite; API local FastAPI.
 - Series históricas NASA POWER con períodos y faltantes explícitos.
 - Catálogo inicial curado: temperatura a 2 m (T2M), precipitación corregida (PRECTOTCORR) y humedad relativa a 2 m (RH2M), sujetas a validación por ubicación y período.
 - Análisis de tendencias mensuales que trata estacionalidad y autocorrelación, con pendiente de Sen y significancia estadística.
