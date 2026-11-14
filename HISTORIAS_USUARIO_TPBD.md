@@ -4,7 +4,7 @@
 **Fecha:** 14 de noviembre de 2026  
 **Estado:** planificación revisada para NASA Space Apps Challenge 2026; el repositorio aún no incluye la aplicación.  
 **Prioridades:** P0 = MVP de 30 horas; P1 = mejora si el P0 está estable; P2 = posterior a la hackathon.  
-**Capacidad:** 90 horas-persona teóricas (3 integrantes × 30 h); P0 planificado: 77 horas-persona, con 13 horas-persona de reserva.
+**Capacidad:** 60 horas-persona. P0: 56 horas-persona (28 por integrante), con 4 de margen.
 
 ## Objetivo y definición compartida
 
@@ -17,8 +17,8 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-00 — Sistema visual Data Detective [P0]
 **Como** estudiante o persona interesada en ciencias, **quiero** una interfaz clara para investigar variables, ubicaciones y tendencias, **para** entender la evidencia sin perder el contexto.
 
-- **Responsable:** Dylan. **Estimación:** 4 h. **Depende de:** ninguna.
-- **Tareas:** layout adaptable, jerarquía de serie/resultados, leyendas, unidades, glosario breve y estados de carga/error/no evaluable.
+- **Responsable:** Brandon. **Estimación:** 2 h. **Depende de:** ninguna.
+- **Tareas:** una pantalla de investigación, jerarquía de serie/resultados, leyendas, unidades, glosario breve y estados de carga/error/no evaluable.
 - **CA-01:** la ubicación, variable, período, gráfico y resumen de tendencia se distinguen sin superposición en la resolución de demo.
 - **CA-02:** toda cifra incluye unidad; la severidad o significancia no se comunica solo por color.
 - **CA-03:** existe explicación textual para resultados significativos, no significativos y no evaluables.
@@ -27,7 +27,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-01 — Inicio y estructura Tauri [P0]
 **Como** usuario, **quiero** abrir TPBD como aplicación de escritorio, **para** explorar el análisis sin depender de una pestaña web.
 
-- **Responsable:** Brandon. **Estimación:** 5 h. **Depende de:** ninguna.
+- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** ninguna.
 - **Tareas:** Tauri 2 + React/TypeScript/Vite, scripts, ventana, seguridad inicial y prueba de WebGL/sidecar.
 - **CA-01:** el comando de desarrollo abre la aplicación con navegación inicial.
 - **CA-02:** el frontend compila y puede llamar al backend local en desarrollo.
@@ -37,7 +37,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-05 — Globo planetario 3D [P0]
 **Como** investigador, **quiero** explorar un globo y ubicar puntos, **para** dar contexto espacial a una serie ambiental.
 
-- **Responsable:** Brandon. **Estimación:** 5 h. **Depende de:** HU-01.
+- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** HU-01.
 - **Tareas:** integrar react-globe.gl, cámara, cuatro lugares preparados, interacción y perfil de gráficos reducido.
 - **CA-01:** globo rota, admite zoom controlado y muestra los cuatro lugares con etiquetas.
 - **CA-02:** elegir un lugar actualiza el estado geográfico compartido.
@@ -47,7 +47,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-06 — Ubicaciones preparadas y coordenadas [P0]
 **Como** usuario, **quiero** elegir un lugar preparado o coordenadas geográficas, **para** investigar cualquier punto compatible con la fuente.
 
-- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** HU-02, HU-05.
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-02, HU-05.
 - **Tareas:** lista de regiones, selección en globo, entrada/selección de latitud-longitud, validación y estado bidireccional.
 - **CA-01:** las coordenadas se validan dentro de latitud [-90, 90] y longitud [-180, 180].
 - **CA-02:** lista, globo y coordenadas actualizan el mismo estado geográfico.
@@ -58,7 +58,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-07 — Selector temporal histórico [P0]
 **Como** investigador, **quiero** elegir período histórico, **para** observar cambios a lo largo del tiempo.
 
-- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** HU-03.
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-03.
 - **Tareas:** selector de rango dentro del período disponible, etiquetas de cobertura y filtro/debounce.
 - **CA-01:** el selector muestra únicamente fechas consultables según el parámetro.
 - **CA-02:** faltantes permanecen como ausencias, nunca como cero.
@@ -68,8 +68,8 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-08 — Catálogo y selector de variables [P0]
 **Como** usuario, **quiero** buscar una variable y entender qué mide, **para** escoger datos adecuados a mi pregunta.
 
-- **Responsable:** Dylan. **Estimación:** 5 h. **Depende de:** HU-00, HU-02.
-- **Tareas:** catálogo curado, categorías sencillas, definiciones, unidades, comunidad, disponibilidad y glosario.
+- **Responsable:** Brandon. **Estimación:** 2 h. **Depende de:** HU-00, HU-02.
+- **Tareas:** catálogo corto de variables validadas, categorías sencillas, definiciones, unidades, comunidad, disponibilidad y glosario.
 - **CA-01:** cada opción visible tiene identificador de fuente, nombre legible, unidad y definición.
 - **CA-02:** el catálogo consulta/respeta disponibilidad por comunidad, nivel temporal y fuente.
 - **CA-03:** parámetros no validados no aparecen como disponibles.
@@ -79,7 +79,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-09 — Panel de series y visualización de tendencia [P0]
 **Como** usuario, **quiero** explorar la serie histórica con metadatos y una referencia de tendencia, **para** ver el comportamiento antes de interpretar el resultado estadístico.
 
-- **Responsable:** Dylan. **Estimación:** 4 h. **Depende de:** HU-00, HU-03.
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-00, HU-03.
 - **Tareas:** gráfica mensual, huecos, tooltip, unidades, fuente, período, coordenada/celda y superposición de pendiente cuando exista resultado válido.
 - **CA-01:** cada punto representa el valor exacto de la respuesta normalizada.
 - **CA-02:** los null producen discontinuidades y no líneas o valores falsos.
@@ -90,7 +90,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-13 — Flujo integrado Mission Control / Data Detective [P0]
 **Como** evaluador, **quiero** completar una investigación guiada, **para** entender cómo TPBD responde qué cambia, dónde, cuánto y con qué evidencia.
 
-- **Responsable:** Brandon + equipo. **Estimación:** 5 h. **Depende de:** HU-06, HU-07, HU-08, HU-09, HU-18, HU-25.
+- **Responsable:** Brandon. **Estimación:** 2 h. **Depende de:** HU-06, HU-07, HU-08, HU-09, HU-18, HU-25.
 - **Tareas:** conectar selección, consulta, gráfico, análisis, comparación y explicaciones.
 - **CA-01:** desde inicio se elige una variable y ubicación sin refrescar la aplicación.
 - **CA-02:** el usuario llega al resultado estadístico con método, cobertura y procedencia visibles.
@@ -152,7 +152,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-18 — Comparador regional [P0]
 **Como** usuario, **quiero** comparar la tendencia de una variable en dos lugares, **para** explorar cambios de dirección o magnitud entre regiones.
 
-- **Responsables:** Brandon/Dylan. **Estimación:** 5 h. **Depende de:** HU-06, HU-07, HU-08, HU-09, HU-25.
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-06, HU-07, HU-08, HU-09, HU-25.
 - **Tareas:** segunda ubicación, comparación de metadatos, dos series/resultados y diseño de diferencias.
 - **CA-01:** ambas series usan el mismo parámetro y unidades compatibles.
 - **CA-02:** período, frecuencia temporal, fuente y resolución se muestran y sus diferencias se explican.
@@ -163,10 +163,10 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ## Épica E3 — Demo, integración y calidad
 
 ### HU-14 — Modo demo sin internet [P0]
-**Como** presentador, **quiero** ejecutar investigaciones precargadas, **para** demostrar la aplicación sin depender de la red.
+**Como** presentador, **quiero** ejecutar una investigación precargada de dos ubicaciones, **para** demostrar la aplicación sin depender de la red.
 
-- **Responsable:** Dylan. **Estimación:** 3 h. **Depende de:** HU-04, HU-13, HU-25.
-- **CA-01:** los casos preparados conservan fuente, fecha, parámetro, período y método.
+- **Responsable:** Daniel. **Estimación:** 1 h. **Depende de:** HU-04, HU-13, HU-25.
+- **CA-01:** el caso preparado conserva fuente, fecha, parámetro, período y método.
 - **CA-02:** la UI los marca como datos guardados/demo.
 - **CA-03:** el resultado estadístico se reproduce a partir del fixture.
 - **CA-04:** si fixture o método no son evaluables, la demo no muestra un veredicto de significancia.
@@ -174,7 +174,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-15 — Integración, QA y entrega [P0]
 **Como** equipo, **quiero** una aplicación estable y una investigación reproducible, **para** entregar una demo defendible.
 
-- **Responsable:** equipo. **Estimación:** 8 h. **Depende de:** todas las demás historias P0.
+- **Responsable:** Brandon y Daniel. **Estimación:** 4 h. **Depende de:** todas las demás historias P0. Brandon y Daniel dedican 2 h cada uno.
 - **Tareas:** integración, contraste de respuestas, fallos de red, WebGL, fixtures, documentación y ensayo.
 - **CA-01:** se realiza un recorrido de variable → lugar → serie → tendencia → comparación.
 - **CA-02:** se revisan datos de origen, unidades, faltantes, procedencia y cálculo.
@@ -233,22 +233,22 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 
 | HU | Nombre | Responsable | Horas | Dependencias |
 |---|---|---|---:|---|
-| HU-00 | Sistema visual Data Detective | Dylan | 4 | — |
-| HU-01 | Base Tauri | Brandon | 5 | — |
+| HU-00 | Sistema visual Data Detective | Brandon | 2 | — |
+| HU-01 | Base Tauri | Brandon | 4 | — |
 | HU-02 | API y catálogo | Daniel | 5 | — |
 | HU-03 | Series históricas | Daniel | 6 | HU-02 |
 | HU-04 | Calidad y caché | Daniel | 4 | HU-03 |
-| HU-05 | Globo 3D | Brandon | 5 | HU-01 |
-| HU-06 | Lugares y coordenadas | Brandon | 4 | HU-02, HU-05 |
-| HU-07 | Selector histórico | Brandon | 4 | HU-03 |
-| HU-08 | Selector de variables | Dylan | 5 | HU-02 |
-| HU-09 | Series y tendencia visual | Dylan | 4 | HU-03, HU-00 |
+| HU-05 | Globo 3D | Brandon | 4 | HU-01 |
+| HU-06 | Lugares y coordenadas | Brandon | 3 | HU-02, HU-05 |
+| HU-07 | Selector histórico | Brandon | 3 | HU-03 |
+| HU-08 | Selector de variables | Brandon | 2 | HU-02 |
+| HU-09 | Series y tendencia visual | Brandon | 3 | HU-03, HU-00 |
 | HU-25 | Tendencia y significancia | Daniel | 10 | HU-03, HU-04 |
-| HU-18 | Comparador regional | Brandon/Dylan | 5 | HU-06, HU-07, HU-08, HU-09, HU-25 |
-| HU-13 | Flujo Data Detective | Equipo | 5 | HU-06, HU-07, HU-08, HU-09, HU-18, HU-25 |
-| HU-14 | Demo offline | Dylan | 3 | HU-04, HU-13, HU-25 |
-| HU-15 | Integración y QA | Equipo | 8 | Todas las P0 |
-| **Total** | | | **77** | |
+| HU-18 | Comparador regional | Brandon | 3 | HU-06, HU-07, HU-08, HU-09, HU-25 |
+| HU-13 | Flujo Data Detective | Brandon | 2 | HU-06, HU-07, HU-08, HU-09, HU-18, HU-25 |
+| HU-14 | Demo offline | Daniel | 1 | HU-04, HU-13, HU-25 |
+| HU-15 | Integración y QA | Brandon y Daniel | 4 | Todas las P0 |
+| **Total** | | | **56** | |
 
 ## Orden recomendado de implementación
 

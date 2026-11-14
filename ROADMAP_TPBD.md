@@ -4,7 +4,7 @@
 **Fecha:** 14 de noviembre de 2026  
 **Estado:** planificación revisada; implementación aún no incluida en este repositorio.  
 **Reto:** [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)  
-**Equipo:** Daniel (datos y análisis), Brandon (Tauri y experiencia geográfica), Dylan (UX/UI y visualización).
+**Equipo:** Brandon (aplicación y visualización), Daniel (datos y análisis).
 
 ## 1. Visión
 
@@ -32,7 +32,7 @@ El producto conserva el concepto Mission Control y lo enfoca como **Data Detecti
 5. Visualización de la serie con fecha, unidades, procedencia, período y línea de tendencia.
 6. Análisis de tendencia: método estacional para series mensuales, pendiente de Sen, incertidumbre, significancia y revisión de autocorrelación.
 7. Comparación de la misma variable entre dos ubicaciones con período, unidad, fuente y resolución compatibles.
-8. Veredicto científico comprensible, estados no evaluables y modo demo con datos validados.
+8. Veredicto científico comprensible, estados no evaluables y modo demo con un caso validado que compara dos ubicaciones.
 9. Documentación metodológica, referencias y demostración reproducible.
 
 **Variables iniciales:** temperatura del aire a 2 m (T2M), precipitación corregida (PRECTOTCORR) y humedad relativa del aire a 2 m (RH2M), sujetas a validar disponibilidad real por lugar y período. **GWETROOT** (fracción de humedad del suelo en zona radicular) y **EVPTRNS** (transpiración) son candidatas del catálogo hidrológico: solo entran al MVP si se valida su comunidad, frecuencia, cobertura, unidades y compatibilidad con el endpoint. No confundir fracción de humedad del suelo con contenido volumétrico.
@@ -102,15 +102,13 @@ TPBD/
 
 ## 5. Capacidad y estimación inicial
 
-El evento dura 30 horas transcurridas; capacidad máxima teórica: 90 horas-persona. El backlog v2.0 estima **77 horas-persona P0** y reserva **13 horas-persona** para incertidumbre, integración y descansos.
+El evento dura 30 horas. El equipo dispone de 60 horas-persona y planifica 56 para P0, con 4 de margen.
 
-| Integrante | Foco | Horas P0 estimadas |
+| Integrante | Foco | Horas P0 |
 |---|---|---:|
-| Daniel | API, datos, catálogo, calidad y estadística | 25 |
-| Brandon | Tauri, globo, coordenadas e integración | 18 |
-| Dylan | sistema visual, gráficas, veredicto y demo | 16 |
-| Equipo | comparación regional, QA e integración | 18 |
-| **Total** | | **77** |
+| Brandon | Tauri, globo, coordenadas, interfaz, gráficas, comparación, integración y QA | 28 |
+| Daniel | API, catálogo, series, caché, estadística, datos de demo y QA | 28 |
+| **Total** | | **56** |
 
 Las estimaciones son horas-persona orientativas, no resultados ni garantía de entrega. Si el análisis estadístico o los datos reales fallan, reducir variables y casos antes que simular significancia.
 
@@ -120,7 +118,7 @@ Las estimaciones son horas-persona orientativas, no resultados ni garantía de e
 
 - Daniel: consultar disponibilidad real de T2M, PRECTOTCORR, RH2M y candidatas hidrológicas en dos coordenadas; registrar unidades, comunidad, cobertura y resolución.
 - Brandon: crear shell Tauri, probar WebGL, selector de coordenadas y riesgo de sidecar.
-- Dylan: diseñar flujo Data Detective, catálogo y estados de evidencia/no evaluación.
+- Brandon: bosquejar una sola pantalla de investigación con catálogo corto y estados de evidencia.
 - **Gate G0:** fuente y variables mínimas confirmadas; método estadístico preliminar documentado; aplicación arranca.
 
 ### H02–H07 | Contratos y primera vertical
@@ -153,7 +151,7 @@ Las estimaciones son horas-persona orientativas, no resultados ni garantía de e
 
 ### H25–H30 | Resiliencia y entrega
 
-- Modo demo local, QA, prueba de WebGL reducido y estados de error.
+- Daniel prepara los datos del caso de demo y Brandon lo integra en la interfaz. Ambos revisan el flujo, los estados de error y la alternativa a WebGL.
 - Verificar metadatos, unidades, faltantes, metodología y documentación.
 - Congelar alcance, ensayar pitch y preparar video/capturas de respaldo.
 - **Gate G5:** aplicación demostrable con datos y resultados precargados verificables.
