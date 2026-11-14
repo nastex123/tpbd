@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { RegionGlobe, type RegionId } from './components/globe/RegionGlobe';
 
 function App() {
   const [status, setStatus] = useState('');
   const [checking, setChecking] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<RegionId | null>(null);
 
   async function checkBackend() {
     setChecking(true);
@@ -41,6 +43,7 @@ function App() {
       <main id="inicio">
         <h1>TPBD — Data Detective</h1>
         <p>Explora tendencias históricas del sistema terrestre.</p>
+        <RegionGlobe selectedId={selectedRegion} onSelect={setSelectedRegion} />
         {import.meta.env.DEV && (
           <section id="diagnostico" aria-labelledby="diagnostico-titulo">
             <h2 id="diagnostico-titulo">Diagnóstico de desarrollo</h2>
