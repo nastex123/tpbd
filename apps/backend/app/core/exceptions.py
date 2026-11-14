@@ -108,3 +108,22 @@ def register_exception_handlers(app):
             content=problem.model_dump(exclude_none=True),
             media_type="application/problem+json",
         )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        from app.core.logging import get_logger
+        logger = get_logger(__name__)
+        logger.error("Unhandled internal server exception at %s: %s", request.url.path, exc, exc_info=True)
+        problem = ProblemDetails(
+            type="https://tpbd.nasa.gov/errors/internal-server-error",
+            title="Internal Server Error",
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected internal server error occurred.",
+            instance=request.url.path,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=problem.model_dump(exclude_none=True),
+            media_type="application/problem+json",
+        )
+
