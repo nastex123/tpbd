@@ -107,6 +107,27 @@ class CacheRepository:
         finally:
             conn.close()
 
+    def get_cached_region_ids(self) -> list[str]:
+        """Return list of curated region_ids that have at least one record in the cache."""
+        from app.repositories.region_repository import CURATED_REGIONS
+        cached_regions = []
+        conn = self._get_connection()
+        try:
+            for region in CURATED_REGIONS:
+                lat = region.center_coordinates.latitude
+                lon = region.center_coordinates.longitude
+                prefix = f"%:{round(lat, 3)}:{round(lon, 3)}:%"
+                cursor = conn.execute(
+                    "SELECT 1 FROM time_series_cache WHERE cache_key LIKE ? LIMIT 1",
+                    (prefix,),
+                )
+                if cursor.fetchone():
+                    cached_regions.append(region.region_id)
+        finally:
+            conn.close()
+        return cached_regions
+
+
     def store_series(
         self, variable_id: str, lat: float, lon: float, start_year: int, end_year: int, payload: dict
     ) -> None:

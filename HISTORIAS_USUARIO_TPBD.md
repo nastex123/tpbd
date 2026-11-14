@@ -172,7 +172,9 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 
 ## Épica E3 — Demo, integración y calidad
 
-### HU-14 — Modo demo sin internet [P0]
+### ~~HU-14 — Modo demo sin internet [P0]~~
+**Estado:** completada. Pre-sembrado automático de fixtures auténticos de NASA POWER para las regiones curadas (Amazonas, La Guajira, Sahel, Australia) en la base de datos SQLite durante el lifespan de FastAPI, reporte dinámico en `/health` (`offline_demo_ready: true`), query `offline=true` verificado sin red y comparaciones estadísticas reproducibles de forma autónoma.
+
 **Como** presentador, **quiero** ejecutar una investigación precargada de dos ubicaciones, **para** demostrar la aplicación sin depender de la red.
 
 - **Responsable:** Daniel. **Estimación:** 1 h. **Depende de:** HU-04, HU-13, HU-25.
@@ -247,16 +249,17 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 | ~~HU-01~~ | ~~Base Electron~~ | Brandon | 4 | Completada |
 | ~~HU-02~~ | ~~API y catálogo~~ | Daniel | 5 | Completada |
 | ~~HU-03~~ | ~~Series históricas~~ | Daniel | 6 | Completada |
-| HU-04 | Calidad y caché | Daniel | 4 | HU-03 |
+| ~~HU-04~~ | ~~Calidad y caché~~ | Daniel | 4 | Completada |
 | HU-05 | Globo 3D | Brandon | 4 | HU-01 |
 | HU-06 | Lugares y coordenadas | Brandon | 3 | HU-02, HU-05 |
 | HU-07 | Selector histórico | Brandon | 3 | HU-03 |
 | HU-08 | Selector de variables | Brandon | 2 | HU-02 |
 | HU-09 | Series y tendencia visual | Brandon | 3 | HU-03, HU-00 |
-| HU-25 | Tendencia y significancia | Daniel | 10 | HU-03, HU-04 |
+| ~~HU-25~~ | ~~Tendencia y significancia~~ | Daniel | 10 | Completada |
 | HU-18 | Comparador regional | Brandon | 3 | HU-06, HU-07, HU-08, HU-09, HU-25 |
 | HU-13 | Flujo Data Detective | Brandon | 2 | HU-06, HU-07, HU-08, HU-09, HU-18, HU-25 |
-| HU-14 | Demo offline | Daniel | 1 | HU-04, HU-13, HU-25 |
+| ~~HU-14~~ | ~~Demo offline~~ | Daniel | 1 | Completada |
+
 | HU-15 | Integración y QA | Brandon y Daniel | 4 | Todas las P0 |
 | **Total** | | | **56** | |
 

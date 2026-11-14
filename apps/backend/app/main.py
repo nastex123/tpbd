@@ -16,8 +16,30 @@ async def lifespan(app: FastAPI):
     """Application lifespan events (startup & shutdown)."""
     setup_logging()
     logger.info("Initializing %s v%s...", settings.PROJECT_NAME, settings.VERSION)
+
+    # Auto-seed SQLite cache with curated benchmark regions for offline demo (HU-14)
+    try:
+        from app.api.deps import get_cache_repository, get_series_service, get_catalog_service, get_power_client, get_region_repository
+        from app.services.seeder_service import SeederService
+        cache_repo = get_cache_repository()
+        catalog_svc = get_catalog_service()
+        power_cl = get_power_client()
+        region_repo = get_region_repository()
+        series_service = get_series_service(
+            power_client=power_cl,
+            cache_repo=cache_repo,
+            catalog_service=catalog_svc,
+            region_repo=region_repo,
+        )
+        seeder = SeederService(cache_repo, series_service, catalog_svc)
+        seeded = seeder.seed_all_curated_regions()
+        logger.info("Offline demo cache ready with %d benchmark regions: %s", len(seeded), seeded)
+    except Exception as exc:
+        logger.warning("Could not auto-seed cache on startup: %s", exc)
+
     yield
     logger.info("Shutting down %s...", settings.PROJECT_NAME)
+
 
 
 def create_app() -> FastAPI:
