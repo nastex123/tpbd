@@ -87,7 +87,7 @@ flowchart TD
 ~~~text
 TPBD/
 ├── apps/desktop/            # Electron + React + TypeScript
-├── services/climate-engine/ # FastAPI, clientes, análisis y pruebas
+├── apps/backend/            # FastAPI, clientes, análisis y pruebas
 ├── data/fixtures/            # Ejemplos con procedencia
 ├── docs/                     # contrato API, catálogo y metodología
 └── README.md

@@ -1,6 +1,6 @@
 # Backend Technical Architecture: Climate Engine
 
-**Service:** `services/climate-engine`  
+**Service:** `apps/backend` (Climate Engine)  
 **Framework:** FastAPI (Python 3.11+)  
 **Contract Authority:** [`docs/openapi.yaml`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/openapi.yaml)  
 **Governance ADR:** [`docs/adr/0002-backend-architecture.md`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/adr/0002-backend-architecture.md)  
@@ -53,7 +53,7 @@ flowchart TD
 ## 2. Directory Structure
 
 ```text
-services/climate-engine/
+apps/backend/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py                     # FastAPI application factory, CORS, lifespan
