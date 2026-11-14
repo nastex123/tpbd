@@ -8,6 +8,13 @@ from app.services.trend_service import TrendService
 from app.repositories.region_repository import RegionRepository
 from app.repositories.cache_repository import CacheRepository
 from app.clients.power_client import PowerClient
+from app.clients.appeears_client import AppEEARSClient
+
+
+@lru_cache
+def get_appeears_client() -> AppEEARSClient:
+    """Singleton instance of NASA AppEEARS client adapter."""
+    return AppEEARSClient(timeout=15.0)
 
 
 @lru_cache
