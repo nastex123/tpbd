@@ -4,12 +4,13 @@ info:
   description: |
     Local API backend for **TPBD — The Pale Blue Dot**, designed for the **2026 NASA Space Apps Challenge (Be An Earth System Trend Detective!)**.
     
-    This service connects the desktop frontend (Tauri/React) with NASA Earth Science data pipelines:
+    This service connects the desktop frontend (Electron/React) with Earth Science data pipelines:
     1. **NASA POWER API (Synchronous):** Instant retrieval of meteorological and MERRA-2 hydrological reanalysis series across any global coordinate.
-    2. **NASA AppEEARS API (Asynchronous / Batch):** Satellite product catalog browsing (MODIS, VIIRS, SMAP) and point-sample extraction task management.
-    3. **Scientific Statistical Engine:** Seasonal Mann-Kendall trend detection, Sen's slope rate-of-change estimation (units/decade), lag-1 autocorrelation diagnostics, and 95% confidence intervals.
-    4. **Dual-Region Trend Comparison:** Contrasting opposite trends in remote regions driven by interconnected planetary processes.
-  version: 2.0.0
+    2. **NASA AppEEARS API (Asynchronous / Batch):** Satellite product catalog browsing (MODIS, VIIRS, SMAP) and point-sample extraction task management with Earthdata Login authentication.
+    3. **NOAA NCEI Access Data Service (Synchronous):** Ground station weather observations, historical climate normals, and global marine datasets.
+    4. **Scientific Statistical Engine:** Seasonal Mann-Kendall trend detection, Sen's slope rate-of-change estimation (units/decade), lag-1 autocorrelation diagnostics, and 95% confidence intervals.
+    5. **Dual-Region Trend Comparison:** Contrasting opposite trends in remote regions driven by interconnected planetary processes.
+  version: 2.1.0
   contact:
     name: TPBD Team (Daniel, Brandon, Dylan)
     url: https://github.com/dani-docs/tpbd
@@ -211,6 +212,13 @@ paths:
             maximum: 2026
             default: 2025
             example: 2025
+        - name: station_id
+          in: query
+          required: false
+          description: Optional ground station or marine buoy identifier for NOAA NCEI datasets (e.g. USC00457180, AUCE)
+          schema:
+            type: string
+            example: USC00457180
       responses:
         '200':
           description: Historical time series successfully acquired
@@ -331,6 +339,45 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/integrations/appeears/auth/login:
+    post:
+      tags:
+        - Integrations
+      summary: Authenticate against NASA AppEEARS
+      description: Exchanges NASA Earthdata Login credentials (HTTP Basic Auth) for a 48-hour AppEEARS session Bearer token.
+      operationId: loginAppEEARS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppEEARSLoginRequest'
+      responses:
+        '200':
+          description: Successfully authenticated with AppEEARS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSLoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/integrations/appeears/auth/status:
+    get:
+      tags:
+        - Integrations
+      summary: Get AppEEARS authentication status
+      description: Checks whether the engine currently holds an active, unexpired AppEEARS session token.
+      operationId: getAppEEARSAuthStatus
+      responses:
+        '200':
+          description: Authentication status returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSAuthStatus'
+
+
 components:
   schemas:
     HealthResponse:
@@ -369,6 +416,7 @@ components:
         - hydrology
         - land_surface
         - vegetation
+        - ocean_and_marine
       example: atmosphere
 
     DataSourceProvider:
@@ -376,6 +424,7 @@ components:
       enum:
         - NASA_POWER
         - NASA_APPEEARS
+        - NOAA_NCEI
       example: NASA_POWER
 
     Variable:
@@ -813,6 +862,56 @@ components:
           type: string
           nullable: true
           example: "http://127.0.0.1:8000/api/v1/integrations/appeears/bundles/0974a514/results.csv"
+
+    AppEEARSLoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: danidev23
+        password:
+          type: string
+          format: password
+          example: "********"
+
+    AppEEARSLoginResponse:
+      type: object
+      required:
+        - token
+        - token_type
+        - expiration
+      properties:
+        token:
+          type: string
+          example: "31ncqphv-1jpPjcTe-hgWXM2xZ1bBqQxST5pcieiHKq0cMwz8IFKOxG3FZgLQonk8hBsLV_ruAqikYXfzWy7kw"
+        token_type:
+          type: string
+          example: Bearer
+        expiration:
+          type: string
+          format: date-time
+          example: "2026-11-15T22:30:40Z"
+
+    AppEEARSAuthStatus:
+      type: object
+      required:
+        - authenticated
+      properties:
+        authenticated:
+          type: boolean
+          example: true
+        username:
+          type: string
+          nullable: true
+          example: danidev23
+        expiration:
+          type: string
+          nullable: true
+          format: date-time
+          example: "2026-11-15T22:30:40Z"
 
     ProblemDetails:
       type: object
