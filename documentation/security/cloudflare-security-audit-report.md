@@ -81,6 +81,14 @@ All primary trust boundaries, data serialization pathways, local network interfa
   - *Mitigation Implemented:* Added a global fallback `Exception` handler to intercept unexpected runtime exceptions, log the stack trace to internal server logs, and return a sanitized `500 Internal Server Error` envelope without leaking internal file paths, operating system details, or environment variables.
   - *Result:* **RESOLVED & HARDENED.**
 
+### 3.7 Addendum: AppEEARS Client & Seasonal Anomaly Security Review
+- **NASA AppEEARS Adapter (`AppEEARSClient`):**
+  - *Evaluation:* Bearer token storage is confined to process memory (`self._token: str | None`), never persisted in SQLite or plain-text files. The API root is hardcoded to `https://appeears.earthdatacloud.nasa.gov/api/v1/`. Unauthenticated access to protected task routes returns immediate 401 Problem Details without triggering downstream network requests.
+  - *Result:* **PASS — Compliant.**
+- **Seasonal Z-Score Anomaly Detector (`AnomalyDetectionRequest`):**
+  - *Evaluation:* The input series payload strictly enforces `min_length=1, max_length=2400` on observation points, protecting climatological grouping from quadratic memory exhaustion. Division-by-zero is mathematically mitigated when baseline variance is zero ($\sigma_m = 0$) by producing safe `not_evaluable` states.
+  - *Result:* **PASS — Compliant.**
+
 ---
 
 ## 4. Summary of Hardening Commits
