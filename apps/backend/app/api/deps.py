@@ -4,6 +4,7 @@ from functools import lru_cache
 from fastapi import Depends
 from app.services.catalog_service import CatalogService
 from app.services.series_service import SeriesService
+from app.services.trend_service import TrendService
 from app.repositories.region_repository import RegionRepository
 from app.repositories.cache_repository import CacheRepository
 from app.clients.power_client import PowerClient
@@ -13,6 +14,16 @@ from app.clients.power_client import PowerClient
 def get_catalog_service() -> CatalogService:
     """Singleton instance of CatalogService."""
     return CatalogService()
+
+
+@lru_cache
+def get_trend_service(
+    catalog_service: Annotated[CatalogService, Depends(get_catalog_service)] = None,
+) -> TrendService:
+    """Singleton instance of TrendService."""
+    cs = catalog_service or get_catalog_service()
+    return TrendService(cs)
+
 
 
 @lru_cache
