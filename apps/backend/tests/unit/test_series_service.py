@@ -96,3 +96,51 @@ async def test_get_time_series_cache_hit(mock_dependencies):
     assert res.is_cached is True
     assert res.sample_count == 1
     power_client.fetch_monthly_point.assert_not_called()
+
+
+def test_validate_series_compatibility(mock_dependencies):
+    """Verify compatibility check rejects series with incompatible units (CA-05)."""
+    from app.schemas.series import TimeSeriesResponse
+    from app.core.exceptions import AppException
+
+    series_temp = TimeSeriesResponse(
+        variable_id="T2M",
+        unit="°C",
+        provider=DataSourceProvider.NASA_POWER,
+        location_name="Amazon",
+        query_coordinates={"latitude": -3.1, "longitude": -60.0},
+        representative_grid_cell="-3.1, -60.0",
+        spatial_resolution="0.5°",
+        temporal_range="2020-01 to 2020-12",
+        sample_count=1,
+        valid_count=1,
+        missing_count=0,
+        is_cached=False,
+        points=[],
+    )
+
+    series_precip = TimeSeriesResponse(
+        variable_id="PRECTOTCORR",
+        unit="mm/month",
+        provider=DataSourceProvider.NASA_POWER,
+        location_name="Amazon",
+        query_coordinates={"latitude": -3.1, "longitude": -60.0},
+        representative_grid_cell="-3.1, -60.0",
+        spatial_resolution="0.5°",
+        temporal_range="2020-01 to 2020-12",
+        sample_count=1,
+        valid_count=1,
+        missing_count=0,
+        is_cached=False,
+        points=[],
+    )
+
+    # Compatible (comparing two temperature series)
+    SeriesService.validate_series_compatibility(series_temp, series_temp)
+
+    # Incompatible (comparing temperature with precipitation)
+    with pytest.raises(AppException) as exc_info:
+        SeriesService.validate_series_compatibility(series_temp, series_precip)
+    assert exc_info.value.status_code == 400
+    assert "Incompatible Series Units" in exc_info.value.title
+
