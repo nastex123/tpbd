@@ -6,9 +6,12 @@ from app.schemas.analytics import (
     TrendAnalysisResponse,
     RegionalComparisonRequest,
     RegionalComparisonResponse,
+    AnomalyDetectionRequest,
+    AnomalyDetectionResponse,
 )
 from app.services.trend_service import TrendService
-from app.api.deps import get_trend_service
+from app.services.anomaly_service import AnomalyService
+from app.api.deps import get_trend_service, get_anomaly_service
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -41,3 +44,18 @@ async def compare_regional_trends(
 ) -> RegionalComparisonResponse:
     """Compare trends between two locations."""
     return trend_service.compare_regional_trends(request)
+
+
+@router.post(
+    "/anomalies",
+    response_model=AnomalyDetectionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Detect seasonal standardized Z-score anomalies",
+    description="Calculates standardized monthly climatological anomalies relative to reference baseline (default 1991–2020).",
+)
+async def detect_anomalies(
+    request: AnomalyDetectionRequest,
+    anomaly_service: Annotated[AnomalyService, Depends(get_anomaly_service)],
+) -> AnomalyDetectionResponse:
+    """Compute monthly climatology and identify extreme statistical deviations."""
+    return anomaly_service.detect_anomalies(request)
