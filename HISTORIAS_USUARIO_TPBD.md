@@ -141,7 +141,9 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 - **CA-04:** modo sin red entrega solo datos guardados y los etiqueta.
 - **CA-05:** productos/resoluciones incompatibles no se fusionan silenciosamente.
 
-### HU-25 — Tendencia histórica y significancia [P0]
+### ~~HU-25 — Tendencia histórica y significancia [P0]~~
+**Estado:** completada. Motor estadístico no paramétrico en `TrendService`: Seasonal Mann-Kendall con 12 estaciones, corrección de autocorrelación serial lag-1 (Hirsch-Slack / Hamed-Rao), pendiente de Sen escalada a unidades por década, intervalo de confianza al 95%, clasificación diferenciada de estados y endpoints `POST /api/v1/analytics/trends` y `POST /api/v1/analytics/compare`.
+
 **Como** investigador, **quiero** cuantificar una tendencia y evaluar su evidencia, **para** distinguir una señal sostenida de fluctuaciones temporales.
 
 - **Responsable:** Daniel. **Estimación:** 10 h. **Depende de:** HU-03, HU-04.
