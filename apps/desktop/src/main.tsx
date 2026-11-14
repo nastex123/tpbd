@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RegionGlobe, type RegionId } from './components/globe/RegionGlobe';
+import { RegionGlobe } from './components/globe/RegionGlobe';
+import type { LocationSelection } from './stores/navigationStore';
 
 function App() {
   const [status, setStatus] = useState('');
   const [checking, setChecking] = useState(false);
-  const [selectedRegion, setSelectedRegion] = useState<RegionId | null>(null);
+  const [location, setLocation] = useState<LocationSelection | null>(null);
 
   async function checkBackend() {
     setChecking(true);
@@ -35,25 +36,31 @@ function App() {
   }
 
   return (
-    <>
+    <div className="desktop-shell">
       <nav aria-label="Principal">
         <a href="#inicio">Inicio</a>{' · '}
         {import.meta.env.DEV && <a href="#diagnostico">Diagnóstico</a>}
       </nav>
-      <main id="inicio">
-        <h1>TPBD — Data Detective</h1>
-        <p>Explora tendencias históricas del sistema terrestre.</p>
-        <RegionGlobe selectedId={selectedRegion} onSelect={setSelectedRegion} />
-        {import.meta.env.DEV && (
-          <section id="diagnostico" aria-labelledby="diagnostico-titulo">
-            <h2 id="diagnostico-titulo">Diagnóstico de desarrollo</h2>
-            <button onClick={checkBackend} disabled={checking}>Comprobar API local</button>{' '}
-            <button onClick={checkGraphics} disabled={checking}>Comprobar WebGL 2</button>
-            <p role="status">{status}</p>
-          </section>
-        )}
+      <main id="inicio" className="desktop-workspace">
+        <RegionGlobe
+          location={location}
+          onSelect={setLocation}
+          heading={<>
+            <h1>TPBD — Data Detective</h1>
+            <p>Explora tendencias históricas del sistema terrestre.</p>
+          </>}
+        >
+          {import.meta.env.DEV && (
+            <section id="diagnostico" aria-labelledby="diagnostico-titulo">
+              <h2 id="diagnostico-titulo">Diagnóstico de desarrollo</h2>
+              <button onClick={checkBackend} disabled={checking}>Comprobar API local</button>{' '}
+              <button onClick={checkGraphics} disabled={checking}>Comprobar WebGL 2</button>
+              <p role="status">{status}</p>
+            </section>
+          )}
+        </RegionGlobe>
       </main>
-    </>
+    </div>
   );
 }
 
