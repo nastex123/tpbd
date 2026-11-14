@@ -5,7 +5,7 @@
 | Epic | Desktop geography |
 | Owner | Brandon |
 | Branch | feature/hu-05-globe |
-| Pull request | Pending creation |
+| Pull request | #6 |
 | Status | Implemented. Manual interaction checks pending. |
 
 ## User story and acceptance criteria
