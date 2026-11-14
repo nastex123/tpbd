@@ -22,6 +22,7 @@ async def get_time_series(
     start_year: int = Query(1990, ge=1981, le=2026, description="Starting calendar year"),
     end_year: int = Query(2025, ge=1981, le=2026, description="Ending calendar year"),
     station_id: str | None = Query(None, description="Optional ground station or marine buoy identifier"),
+    offline: bool = Query(False, description="When true, serve strictly from local cache without contacting upstream APIs"),
 ) -> TimeSeriesResponse:
     """Retrieve normalized historical monthly time series observations."""
     # 1. Temporal bounds validation
@@ -72,4 +73,5 @@ async def get_time_series(
         start_year=start_year,
         end_year=end_year,
         location_name=location_name,
+        offline_only=offline,
     )

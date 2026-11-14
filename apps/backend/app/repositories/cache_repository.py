@@ -76,6 +76,37 @@ class CacheRepository:
         logger.debug("Cache miss for %s", key)
         return None
 
+    def find_any_series(self, variable_id: str, lat: float, lon: float) -> dict | None:
+        """Find the most recent cached series for coordinates regardless of exact year bounds."""
+        key_prefix = f"{variable_id.upper()}:{round(lat, 3)}:{round(lon, 3)}:%"
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """
+                SELECT payload_json FROM time_series_cache
+                WHERE cache_key LIKE ?
+                ORDER BY cached_at DESC LIMIT 1
+                """,
+                (key_prefix,),
+            )
+            row = cursor.fetchone()
+            if row:
+                logger.debug("Found fallback cached series for %s with prefix %s", variable_id, key_prefix)
+                return json.loads(row["payload_json"])
+        finally:
+            conn.close()
+        return None
+
+    def count_cached_entries(self) -> int:
+        """Count total cached time series records."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute("SELECT COUNT(*) as total FROM time_series_cache")
+            row = cursor.fetchone()
+            return row["total"] if row else 0
+        finally:
+            conn.close()
+
     def store_series(
         self, variable_id: str, lat: float, lon: float, start_year: int, end_year: int, payload: dict
     ) -> None:
