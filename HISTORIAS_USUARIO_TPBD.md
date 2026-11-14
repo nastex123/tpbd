@@ -196,7 +196,9 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 
 ## Épica E4 — Mejoras posteriores
 
-### HU-10 — Detector estacional de anomalías [P1]
+### ~~HU-10 — Detector estacional de anomalías [P1]~~
+**Estado:** completada. Motor estadístico de climatología mensual estandarizada (WMO 1991–2020 normal baseline) con cálculo de Z-scores estacionales $z = (x - \mu_m) / \sigma_m$, categorización de severidad (`normal`, `moderate_anomaly`, `severe_anomaly`, `extreme_anomaly`, `not_evaluable`), mitigación de división por cero cuando $\sigma_m = 0$, advertencia científica sobre no imputación de causalidad y endpoint `POST /api/v1/analytics/anomalies`.
+
 **Como** usuario, **quiero** identificar meses inusuales respecto a meses comparables, **para** explorar eventos que merecen análisis.
 
 - Mantener como análisis complementario; no sustituye el análisis de tendencia.
