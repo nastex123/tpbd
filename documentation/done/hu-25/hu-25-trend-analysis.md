@@ -6,6 +6,7 @@
 - **Title:** Tendencia histórica y significancia
 - **Owner / Developer:** Daniel (Backend & Data Science)
 - **Branch:** `feature/HU-25-trend-analysis`
+- **Pull Request:** [#9](https://github.com/nastex123/tpbd/pull/9)
 - **Target Integration Branch:** `dev`
 - **Status:** Completed
 - **Date:** 2026-11-14

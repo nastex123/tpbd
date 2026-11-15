@@ -3,8 +3,8 @@
 - Epic: Desktop geography and visualization
 - Owner: Brandon
 - Branch: feature/hu-07-historical-range
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#18](https://github.com/nastex123/tpbd/pull/18)
+- Status: Merged
 
 ## Story and acceptance criteria
 

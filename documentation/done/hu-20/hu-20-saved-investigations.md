@@ -3,8 +3,8 @@
 - Epic: Future enhancements
 - Owner: Brandon
 - Branch: feature/hu-20-saved-investigations
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#25](https://github.com/nastex123/tpbd/pull/25)
+- Status: Merged; restart and manual Electron review pending
 
 ## Story and acceptance criteria
 

@@ -4,8 +4,8 @@
 - HU ID: HU-19
 - Owner: Brandon
 - Branch: `feature/hu-19-pdf-reports`
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#32](https://github.com/nastex123/tpbd/pull/32)
+- Status: Merged
 
 ## User story and acceptance criteria
 

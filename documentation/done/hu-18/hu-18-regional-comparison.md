@@ -3,8 +3,8 @@
 - Epic: Desktop visualization
 - Owner: Brandon
 - Branch: feature/hu-18-regional-comparison
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#21](https://github.com/nastex123/tpbd/pull/21)
+- Status: Merged
 
 ## Story and acceptance criteria
 

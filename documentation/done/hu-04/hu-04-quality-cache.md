@@ -6,6 +6,7 @@
 - **Title:** Normalización, faltantes y caché
 - **Owner / Developer:** Daniel (Backend & Data Science)
 - **Branch:** `feature/HU-04-quality-and-cache`
+- **Pull Request:** [#8](https://github.com/nastex123/tpbd/pull/8)
 - **Target Integration Branch:** `dev`
 - **Status:** Completed
 - **Date:** 2026-11-14
