@@ -207,6 +207,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 - No inferir incendios, sequía confirmada ni causalidad a partir de Z-scores.
 
 ### HU-11 — Escenarios NASA CMIP6 [P2]
+**Estado:** API backend implementada en la rama `feature/cmip6-projections-api`; la interfaz para explorar las series proyectadas sigue pendiente.
 **Como** usuario, **quiero** explorar escenarios futuros publicados, **para** complementar el análisis histórico en una fase posterior.
 
 - Integrar solo parámetros y escenarios disponibles y etiquetarlos como proyecciones de modelos.
@@ -214,6 +215,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 - No presentar proyecciones como observaciones o predicciones exactas.
 
 ### HU-12 — Selector SSP [P2]
+**Estado:** endpoint de catálogo SSP implementado en la rama `feature/cmip6-projections-api`; falta conectar el selector del escritorio.
 - Selector para los escenarios realmente disponibles (ssp126, ssp245, ssp370).
 - Afecta únicamente a datos proyectados; el histórico permanece separado.
 - Mostrar “escenarios condicionales, no predicciones exactas”.

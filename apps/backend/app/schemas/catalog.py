@@ -44,4 +44,4 @@ class SatelliteProduct(BaseModel):
     description: str = Field(..., description="Product summary")
     resolution: str = Field(..., description="Spatial resolution (e.g. 250m, 1000m)")
     temporal_granularity: str = Field(..., description="Temporal step (e.g. 16 day, Daily)")
-    available_layers: list[str] = Field(default_factory=list, description="Available layer names for sampling")
+    available_layers: list[str] | None = Field(default=None, description="Live layer names, populated on product detail responses")

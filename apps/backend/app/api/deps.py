@@ -14,6 +14,8 @@ from app.repositories.region_repository import RegionRepository
 from app.repositories.cache_repository import CacheRepository
 from app.clients.power_client import PowerClient
 from app.clients.appeears_client import AppEEARSClient
+from app.clients.projection_client import ProjectionClient
+from app.services.projection_service import ProjectionService
 from app.core.config import settings
 
 
@@ -73,14 +75,10 @@ def get_gemini_client() -> GeminiClient:
 @lru_cache
 def get_ai_service(
     gemini_client: Annotated[GeminiClient, Depends(get_gemini_client)] = None,
-    catalog_service: Annotated[CatalogService, Depends(get_catalog_service)] = None,
-    region_repo: Annotated[RegionRepository, Depends(get_region_repository)] = None,
 ) -> AIService:
     """Singleton instance of AIService."""
     gc = gemini_client or get_gemini_client()
-    cs = catalog_service or get_catalog_service()
-    rr = region_repo or get_region_repository()
-    return AIService(gemini_client=gc, catalog_service=cs, region_repo=rr)
+    return AIService(gemini_client=gc)
 
 
 @lru_cache
@@ -93,6 +91,20 @@ def get_cache_repository() -> CacheRepository:
 def get_power_client() -> PowerClient:
     """Singleton instance of NASA POWER client adapter."""
     return PowerClient(timeout=15.0)
+
+
+@lru_cache
+def get_projection_client() -> ProjectionClient:
+    """Singleton NASA POWER climate projection client."""
+    return ProjectionClient(timeout=20.0)
+
+
+def get_projection_service(
+    client: Annotated[ProjectionClient, Depends(get_projection_client)],
+    catalog: Annotated[CatalogService, Depends(get_catalog_service)],
+) -> ProjectionService:
+    """Build the projection service with shared data client and curated catalog."""
+    return ProjectionService(client=client, catalog=catalog)
 
 
 def get_series_service(

@@ -5,7 +5,7 @@ from app.repositories.region_repository import RegionRepository
 from app.services.catalog_service import CatalogService
 from app.schemas.series import TimeSeriesResponse, DataPoint
 from app.schemas.common import Coordinates
-from app.core.exceptions import NotFoundError, NASAUpstreamTimeoutError, UpstreamServiceError
+from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -36,7 +36,7 @@ class SeriesService:
         location_name: str | None = None,
         offline_only: bool = False,
     ) -> TimeSeriesResponse:
-        """Acquire normalized historical time series with cache-first lookup and offline resilience."""
+        """Acquire normalized historical observations from an exact cache or NASA POWER."""
         var_meta = self.catalog_service.get_variable_by_id(variable_id)
         if not var_meta:
             raise NotFoundError(resource="Variable", identifier=variable_id)
@@ -49,36 +49,24 @@ class SeriesService:
             return TimeSeriesResponse.model_validate(cached_dict)
 
         if offline_only:
-            # Fallback to any cached period for location if exact match missing
-            any_cached = self.cache_repo.find_any_series(variable_id, lat, lon)
-            if any_cached:
-                any_cached["is_cached"] = True
-                return TimeSeriesResponse.model_validate(any_cached)
+            cached_period = self.cache_repo.find_any_series(variable_id, lat, lon)
+            if cached_period:
+                cached_period["is_cached"] = True
+                return TimeSeriesResponse.model_validate(cached_period)
             raise NotFoundError(resource="Cached observations for", identifier=f"{variable_id} at ({lat:.2f}, {lon:.2f})")
 
-        # 2. Cache miss: Fetch from upstream NASA POWER with fallback
+        # 2. Cache miss: fetch the requested period from NASA POWER.
         logger.info("Fetching %s from NASA POWER for (%.2f, %.2f) [%d-%d]", variable_id, lat, lon, start_year, end_year)
         community_code = var_meta.data_community.split()[0] if getattr(var_meta, "data_community", None) else "AG"
 
-        try:
-            raw_data = await self.power_client.fetch_monthly_point(
-                variable_id=variable_id,
-                latitude=lat,
-                longitude=lon,
-                start_year=start_year,
-                end_year=end_year,
-                community=community_code,
-            )
-        except (NASAUpstreamTimeoutError, UpstreamServiceError) as upstream_err:
-            fallback = self.cache_repo.find_any_series(variable_id, lat, lon)
-            if fallback:
-                logger.warning(
-                    "NASA POWER failed (%s). Serving fallback cached observations for %s (%.2f, %.2f)",
-                    upstream_err, variable_id, lat, lon
-                )
-                fallback["is_cached"] = True
-                return TimeSeriesResponse.model_validate(fallback)
-            raise upstream_err
+        raw_data = await self.power_client.fetch_monthly_point(
+            variable_id=variable_id,
+            latitude=lat,
+            longitude=lon,
+            start_year=start_year,
+            end_year=end_year,
+            community=community_code,
+        )
 
         # 3. Normalize series
         normalized_response = self._normalize_power_payload(

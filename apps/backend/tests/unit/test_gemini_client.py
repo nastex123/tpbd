@@ -1,120 +1,122 @@
-"""Unit tests for Gemini AI client and smart model router (HU-27)."""
-import pytest
+"""Unit tests for Gemini API integration; provider responses are isolated to tests."""
 from unittest.mock import AsyncMock
+
+import httpx
+import pytest
+
 from app.clients.gemini_client import GeminiClient
+from app.core.exceptions import AppException
+from app.schemas.ai import AudioBriefRequest, DetectiveQueryRequest, TrendExplanationRequest
 from app.services.ai_service import AIService
-from app.schemas.ai import DetectiveQueryRequest
 
 
-def test_gemini_client_roster_completeness():
-    """Verify supported model roster contains user-requested models."""
-    client = GeminiClient(api_key="mock_key")
-    models = client.list_models()
-    model_ids = [m.model_id for m in models]
-
-    assert "gemini-3.8-flash" in model_ids
-    assert "gemini-3.8-live-extended-thinking" in model_ids
-    assert "gemini-3.8-flash-tts" in model_ids
-    assert "gemini-3.6-flash" in model_ids
-    assert "gemini-3.5-flash-lite" in model_ids
-    assert "gemini-3.1-pro-preview" in model_ids
-    assert "gemini-3-pro-image" in model_ids
-    assert len(models) >= 15
+def response(payload: dict, status: int = 200) -> httpx.Response:
+    return httpx.Response(status, json=payload, request=httpx.Request("GET", "https://gemini.test"))
 
 
-def test_gemini_client_model_resolution():
-    """Verify smart routing resolution for auto mode."""
-    client = GeminiClient(api_key="mock_key")
+def test_gemini_model_routing_uses_documented_identifiers():
+    client = GeminiClient(api_key="test-key")
 
     assert client.resolve_model("auto", task="query") == "gemini-3.8-flash"
-    assert client.resolve_model("auto", task="thinking") == "gemini-3.8-live-extended-thinking"
+    assert client.resolve_model("auto", task="thinking") == "gemini-3.8-flash"
     assert client.resolve_model("auto", task="tts") == "gemini-3.8-flash-tts"
     assert client.resolve_model("auto", task="vision") == "gemini-3-pro-image"
-    # Specific override preserved
-    assert client.resolve_model("gemini-3.6-flash", task="query") == "gemini-3.6-flash"
+    assert client.resolve_model("custom-model", task="query") == "custom-model"
 
 
 @pytest.mark.asyncio
-async def test_ai_service_deterministic_fallback():
-    """Verify deterministic fallback when no API key is provided."""
-    client = GeminiClient(api_key=None)
+async def test_list_models_reads_live_catalog_and_follows_pages(monkeypatch):
+    client = GeminiClient(api_key="test-key")
+    get = AsyncMock(side_effect=[
+        response({
+            "models": [
+                {"name": "models/gemini-test", "displayName": "Gemini test", "description": "Provider description", "inputTokenLimit": 8192, "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/embed-only", "supportedGenerationMethods": ["embedContent"]},
+            ],
+            "nextPageToken": "page-2",
+        }),
+        response({
+            "models": [
+                {"name": "models/gemini-tts-test", "displayName": "Gemini TTS", "inputTokenLimit": 4096, "supportedGenerationMethods": ["generateContent"]},
+            ],
+        }),
+    ])
+    monkeypatch.setattr(httpx.AsyncClient, "get", get)
+
+    models = await client.list_models()
+
+    assert [model.model_id for model in models] == ["gemini-test", "gemini-tts-test"]
+    assert models[0].display_name == "Gemini test"
+    assert models[0].recommended_use == "Provider description"
+    assert models[0].context_window == 8192
+    assert models[1].context_window == 4096
+    assert "tts" in [capability.value for capability in models[1].capabilities]
+    assert get.await_count == 2
+    assert get.await_args_list[1].kwargs["params"]["pageToken"] == "page-2"
+
+
+@pytest.mark.asyncio
+async def test_no_api_key_does_not_generate_fallback_investigation():
+    service = AIService(gemini_client=GeminiClient(api_key=""))
+
+    with pytest.raises(AppException) as exc_info:
+        await service.investigate(DetectiveQueryRequest(query="Where is drought worsening in Amazon?"))
+
+    assert exc_info.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_live_investigation_uses_gemini_response():
+    client = GeminiClient(api_key="test-key")
+    client.generate_content = AsyncMock(return_value='''{
+      "recommended_variables": ["PRECTOTCORR", "GWETROOT"],
+      "recommended_region_id": "amazon_basin",
+      "target_coordinates": {"latitude": -3.46, "longitude": -62.21},
+      "hypothesis": "Test the relation between rainfall deficits and root-zone soil moisture."
+    }''')
     service = AIService(gemini_client=client)
 
-    req = DetectiveQueryRequest(query="Where is drought getting worse in the Amazon?")
-    res = await service.investigate(req)
+    result = await service.investigate(DetectiveQueryRequest(query="Drought in the Amazon"))
 
-    assert res.is_fallback is True
-    assert "PRECTOTCORR" in res.recommended_variables or "GWETROOT" in res.recommended_variables
-    assert res.recommended_region_id == "amazon_basin"
-    assert res.target_coordinates is not None
-    assert res.target_coordinates.latitude == -3.4653
-    assert "Amazon" in res.hypothesis
+    assert result.recommended_variables == ["PRECTOTCORR", "GWETROOT"]
+    assert result.target_coordinates.latitude == -3.46
+    client.generate_content.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_ai_service_live_gemini_generation():
-    """Verify live Gemini parsing with mocked successful API response."""
-    client = GeminiClient(api_key="valid_test_key")
-    mock_payload = (
-        '{\n'
-        '  "recommended_variables": ["T2M", "RH2M"],\n'
-        '  "recommended_region_id": "sahel_region",\n'
-        '  "target_coordinates": {"latitude": 14.5, "longitude": 12.0},\n'
-        '  "hypothesis": "Extreme atmospheric heat and dry air advection across the Sahel."\n'
-        '}'
+async def test_invalid_model_json_is_reported_as_upstream_error():
+    client = GeminiClient(api_key="test-key")
+    client.generate_content = AsyncMock(return_value="not JSON")
+    service = AIService(gemini_client=client)
+
+    with pytest.raises(AppException) as exc_info:
+        await service.investigate(DetectiveQueryRequest(query="Analyze heat trends"))
+
+    assert exc_info.value.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_trend_explanation_is_not_synthesized_without_gemini():
+    service = AIService(gemini_client=GeminiClient(api_key=""))
+    request = TrendExplanationRequest(
+        variable_id="T2M", location_name="Amazon Basin",
+        direction="increasing_significant", rate_per_decade=0.35,
+        rate_unit="°C/decade", p_value=0.0012,
     )
-    client.generate_content = AsyncMock(return_value=mock_payload)
-    service = AIService(gemini_client=client)
 
-    req = DetectiveQueryRequest(query="Analyze heat stress in the Sahel desert")
-    res = await service.investigate(req)
+    with pytest.raises(AppException) as exc_info:
+        await service.explain_trend(request)
 
-    assert res.is_fallback is False
-    assert res.recommended_variables == ["T2M", "RH2M"]
-    assert res.recommended_region_id == "sahel_region"
-    assert res.target_coordinates.latitude == 14.5
-    assert "Sahel" in res.hypothesis
-    assert res.model_used == "gemini-3.8-flash"
+    assert exc_info.value.status_code == 503
 
 
 @pytest.mark.asyncio
-async def test_ai_service_explain_trend_deterministic():
-    """Verify deterministic fallback explanation for trend analysis."""
-    from app.schemas.ai import TrendExplanationRequest
-    client = GeminiClient(api_key=None)
+async def test_tts_returns_real_audio_mime_type():
+    client = GeminiClient(api_key="test-key")
+    client.generate_audio_tts = AsyncMock(return_value=("YXVkaW8=", "audio/L16;codec=pcm;rate=24000"))
     service = AIService(gemini_client=client)
 
-    req = TrendExplanationRequest(
-        variable_id="T2M",
-        location_name="Amazon Basin",
-        direction="increasing_significant",
-        rate_per_decade=0.35,
-        rate_unit="°C/decade",
-        p_value=0.0012,
-        change_point_date="2005-08",
-        regime_shift_type="accelerating_increase",
-    )
-    res = await service.explain_trend(req)
+    result = await service.generate_audio_brief(AudioBriefRequest(text="Climate report for testing."))
 
-    assert res.is_fallback is True
-    assert res.variable_id == "T2M"
-    assert "Amazon Basin" in res.location_name
-    assert "increasing significant" in res.executive_summary
-    assert "2005-08" in res.executive_summary
-    assert len(res.recommended_next_steps) >= 2
-
-
-@pytest.mark.asyncio
-async def test_ai_service_audio_brief_fallback():
-    """Verify audio briefing fallback returns valid base64 audio container."""
-    from app.schemas.ai import AudioBriefRequest
-    client = GeminiClient(api_key=None)
-    service = AIService(gemini_client=client)
-
-    req = AudioBriefRequest(text="This is TPBD Mission Control audio debrief.")
-    res = await service.generate_audio_brief(req)
-
-    assert res.is_fallback is True
-    assert res.mime_type == "audio/wav"
-    assert res.audio_base64.startswith("UklGRi")
-    assert len(res.audio_base64) > 10
+    assert result.audio_base64 == "YXVkaW8="
+    assert result.mime_type == "audio/L16;codec=pcm;rate=24000"

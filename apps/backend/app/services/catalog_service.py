@@ -1,5 +1,7 @@
 """Catalog service aggregating curated variables and satellite products."""
 from app.schemas.catalog import Variable, VariableCategory, DataSourceProvider, SatelliteProduct
+from app.clients.appeears_client import AppEEARSClient
+from app.core.exceptions import NotFoundError, UpstreamServiceError
 
 CURATED_VARIABLES: list[Variable] = [
     Variable(
@@ -100,36 +102,11 @@ CURATED_VARIABLES: list[Variable] = [
     ),
 ]
 
-CURATED_PRODUCTS: list[SatelliteProduct] = [
-    SatelliteProduct(
-        product_id="MOD13Q1.061",
-        platform="Terra MODIS",
-        description="MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061",
-        resolution="250m",
-        temporal_granularity="16 day",
-        available_layers=["_250m_16_days_NDVI", "_250m_16_days_EVI", "_250m_16_days_VI_Quality"],
-    ),
-    SatelliteProduct(
-        product_id="MOD11A1.061",
-        platform="Terra MODIS",
-        description="MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km Grid V061",
-        resolution="1000m",
-        temporal_granularity="Daily",
-        available_layers=["LST_Day_1km", "LST_Night_1km", "QC_Day", "QC_Night"],
-    ),
-    SatelliteProduct(
-        product_id="SPL4SMGP.007",
-        platform="SMAP",
-        description="SMAP L4 Global 3-hourly 9 km EASE-Grid Surface and Root-Zone Soil Moisture Geophysical Data",
-        resolution="9000m",
-        temporal_granularity="3-hourly",
-        available_layers=["sm_surface", "sm_rootzone", "soil_temp_layer1"],
-    ),
-]
-
-
 class CatalogService:
-    """Service providing variable definitions and satellite product metadata."""
+    """Service providing supported variable definitions and live NASA products."""
+
+    def __init__(self, appeears_client: AppEEARSClient | None = None) -> None:
+        self.appeears_client = appeears_client or AppEEARSClient()
 
     def list_variables(
         self,
@@ -149,7 +126,66 @@ class CatalogService:
                 return v
         return None
 
-    def list_products(self, platform: str | None = None) -> list[SatelliteProduct]:
-        if not platform:
-            return CURATED_PRODUCTS
-        return [p for p in CURATED_PRODUCTS if platform.lower() in p.platform.lower()]
+    async def list_products(self, platform: str | None = None) -> list[SatelliteProduct]:
+        """Return products currently marked available by the NASA AppEEARS API."""
+        products = await self.appeears_client.list_products()
+        results = []
+        for product in products:
+            if product.get("Available") is not True or product.get("Deleted") is True:
+                continue
+            product_platform = product.get("Platform")
+            if not isinstance(product_platform, str):
+                continue
+            if platform and platform.casefold() not in product_platform.casefold():
+                continue
+            product_id = product.get("ProductAndVersion")
+            description = product.get("Description")
+            resolution = product.get("Resolution")
+            granularity = product.get("TemporalGranularity")
+            if not all(isinstance(value, str) and value for value in (product_id, description, resolution, granularity)):
+                continue
+            results.append(SatelliteProduct(
+                product_id=product_id,
+                platform=product_platform,
+                description=description,
+                resolution=resolution,
+                temporal_granularity=granularity,
+            ))
+        return results
+
+    async def get_product(self, product_id: str) -> SatelliteProduct:
+        """Return a live AppEEARS product and its available layers."""
+        product = next(
+            (item for item in await self.appeears_client.list_products()
+             if item.get("ProductAndVersion") == product_id
+             and item.get("Available") is True
+             and item.get("Deleted") is not True),
+            None,
+        )
+        if not product:
+            raise NotFoundError(resource="AppEEARS product", identifier=product_id)
+        metadata_fields = (
+            product.get("ProductAndVersion"), product.get("Platform"),
+            product.get("Description"), product.get("Resolution"),
+            product.get("TemporalGranularity"),
+        )
+        if not all(isinstance(value, str) and value for value in metadata_fields):
+            raise UpstreamServiceError(
+                provider="NASA AppEEARS",
+                detail="The product catalog entry was missing required metadata.",
+            )
+        layer_metadata = await self.appeears_client.get_product_layers(product_id)
+        layers = sorted(
+            layer_name for layer_name, metadata in layer_metadata.items()
+            if isinstance(layer_name, str)
+            and isinstance(metadata, dict)
+            and metadata.get("Available") is True
+        )
+        return SatelliteProduct(
+            product_id=product["ProductAndVersion"],
+            platform=product["Platform"],
+            description=product["Description"],
+            resolution=product["Resolution"],
+            temporal_granularity=product["TemporalGranularity"],
+            available_layers=layers,
+        )
