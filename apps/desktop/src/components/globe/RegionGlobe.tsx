@@ -7,6 +7,7 @@ import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
+import { TemporalComparison } from './TemporalComparison';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
@@ -755,6 +756,14 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               </> : <p role="status">{report.message}</p>}
             </section>;
           })}
+          {location && selected && <TemporalComparison
+            key={`${keyA}:${variable}:${variableRange.start}:${variableRange.end}`}
+            location={location}
+            locationName={selected.name}
+            variable={variable}
+            variableName={variableRange.name}
+            available={{ start: variableRange.start, end: variableRange.end }}
+          />}
         </div>
         {children}
       </div>
