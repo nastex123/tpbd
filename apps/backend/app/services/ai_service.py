@@ -1,4 +1,4 @@
-"""AI service orchestrating Gemini capabilities and model routing."""
+"""AI service orchestrating Gemini capabilities and model routing with domain grounding (ADR 0009)."""
 import json
 import re
 
@@ -16,12 +16,15 @@ from app.schemas.ai import (
     TrendExplanationResponse,
 )
 from app.schemas.common import Coordinates
+from app.services.knowledge_service import KnowledgeService
 
 SYSTEM_INVESTIGATE_INSTRUCTION = """You are the TPBD Earth System Trend Detective Copilot.
 Map the user's question to NASA Earth science variables, a region if the request identifies one,
 coordinates when appropriate, and a testable scientific hypothesis.
 
-Valid NASA POWER parameters: T2M, PRECTOTCORR, RH2M, GWETROOT, EVPTRNS.
+Valid NASA POWER parameters: T2M (Temperature), PRECTOTCORR (Precipitation), ALLSKY_SFC_SW_DWN (Solar Irradiance), RH2M (Relative Humidity), PS (Surface Pressure), WS10M (Wind Speed).
+Known benchmark biomes: amazon, guajira, sahel, australia_se, arctic_svalbard, aral_sea, california_valley, tibetan_plateau, congo_basin, greenland_nuuk, coral_sea, mediterranean_spain.
+
 Return only valid JSON matching this schema:
 {
   "recommended_variables": ["VAR1"],
@@ -33,23 +36,29 @@ Use null for unknown region or coordinates. Do not invent a region when the user
 Do not include commentary or code fences outside the JSON object."""
 
 SYSTEM_EXPLAIN_INSTRUCTION = """You are an Earth system scientist.
-Explain the provided computed climate trend. Distinguish observation from causal attribution and
-state uncertainty. Do not claim a physical driver is established by a trend alone.
+Explain the provided computed climate trend using the physical grounding context provided.
+Distinguish observation from causal attribution and state uncertainty. Do not claim a physical driver is established by a trend alone without observational proof.
+Explicitly cite the provided rate of change and p-value in your explanation.
 Return only valid JSON:
 {
-  "executive_summary": "Concise 1-2 sentence finding.",
-  "mechanisms_and_drivers": "Evidence-grounded possible physical context, clearly framed as hypotheses.",
-  "scientific_uncertainty": "Observational limitations and uncertainty.",
+  "executive_summary": "Concise 1-2 sentence finding citing the exact rate per decade and significance.",
+  "mechanisms_and_drivers": "Evidence-grounded physical context based on the provided planetary mechanisms, clearly framed as hypotheses.",
+  "scientific_uncertainty": "Observational limitations, sensor uncertainties, and need for multivariate attribution.",
   "recommended_next_steps": ["Step 1", "Step 2"]
 }
 Do not include commentary or code fences outside the JSON object."""
 
 
 class AIService:
-    """Orchestrates live Gemini requests; provider failures are returned to callers."""
+    """Orchestrates live Gemini requests grounded with in-memory Earth science context."""
 
-    def __init__(self, gemini_client: GeminiClient | None = None) -> None:
+    def __init__(
+        self,
+        gemini_client: GeminiClient | None = None,
+        knowledge_service: KnowledgeService | None = None,
+    ) -> None:
         self.gemini_client = gemini_client or GeminiClient()
+        self.knowledge_service = knowledge_service or KnowledgeService()
 
     async def list_models(self) -> ModelListResponse:
         """Return the live model catalog when configured, otherwise an empty catalog."""
@@ -62,7 +71,7 @@ class AIService:
         )
 
     async def investigate(self, request: DetectiveQueryRequest) -> DetectiveQueryResponse:
-        """Generate an investigation plan from the live Gemini API."""
+        """Generate an investigation plan from the live Gemini API with grounded domain instruction."""
         model = self.gemini_client.resolve_model(request.model, task="query")
         raw_response = await self.gemini_client.generate_content(
             prompt=f"User investigation query: {request.query}",
@@ -107,9 +116,18 @@ class AIService:
         )
 
     async def explain_trend(self, request: TrendExplanationRequest) -> TrendExplanationResponse:
-        """Generate a scientific explanation from the computed trend and live Gemini."""
+        """Generate a scientific explanation from computed statistics and in-memory domain grounding."""
         model = self.gemini_client.resolve_model(request.model, task="thinking")
+        
+        # Ground with authoritative biophysical context
+        grounding = self.knowledge_service.format_grounding_block(
+            variable_id=request.variable_id,
+            region_id=request.location_name.lower().replace(" ", "_"),
+        )
+        
         prompt = (
+            f"--- PHYSICAL GROUNDING CONTEXT ---\n{grounding}\n\n"
+            f"--- COMPUTED STATISTICAL TEST RESULTS ---\n"
             f"Variable: {request.variable_id}\n"
             f"Location: {request.location_name}\n"
             f"Direction: {request.direction}\n"

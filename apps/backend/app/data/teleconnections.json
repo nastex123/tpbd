@@ -1,0 +1,118 @@
+{
+  "version": "1.0.0",
+  "source": "NASA Earth Science Division & IPCC Sixth Assessment Report (AR6)",
+  "variables": {
+    "T2M": {
+      "name": "Surface Air Temperature (2-meter)",
+      "satellite_instrument": "AIRS on Aqua, MODIS on Terra/Aqua, assimilated into MERRA-2",
+      "physical_description": "Air temperature at two meters above the surface, capturing thermodynamic thermal energy changes in the lower planetary boundary layer. Distinct from radiative skin temperature (LST).",
+      "driving_mechanisms": "Radiative forcing from well-mixed greenhouse gases, surface sensible heat flux, land-atmosphere albedo interactions, and polar amplification."
+    },
+    "PRECTOTCORR": {
+      "name": "Corrected Total Precipitation",
+      "satellite_instrument": "GPM (Global Precipitation Measurement) Core Observatory, TRMM, MERRA-2",
+      "physical_description": "Total precipitation (rain and water-equivalent snow) reaching the surface, bias-corrected using global rain gauge networks (GPCP).",
+      "driving_mechanisms": "Atmospheric moisture convergence, Clausius-Clapeyron water vapor capacity (~7%/°C warming), shifting Intertropical Convergence Zone (ITCZ), and sea surface temperature anomalies."
+    },
+    "ALLSKY_SFC_SW_DWN": {
+      "name": "All-Sky Surface Downward Shortwave Solar Irradiance",
+      "satellite_instrument": "CERES on Terra/Aqua/S-NPP, NASA POWER satellite modeling",
+      "physical_description": "Total solar irradiance reaching the horizontal Earth surface across both direct and diffuse components under realistic atmospheric and cloud conditions.",
+      "driving_mechanisms": "Cloud optical depth, aerosol optical thickness (wildfire smoke, dust, industrial haze), and solar zenith angles."
+    },
+    "RH2M": {
+      "name": "Surface Relative Humidity (2-meter)",
+      "satellite_instrument": "AIRS atmospheric soundings, MERRA-2 reanalysis",
+      "physical_description": "Ratio of actual vapor pressure to saturation vapor pressure at 2m. Key indicator of atmospheric evaporative demand and drought stress.",
+      "driving_mechanisms": "Vapor pressure deficit dynamics, oceanic moisture transport, and terrestrial evapotranspiration rates."
+    },
+    "PS": {
+      "name": "Surface Atmospheric Pressure",
+      "satellite_instrument": "MERRA-2 atmospheric state assimilation",
+      "physical_description": "Atmospheric pressure exerted by the air column at surface elevation, reflecting synoptic anticyclonic/cyclonic circulation patterns.",
+      "driving_mechanisms": "Hadley circulation subsidence cells, polar high pressure systems, and monsoon low depressions."
+    },
+    "WS10M": {
+      "name": "Surface Wind Speed (10-meter)",
+      "satellite_instrument": "QuikSCAT, CYGNSS, MERRA-2 atmospheric boundary layer model",
+      "physical_description": "Horizontal wind velocity at 10 meters above local ground elevation.",
+      "driving_mechanisms": "Horizontal pressure gradients, thermal wind balance, jet stream waviness, and surface roughness."
+    }
+  },
+  "teleconnection_pairs": {
+    "hadley_expansion": {
+      "title": "Hadley Cell Expansion & Tropical Precipitation Redistribution",
+      "regions": ["congo_basin", "mediterranean_spain"],
+      "variable_id": "PRECTOTCORR",
+      "biophysical_driver": "Poleward expansion of the tropical Hadley circulation driven by greenhouse warming and upper tropospheric temperature gradients.",
+      "scientific_explanation": "As tropical tropospheric warming expands the descending branch of the Hadley circulation poleward, Mediterranean and subtropical zones experience intensified drying and anticyclonic subsidence, while the equatorial convective core (Congo Basin) maintains or intensifies moisture convergence along the ITCZ.",
+      "citation": "IPCC AR6 WGI Chapter 8: Water Cycle Changes (2021); Seidel et al., Nature Geoscience (2008)."
+    },
+    "enso_asymmetry": {
+      "title": "Asymmetric ENSO Teleconnection",
+      "regions": ["guajira", "california_valley"],
+      "variable_id": "PRECTOTCORR",
+      "biophysical_driver": "El Niño–Southern Oscillation (ENSO) phase modulation of the Pacific Walker circulation and atmospheric rivers.",
+      "scientific_explanation": "Warm ENSO phases weaken tropical Atlantic moisture advection toward the northern coast of South America (La Guajira), causing severe multi-month rainfall deficits. Concurrently, an intensified and southward-shifted subtropical Pacific jet stream steers atmospheric rivers into the California coast.",
+      "citation": "NOAA Climate Prediction Center ENSO Diagnostics; Dettinger et al., J. Hydrometeorology (2011)."
+    },
+    "polar_vs_tropical": {
+      "title": "Polar Amplification vs. Tropical Thermal Inertia",
+      "regions": ["arctic_svalbard", "amazon"],
+      "variable_id": "T2M",
+      "biophysical_driver": "Positive sea-ice albedo feedback and atmospheric boundary layer inversion in the Arctic versus latent heat evaporative buffering in the tropics.",
+      "scientific_explanation": "Retreat of reflective Arctic sea ice exposes darker ocean water, dramatically increasing shortwave absorption and causing Arctic winter warming at more than triple the global average (polar amplification). Tropical rainforests (Amazon) warm more steadily because significant thermal energy is partitioned into latent heat through transpiration.",
+      "citation": "Serreze & Barry, Global and Planetary Change (2011); Malhi et al., PNAS (2008)."
+    }
+  },
+  "biomes": {
+    "amazon": {
+      "key_drivers": "Deforestation-induced latent heat reduction, lengthening of the dry season, and Atlantic sea surface temperature dipole modulation.",
+      "ecosystem_vulnerability": "Tipping point risk toward seasonal forest and degraded savanna."
+    },
+    "guajira": {
+      "key_drivers": "Trade wind inversion caps, Caribbean Low-Level Jet (CLLJ) velocity, and strong negative precipitation anomalies during El Niño.",
+      "ecosystem_vulnerability": "High vulnerability to desertification and severe indigenous pastoral water scarcity."
+    },
+    "sahel": {
+      "key_drivers": "West African Monsoon (WAM) dynamics, inter-hemispheric sea surface temperature gradients, and localized aerosol loading.",
+      "ecosystem_vulnerability": "High inter-annual rainfall volatility impacting subsistence agriculture."
+    },
+    "australia_se": {
+      "key_drivers": "Indian Ocean Dipole (IOD) positive phases, Southern Annular Mode (SAM), and compound heatwave-drought coupling.",
+      "ecosystem_vulnerability": "Catastrophic bushfire weather risk and basin-wide irrigation depletion."
+    },
+    "arctic_svalbard": {
+      "key_drivers": "Barents Sea winter ice retraction, enhanced Atlantic water inflow, and extreme positive winter temperature anomalies.",
+      "ecosystem_vulnerability": "Permafrost degradation, glacial mass balance loss, and collapse of sea-ice dependent marine biology."
+    },
+    "aral_sea": {
+      "key_drivers": "Loss of inland water heat capacity, severe desiccation, and salt-dust storms enhancing seasonal continental temperature extremes.",
+      "ecosystem_vulnerability": "Historic man-made environmental disaster zone with irreversible ecosystem collapse."
+    },
+    "california_valley": {
+      "key_drivers": "Atmospheric river landfall frequency, Sierra Nevada snowpack accumulation deficits, and persistent summer heat domes.",
+      "ecosystem_vulnerability": "Groundwater overdraft, agricultural crop stress, and acute flood-to-drought whiplash."
+    },
+    "tibetan_plateau": {
+      "key_drivers": "Elevation-dependent warming, black carbon aerosol deposition darkening snowpack, and Indian summer monsoon retreat.",
+      "ecosystem_vulnerability": "Long-term water supply threats to downstream river systems supporting over 1.4 billion people."
+    },
+    "congo_basin": {
+      "key_drivers": "Equatorial convective thunderstorm systems, central African biomass burning aerosols, and Atlantic monsoonal inflow.",
+      "ecosystem_vulnerability": "Forest canopy resilience under warming night-time minimum temperatures."
+    },
+    "greenland_nuuk": {
+      "key_drivers": "North Atlantic Oscillation (NAO) negative phases causing anticyclonic summer blocking, surface meltwater runoff.",
+      "ecosystem_vulnerability": "Accelerating mass loss from peripheral glaciers contributing to global sea level rise."
+    },
+    "coral_sea": {
+      "key_drivers": "Accumulated degree heating weeks (DHW), maritime heatwaves, and reduced cloud cover during El Niño summers.",
+      "ecosystem_vulnerability": "Widespread mass coral bleaching and marine biodiversity disruption."
+    },
+    "mediterranean_spain": {
+      "key_drivers": "Saharan dust plume advection, subtropical anticyclone blocking, and severe soil moisture deficits in summer.",
+      "ecosystem_vulnerability": "Acute agricultural aridity, olive and grain crop failure risk, and wildfire expansion."
+    }
+  }
+}

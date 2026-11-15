@@ -2,19 +2,23 @@
 
 
 def test_list_regions_returns_200_and_curated_regions(client):
-    """Verify GET /api/v1/regions returns 200 with all 4 curated benchmark regions."""
+    """Verify GET /api/v1/regions returns 200 with all 12 curated benchmark regions."""
     response = client.get("/api/v1/regions")
     assert response.status_code == 200
 
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 4
+    assert len(data) == 12
 
     region_ids = [r["region_id"] for r in data]
     assert "amazon" in region_ids
     assert "guajira" in region_ids
     assert "sahel" in region_ids
     assert "australia_se" in region_ids
+    assert "arctic_svalbard" in region_ids
+    assert "congo_basin" in region_ids
+    assert "mediterranean_spain" in region_ids
+    assert "california_valley" in region_ids
 
 
 def test_regions_schema_integrity(client):

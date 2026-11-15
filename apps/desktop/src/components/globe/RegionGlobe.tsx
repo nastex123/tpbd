@@ -20,10 +20,18 @@ import './region-globe.css';
 type Region = { id: string; name: string; lat: number; lng: number; cell?: string };
 
 const offlineRegions: Region[] = [
-  { id: 'amazon', name: 'Amazonia', lat: -3.1, lng: -60 },
-  { id: 'guajira', name: 'La Guajira', lat: 11.5, lng: -72.9 },
-  { id: 'sahel', name: 'Sahel', lat: 13.5, lng: 2.1 },
-  { id: 'australia_se', name: 'Southeast Australia', lat: -35, lng: 145 },
+  { id: 'amazon', name: 'Amazon Basin (Manaus)', lat: -3.1, lng: -60.0 },
+  { id: 'guajira', name: 'La Guajira (Riohacha)', lat: 11.5, lng: -72.9 },
+  { id: 'sahel', name: 'Sahel (Niamey, Niger)', lat: 13.5, lng: 2.1 },
+  { id: 'australia_se', name: 'Southeast Australia (Murray-Darling)', lat: -35.0, lng: 145.0 },
+  { id: 'arctic_svalbard', name: 'Arctic Archipelago (Svalbard)', lat: 78.2, lng: 15.6 },
+  { id: 'aral_sea', name: 'Aral Sea Basin (Central Asia)', lat: 45.0, lng: 59.0 },
+  { id: 'california_valley', name: 'California Central Valley (Fresno)', lat: 36.7, lng: -119.8 },
+  { id: 'tibetan_plateau', name: "Tibetan Plateau ('Third Pole')", lat: 32.0, lng: 88.0 },
+  { id: 'congo_basin', name: 'Congo Basin (Kisangani, DRC)', lat: 0.5, lng: 25.2 },
+  { id: 'greenland_nuuk', name: 'SW Greenland (Nuuk)', lat: 64.2, lng: -51.7 },
+  { id: 'coral_sea', name: 'Great Barrier Reef (Coral Sea)', lat: -18.0, lng: 147.5 },
+  { id: 'mediterranean_spain', name: 'Mediterranean Basin (Seville, Spain)', lat: 37.4, lng: -5.9 },
 ];
 
 const studyAreas: Record<string, GeoPath> = {
@@ -31,7 +39,21 @@ const studyAreas: Record<string, GeoPath> = {
   guajira: [[10.3, -73.8], [12.5, -73.8], [12.5, -71], [10.3, -71], [10.3, -73.8]],
   sahel: [[11, -3], [17, -3], [17, 7.5], [11, 7.5], [11, -3]],
   australia_se: [[-39, 139], [-29, 139], [-29, 151], [-39, 151], [-39, 139]],
+  arctic_svalbard: [[76.5, 10], [80.5, 10], [80.5, 26], [76.5, 26], [76.5, 10]],
+  aral_sea: [[43.5, 57], [46.5, 57], [46.5, 61.5], [43.5, 61.5], [43.5, 57]],
+  california_valley: [[35, -121.5], [38.5, -121.5], [38.5, -118], [35, -118], [35, -121.5]],
+  tibetan_plateau: [[29, 80], [36, 80], [36, 96], [29, 96], [29, 80]],
+  congo_basin: [[-3, 20], [4, 20], [4, 30], [-3, 30], [-3, 20]],
+  greenland_nuuk: [[62, -54], [66, -54], [66, -48], [62, -48], [62, -54]],
+  coral_sea: [[-21, 145], [-15, 145], [-15, 152], [-21, 152], [-21, 145]],
+  mediterranean_spain: [[36, -8], [40, -8], [40, -3], [36, -3], [36, -8]],
 };
+
+const teleconnectionPresets = [
+  { id: 'hadley', name: 'Hadley Cell: Congo Basin vs. Mediterranean', a: 'congo_basin', b: 'mediterranean_spain', variable: 'PRECTOTCORR', note: 'Poleward expansion of subtropical dry zones vs. equatorial intensification' },
+  { id: 'polar', name: 'Polar Amplification: Arctic vs. Amazon', a: 'arctic_svalbard', b: 'amazon', variable: 'T2M', note: 'Arctic warming at triple global rate vs. tropical baseline' },
+  { id: 'enso', name: 'ENSO Asymmetry: California vs. La Guajira', a: 'california_valley', b: 'guajira', variable: 'PRECTOTCORR', note: 'Pacific atmospheric river whiplash vs. Caribbean drought intensification' },
+];
 
 const presentation = [
   'Choose a location and inspect its coordinates.',
@@ -294,7 +316,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         if (!response.ok) return;
         const entries = readRegions(await response.json());
         if (!signal.aborted) {
-          setRegions(offlineRegions.map((region) => entries.find(({ id }) => id === region.id) ?? region));
+          setRegions(entries.length > 0 ? entries : offlineRegions);
         }
       })
       .catch(() => {});
@@ -450,6 +472,23 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       if (other) setCompare({ kind: 'region', id: other.id });
     }
     if (next > 0) dataPanel.current?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function loadTeleconnectionPreset(presetId: string) {
+    const preset = teleconnectionPresets.find((item) => item.id === presetId);
+    if (!preset) return;
+    const regA = regions.find((r) => r.id === preset.a);
+    const regB = regions.find((r) => r.id === preset.b);
+    if (regA) {
+      visit({ kind: 'region', id: regA.id }, regA);
+    }
+    if (regB) {
+      setCompare({ kind: 'region', id: regB.id });
+    }
+    setVariable(preset.variable);
+    setPeriod({ start: 1990, end: 2025 });
+    setPeriodNotice('');
+    setSelectedDate('');
   }
 
   function markerColor(marker: typeof markers[number]) {
@@ -691,8 +730,26 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             <p>{variableRange.description}</p>
             <p>{variableRange.category} · {variableRange.unit} · Monthly · {variableRange.start}–{variableRange.end}</p>
             <p>Source: {variableRange.source}. Community: {variableRange.community}. Grid: {variableRange.resolution}.</p>
-            <p>Precipitation is temporarily unavailable while its unit is verified. Soil wetness and transpiration require validation before they can be added.</p>
           </section>
+          <details className="exploration-tools" style={{ margin: '0.75rem 0' }}>
+            <summary>Planetary Teleconnections (Opposing Trends)</summary>
+            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#c5d3e8' }}>
+              Explore how single planetary climate processes drive opposing directional trends across paired biomes (NASA Space Apps Challenge 2026):
+            </p>
+            <div className="globe-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {teleconnectionPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => loadTeleconnectionPreset(preset.id)}
+                  style={{ textAlign: 'left', padding: '0.4rem 0.6rem' }}
+                >
+                  <strong>{preset.name}</strong> · <em>{preset.variable}</em>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{preset.note}</div>
+                </button>
+              ))}
+            </div>
+          </details>
           <label>Compare with <select value={compare?.kind === 'region' ? compare.id : compare ? 'custom' : ''} onChange={(event) => {
             if (event.target.value === 'custom') return;
             setCompare(event.target.value ? { kind: 'region', id: event.target.value } : null);
