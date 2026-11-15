@@ -77,7 +77,7 @@ class CacheRepository:
         return None
 
     def find_any_series(self, variable_id: str, lat: float, lon: float) -> dict | None:
-        """Find the most recent cached series for coordinates regardless of exact year bounds."""
+        """Find a real cached series for an explicitly offline request."""
         key_prefix = f"{variable_id.upper()}:{round(lat, 3)}:{round(lon, 3)}:%"
         conn = self._get_connection()
         try:
@@ -90,12 +90,9 @@ class CacheRepository:
                 (key_prefix,),
             )
             row = cursor.fetchone()
-            if row:
-                logger.debug("Found fallback cached series for %s with prefix %s", variable_id, key_prefix)
-                return json.loads(row["payload_json"])
+            return json.loads(row["payload_json"]) if row else None
         finally:
             conn.close()
-        return None
 
     def count_cached_entries(self) -> int:
         """Count total cached time series records."""

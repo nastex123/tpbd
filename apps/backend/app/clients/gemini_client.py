@@ -1,186 +1,97 @@
-"""Asynchronous client adapter for Google Gemini AI Studio API."""
+"""Asynchronous client adapter for Google Gemini API."""
 from typing import Any
+
 import httpx
-from app.schemas.ai import AIModelInfo, ModelCapability
-from app.core.config import settings
-from app.core.exceptions import AppException
-from app.core.logging import get_logger
 from fastapi import status
+
+from app.core.config import settings
+from app.core.exceptions import AppException, UpstreamServiceError
+from app.core.logging import get_logger
+from app.schemas.ai import AIModelInfo, ModelCapability
 
 logger = get_logger(__name__)
 
-GEMINI_MODEL_ROSTER: list[AIModelInfo] = [
-    AIModelInfo(
-        model_id="gemini-3.8-flash",
-        display_name="Gemini 3.8 Flash",
-        capabilities=[ModelCapability.TEXT, ModelCapability.VISION],
-        recommended_use="Default ultra-fast model for query parsing, variable search, and hypothesis formulation.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.8-live",
-        display_name="Gemini 3.8 Live",
-        capabilities=[ModelCapability.TEXT, ModelCapability.AUDIO_IN],
-        recommended_use="Real-time interactive conversational stream.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.8-live-extended-thinking",
-        display_name="Gemini 3.8 Live Extended Thinking",
-        capabilities=[ModelCapability.TEXT, ModelCapability.THINKING],
-        recommended_use="Deep multidisciplinary scientific reasoning and teleconnection analysis.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.8-flash-tts",
-        display_name="Gemini 3.8 Flash TTS",
-        capabilities=[ModelCapability.TEXT, ModelCapability.TTS],
-        recommended_use="Mission Control spoken audio synthesis and debriefs.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.8-flash-lite-tts",
-        display_name="Gemini 3.8 Flash-Lite TTS",
-        capabilities=[ModelCapability.TEXT, ModelCapability.TTS],
-        recommended_use="Low-latency lightweight audio debrief synthesis.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.6-flash",
-        display_name="Gemini 3.6 Flash",
-        capabilities=[ModelCapability.TEXT, ModelCapability.VISION],
-        recommended_use="Balanced high-throughput scientific analysis.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.5-flash-lite",
-        display_name="Gemini 3.5 Flash-Lite",
-        capabilities=[ModelCapability.TEXT],
-        recommended_use="Resource-constrained lightweight text copilot.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.1-flash-lite",
-        display_name="Gemini 3.1 Flash-Lite",
-        capabilities=[ModelCapability.TEXT],
-        recommended_use="Legacy lightweight text assistant.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-nano-banana-2.1",
-        display_name="Nano Banana 2.1",
-        capabilities=[ModelCapability.TEXT],
-        recommended_use="Compact on-device prototype generation.",
-        context_window=128000,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.1-flash-image",
-        display_name="Nano Banana 2 (Flash Image)",
-        capabilities=[ModelCapability.VISION, ModelCapability.TEXT],
-        recommended_use="Rapid spatial map and satellite image understanding.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.1-flash-lite-image",
-        display_name="Nano Banana 2 Lite",
-        capabilities=[ModelCapability.VISION, ModelCapability.TEXT],
-        recommended_use="Low-footprint chart critique and inspection.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3-pro-image",
-        display_name="Nano Banana Pro (Pro Image)",
-        capabilities=[ModelCapability.VISION, ModelCapability.TEXT, ModelCapability.THINKING],
-        recommended_use="High-resolution multispectral satellite feature inspection.",
-        context_window=2097152,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.5-transcribe",
-        display_name="Gemini 3.5 Transcribe",
-        capabilities=[ModelCapability.AUDIO_IN, ModelCapability.TEXT],
-        recommended_use="Scientific voice note transcription.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-omni-1.2-flash",
-        display_name="Gemini Omni 1.2 Flash",
-        capabilities=[ModelCapability.TEXT, ModelCapability.VISION, ModelCapability.AUDIO_IN],
-        recommended_use="Omni-channel multimodal coordination.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.1-pro-preview",
-        display_name="Gemini 3.1 Pro Preview",
-        capabilities=[ModelCapability.TEXT, ModelCapability.THINKING],
-        recommended_use="Advanced statistical theory and code execution critique.",
-        context_window=2097152,
-    ),
-    AIModelInfo(
-        model_id="gemini-3-flash-preview",
-        display_name="Gemini 3 Flash Preview",
-        capabilities=[ModelCapability.TEXT],
-        recommended_use="General-purpose flash preview model.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.5-live-translate-preview",
-        display_name="Gemini 3.5 Live Translate Preview",
-        capabilities=[ModelCapability.TEXT, ModelCapability.AUDIO_IN],
-        recommended_use="Cross-language scientific terminology translation.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.1-flash-live-preview",
-        display_name="Gemini 3.1 Flash Live Preview",
-        capabilities=[ModelCapability.TEXT, ModelCapability.AUDIO_IN],
-        recommended_use="Low-latency live stream interaction.",
-        context_window=1048576,
-    ),
-    AIModelInfo(
-        model_id="gemini-3.1-flash-tts-preview",
-        display_name="Gemini 3.1 Flash TTS Preview",
-        capabilities=[ModelCapability.TEXT, ModelCapability.TTS],
-        recommended_use="Experimental speech synthesis preview.",
-        context_window=1048576,
-    ),
-]
-
 
 class GeminiClient:
-    """Client for Google AI Studio Gemini API."""
+    """Client for Google's live Gemini API."""
 
     def __init__(
         self,
         api_key: str | None = None,
         base_url: str = "https://generativelanguage.googleapis.com/v1beta",
-        timeout: float = 15.0,
+        timeout: float = 30.0,
     ) -> None:
-        self.api_key = api_key or settings.GEMINI_API_KEY
+        self.api_key = api_key if api_key is not None else settings.GEMINI_API_KEY
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
     def is_configured(self) -> bool:
-        """Check if client has an active API key."""
-        return bool(self.api_key and len(self.api_key.strip()) > 0)
+        """Check if a Gemini API key is configured."""
+        return bool(self.api_key and self.api_key.strip())
 
-    def list_models(self) -> list[AIModelInfo]:
-        """Return the roster of supported Gemini models."""
-        return GEMINI_MODEL_ROSTER
+    async def list_models(self) -> list[AIModelInfo]:
+        """Fetch every model that supports generateContent from Google's API."""
+        self._require_api_key()
+        models: list[AIModelInfo] = []
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+
+        while True:
+            params: dict[str, str | int] = {"pageSize": 1000}
+            if page_token:
+                params["pageToken"] = page_token
+            payload = await self._get_json("/models", params=params)
+            entries = payload.get("models", [])
+            if not isinstance(entries, list):
+                raise UpstreamServiceError(
+                    provider="Google Gemini API",
+                    detail="The model catalog response had an invalid structure.",
+                )
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                methods = item.get("supportedGenerationMethods", [])
+                if not isinstance(methods, list) or "generateContent" not in methods:
+                    continue
+                model_id = item.get("name")
+                if not isinstance(model_id, str) or not model_id:
+                    continue
+                model_id = model_id.removeprefix("models/")
+                capabilities = [ModelCapability.TEXT]
+                if "thinking" in item and item["thinking"]:
+                    capabilities.append(ModelCapability.THINKING)
+                if "tts" in model_id.lower() or "generateAudio" in methods:
+                    capabilities.append(ModelCapability.TTS)
+                context_window = item.get("inputTokenLimit")
+                models.append(AIModelInfo(
+                    model_id=model_id,
+                    display_name=item.get("displayName") or model_id,
+                    capabilities=capabilities,
+                    recommended_use=item.get("description") or "",
+                    context_window=context_window if isinstance(context_window, int) else None,
+                ))
+
+            next_token = payload.get("nextPageToken")
+            if not isinstance(next_token, str) or not next_token:
+                break
+            if next_token in seen_tokens:
+                raise UpstreamServiceError(
+                    provider="Google Gemini API",
+                    detail="The model catalog returned a repeated page token.",
+                )
+            seen_tokens.add(next_token)
+            page_token = next_token
+
+        return models
 
     def resolve_model(self, requested_model: str, task: str = "query") -> str:
-        """Resolve 'auto' or return requested model if valid."""
+        """Resolve automatic routing to documented live model identifiers."""
         if requested_model != "auto":
             return requested_model
-
-        if task == "query":
-            return "gemini-3.8-flash"
-        elif task == "thinking":
-            return "gemini-3.8-live-extended-thinking"
-        elif task == "tts":
+        if task == "tts":
             return "gemini-3.8-flash-tts"
-        elif task == "vision":
+        if task == "vision":
             return "gemini-3-pro-image"
-
         return "gemini-3.8-flash"
 
     async def generate_content(
@@ -189,73 +100,74 @@ class GeminiClient:
         system_instruction: str,
         model: str = "gemini-3.8-flash",
     ) -> str:
-        """Generate text response from Gemini API."""
-        if not self.is_configured():
-            raise AppException(
-                title="Missing Gemini API Key",
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="GEMINI_API_KEY is not configured in environment or .env file.",
-                error_type="https://tpbd.nasa.gov/errors/missing-api-key",
-            )
-
+        """Generate text using Gemini's generateContent endpoint."""
+        self._require_api_key()
         resolved_model = self.resolve_model(model, task="query")
-        url = f"{self.base_url}/models/{resolved_model}:generateContent"
-        headers = {"x-goog-api-key": self.api_key}
-
         payload: dict[str, Any] = {
             "contents": [{"parts": [{"text": prompt}]}],
             "systemInstruction": {"parts": [{"text": system_instruction}]},
-            "generationConfig": {
-                "temperature": 0.2,
-                "topP": 0.95,
-            },
+            "generationConfig": {"temperature": 0.2, "topP": 0.95},
         }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return parts[0]["text"]
-                    return ""
-                elif res.status_code in (401, 403):
-                    raise AppException(
-                        title="Invalid Gemini API Key",
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Google AI Studio rejected the provided GEMINI_API_KEY.",
-                        error_type="https://tpbd.nasa.gov/errors/unauthorized",
-                    )
-                else:
-                    try:
-                        err_msg = res.json().get("error", {}).get("message", f"HTTP {res.status_code}")
-                    except Exception:
-                        err_msg = f"HTTP {res.status_code}"
-                    raise AppException(
-                        title="Gemini Upstream Error",
-                        status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail=f"Google AI Studio returned an error: {err_msg[:200]}",
-                        error_type="https://tpbd.nasa.gov/errors/gemini-upstream-error",
-                    )
-        except httpx.RequestError as exc:
-            logger.warning("Network failure connecting to Google AI Studio: %s", exc)
-            raise AppException(
-                title="Gemini Network Failure",
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail=f"Failed to reach Google AI Studio: {str(exc)}",
-                error_type="https://tpbd.nasa.gov/errors/network-timeout",
-            )
+        response = await self._post_json(
+            f"/models/{resolved_model}:generateContent", json=payload
+        )
+        candidates = response.get("candidates", [])
+        if isinstance(candidates, list):
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                content = candidate.get("content")
+                parts = content.get("parts", []) if isinstance(content, dict) else []
+                for part in parts:
+                    if isinstance(part, dict) and isinstance(part.get("text"), str):
+                        return part["text"]
+        raise UpstreamServiceError(
+            provider="Google Gemini API",
+            detail="The model response did not contain generated text.",
+        )
 
     async def generate_audio_tts(
         self,
         text: str,
         voice_name: str = "Puck",
         model: str = "gemini-3.8-flash-tts",
-    ) -> str:
-        """Generate base64-encoded audio speech from Gemini TTS API."""
+    ) -> tuple[str, str]:
+        """Generate audio with Gemini TTS and return its base64 data and real MIME type."""
+        self._require_api_key()
+        resolved_model = self.resolve_model(model, task="tts")
+        payload: dict[str, Any] = {
+            "contents": [{"parts": [{"text": text}]}],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"],
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {"voiceName": voice_name}
+                    }
+                },
+            },
+        }
+        response = await self._post_json(
+            f"/models/{resolved_model}:generateContent", json=payload
+        )
+        candidates = response.get("candidates", [])
+        if isinstance(candidates, list):
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                content = candidate.get("content")
+                parts = content.get("parts", []) if isinstance(content, dict) else []
+                for part in parts:
+                    inline_data = part.get("inlineData") if isinstance(part, dict) else None
+                    audio = inline_data.get("data") if isinstance(inline_data, dict) else None
+                    mime_type = inline_data.get("mimeType") if isinstance(inline_data, dict) else None
+                    if isinstance(audio, str) and audio and isinstance(mime_type, str):
+                        return audio, mime_type
+        raise UpstreamServiceError(
+            provider="Google Gemini API",
+            detail="The model response did not contain generated audio.",
+        )
+
+    def _require_api_key(self) -> None:
         if not self.is_configured():
             raise AppException(
                 title="Missing Gemini API Key",
@@ -264,59 +176,83 @@ class GeminiClient:
                 error_type="https://tpbd.nasa.gov/errors/missing-api-key",
             )
 
-        resolved_model = self.resolve_model(model, task="tts")
-        url = f"{self.base_url}/models/{resolved_model}:generateContent"
-        headers = {"x-goog-api-key": self.api_key}
-
-        payload: dict[str, Any] = {
-            "contents": [{"parts": [{"text": text}]}],
-            "generationConfig": {
-                "responseModalities": ["AUDIO"],
-                "speechConfig": {
-                    "voiceConfig": {
-                        "prebuiltVoiceConfig": {
-                            "voiceName": voice_name
-                        }
-                    }
-                },
-            },
-        }
-
+    async def _get_json(self, path: str, params: dict[str, str | int]) -> dict:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        for part in parts:
-                            if "inlineData" in part and "data" in part["inlineData"]:
-                                return part["inlineData"]["data"]
-                    return ""
-                elif res.status_code in (401, 403):
-                    raise AppException(
-                        title="Invalid Gemini API Key",
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Google AI Studio rejected the provided GEMINI_API_KEY.",
-                        error_type="https://tpbd.nasa.gov/errors/unauthorized",
-                    )
-                else:
-                    try:
-                        err_msg = res.json().get("error", {}).get("message", f"HTTP {res.status_code}")
-                    except Exception:
-                        err_msg = f"HTTP {res.status_code}"
-                    raise AppException(
-                        title="Gemini TTS Upstream Error",
-                        status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail=f"Google AI Studio TTS returned an error: {err_msg[:200]}",
-                        error_type="https://tpbd.nasa.gov/errors/gemini-upstream-error",
-                    )
-        except httpx.RequestError as exc:
-            logger.warning("Network failure connecting to Gemini TTS: %s", exc)
-            raise AppException(
-                title="Gemini TTS Network Failure",
+                response = await client.get(
+                    f"{self.base_url}{path}",
+                    headers={"x-goog-api-key": self.api_key or ""},
+                    params=params,
+                )
+        except httpx.TimeoutException as exc:
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail="The model catalog request timed out.",
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail=f"Failed to reach Google AI Studio TTS: {str(exc)}",
-                error_type="https://tpbd.nasa.gov/errors/network-timeout",
+            ) from exc
+        except httpx.RequestError as exc:
+            logger.warning("Network failure connecting to Google Gemini API: %s", exc)
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail="Could not reach the model catalog service.",
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            ) from exc
+        return self._parse_response(response)
+
+    async def _post_json(self, path: str, json: dict[str, Any]) -> dict:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.base_url}{path}",
+                    headers={"x-goog-api-key": self.api_key or ""},
+                    json=json,
+                )
+        except httpx.TimeoutException as exc:
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail="The generation request timed out.",
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            ) from exc
+        except httpx.RequestError as exc:
+            logger.warning("Network failure connecting to Google Gemini API: %s", exc)
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail="Could not reach the generation service.",
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            ) from exc
+        return self._parse_response(response)
+
+    @staticmethod
+    def _parse_response(response: httpx.Response) -> dict:
+        if response.status_code in (401, 403):
+            raise AppException(
+                title="Invalid Gemini API Key",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Google AI Studio rejected the configured GEMINI_API_KEY.",
+                error_type="https://tpbd.nasa.gov/errors/unauthorized",
             )
+        if response.status_code >= 400:
+            try:
+                error = response.json().get("error", {})
+                detail = error.get("message") if isinstance(error, dict) else None
+            except ValueError:
+                detail = None
+            detail = detail if isinstance(detail, str) else f"HTTP {response.status_code}"
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail=f"Request failed: {detail[:200]}",
+                status_code=status.HTTP_502_BAD_GATEWAY,
+            )
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail="The provider response was not valid JSON.",
+            ) from exc
+        if not isinstance(payload, dict):
+            raise UpstreamServiceError(
+                provider="Google Gemini API",
+                detail="The provider response had an invalid structure.",
+            )
+        return payload

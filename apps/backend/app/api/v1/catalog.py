@@ -36,5 +36,14 @@ async def list_products(
     service: Annotated[CatalogService, Depends(get_catalog_service)],
     platform: str | None = Query(None, description="Filter by satellite platform (e.g. MODIS, SMAP)"),
 ) -> list[SatelliteProduct]:
-    """List satellite missions and products accessible through NASA AppEEARS."""
-    return service.list_products(platform=platform)
+    """List currently available satellite products from NASA AppEEARS."""
+    return await service.list_products(platform=platform)
+
+
+@router.get("/products/{product_id}", response_model=SatelliteProduct)
+async def get_product(
+    product_id: str,
+    service: Annotated[CatalogService, Depends(get_catalog_service)],
+) -> SatelliteProduct:
+    """Get current AppEEARS product metadata and available layers."""
+    return await service.get_product(product_id)

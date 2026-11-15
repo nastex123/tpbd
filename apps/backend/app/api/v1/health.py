@@ -14,15 +14,14 @@ router = APIRouter()
 async def get_health(
     cache_repo: Annotated[CacheRepository, Depends(get_cache_repository)] = None,
 ) -> HealthResponse:
-    """Return system operational status and offline demo cache readiness."""
+    """Return system status and the regions actually present in the local cache."""
     repo = cache_repo or get_cache_repository()
     cached_regions = repo.get_cached_region_ids()
-    is_ready = len(cached_regions) >= 4 or len(cached_regions) > 0
     return HealthResponse(
         status="ok",
         version=settings.VERSION,
-        offline_demo_ready=is_ready,
-        cached_regions=cached_regions if cached_regions else ["amazon", "guajira", "sahel", "australia_se"],
+        offline_demo_ready=bool(cached_regions),
+        cached_regions=cached_regions,
         timestamp=datetime.now(timezone.utc),
     )
 

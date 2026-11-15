@@ -27,7 +27,7 @@ async def list_models(
     ai_service: Annotated[AIService, Depends(get_ai_service)],
 ) -> ModelListResponse:
     """Retrieve supported Gemini model roster."""
-    return ai_service.list_models()
+    return await ai_service.list_models()
 
 
 @router.post(

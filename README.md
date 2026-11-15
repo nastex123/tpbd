@@ -65,7 +65,8 @@ All backend endpoints are prefixed with `/api/v1` and document interactive Swagg
 | `GET` | `/health` | Service health, cache connectivity, and offline demo status |
 | `GET` | `/api/v1/catalog/variables` | Curated climate, meteorological, and hydrological parameters |
 | `GET` | `/api/v1/catalog/variables/{id}` | Detailed variable metadata (units, community, temporal coverage) |
-| `GET` | `/api/v1/catalog/products` | Satellite remote sensing products (e.g., MODIS MOD13A2) |
+| `GET` | `/api/v1/catalog/products` | Current products from the NASA AppEEARS catalog |
+| `GET` | `/api/v1/catalog/products/{id}` | Current product metadata and available layers from AppEEARS |
 | `GET` | `/api/v1/regions` | Curated benchmark regions with coordinates and scientific context |
 | `GET` | `/api/v1/series` | Historical monthly time series with automatic SQLite caching |
 | `POST` | `/api/v1/analytics/trends` | Non-parametric Seasonal Mann-Kendall test & Sen's slope rate |
@@ -73,12 +74,12 @@ All backend endpoints are prefixed with `/api/v1` and document interactive Swagg
 | `POST` | `/api/v1/analytics/anomalies` | Standardized monthly climatological departures (WMO 1991–2020 Z-scores) |
 | `POST` | `/api/v1/analytics/changepoints` | Pettitt change-point and regime analysis |
 | `GET` | `/api/v1/ai/models` | Available AI models and capabilities |
-| `POST` | `/api/v1/ai/investigate` | Natural-language investigation routing with deterministic fallback |
+| `POST` | `/api/v1/ai/investigate` | Natural-language investigation routing through Gemini |
 | `POST` | `/api/v1/ai/explain-trend` | Evidence-grounded scientific trend explanation |
-| `POST` | `/api/v1/ai/audio-brief` | Mission Control audio briefing synthesis |
+| `POST` | `/api/v1/ai/audio-brief` | Mission Control audio synthesis through Gemini TTS |
 | `POST` | `/api/v1/integrations/appeears/auth/login` | NASA Earthdata OAuth login and bearer token generation |
 | `GET` | `/api/v1/integrations/appeears/auth/status`| AppEEARS session and token validity inspection |
-| `POST` | `/api/v1/integrations/appeears/tasks` | Asynchronous point/area satellite extraction task submission |
+| `POST` | `/api/v1/integrations/appeears/tasks` | Asynchronous point-sampling task submission to AppEEARS |
 | `GET` | `/api/v1/integrations/appeears/tasks/{id}` | Status check for submitted AppEEARS extraction tasks |
 
 ---
@@ -101,6 +102,8 @@ uv sync
 # Start the local development server (binds to 127.0.0.1:8000)
 uv run uvicorn app.main:app --port 8000 --reload
 ```
+
+Set `GEMINI_API_KEY` in the repository root `.env` to enable AI endpoints, and configure NASA Earthdata credentials to submit AppEEARS sampling tasks. When credentials are unavailable or a provider fails, the API returns an explicit error instead of generated placeholder results.
 
 Verify the backend is live by opening:
 - Health check: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)

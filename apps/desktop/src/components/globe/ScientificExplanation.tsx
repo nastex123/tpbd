@@ -8,7 +8,6 @@ type Explanation = {
   scientific_uncertainty: string;
   recommended_next_steps: string[];
   model_used: string;
-  is_fallback: boolean;
 };
 
 function isExplanation(value: unknown): value is Explanation {
@@ -18,24 +17,12 @@ function isExplanation(value: unknown): value is Explanation {
     && typeof item.scientific_uncertainty === 'string'
     && Array.isArray(item.recommended_next_steps)
     && item.recommended_next_steps.every((step) => typeof step === 'string')
-    && typeof item.model_used === 'string' && typeof item.is_fallback === 'boolean';
-}
-
-function localExplanation(variable: string, location: string, trend: Trend): Explanation {
-  const value = trend.rate_per_decade;
-  const estimate = value === null ? 'unavailable' : `${value > 0 ? '+' : ''}${value} ${trend.rate_unit} per decade`;
-  return {
-    executive_summary: `${variable} in ${location} has a ${trend.direction.replaceAll('_', ' ')} trend (${estimate}; ${trend.p_value === null ? 'p-value unavailable' : `p = ${trend.p_value}`}).`,
-    mechanisms_and_drivers: 'The measured trend describes change over time. Its physical drivers cannot be established from this series alone.',
-    scientific_uncertainty: `${trend.scientific_caveat} This deterministic explanation is shown because the local explanation service did not respond.`,
-    recommended_next_steps: ['Compare with related environmental variables and another region.', 'Review the source coverage and seasonal data before drawing conclusions.'],
-    model_used: 'Local deterministic fallback',
-    is_fallback: true,
-  };
+    && typeof item.model_used === 'string';
 }
 
 export function ScientificExplanation({ location, series, trend }: { location: string; series: Series; trend?: Trend }) {
   const [explanation, setExplanation] = useState<Explanation | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const isEvaluable = trend && trend.direction !== 'not_evaluable'
     && trend.rate_per_decade !== null && trend.p_value !== null;
@@ -43,6 +30,7 @@ export function ScientificExplanation({ location, series, trend }: { location: s
   useEffect(() => {
     if (!isEvaluable || !trend) {
       setExplanation(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -56,6 +44,7 @@ export function ScientificExplanation({ location, series, trend }: { location: s
       p_value: trend.p_value,
     };
     setExplanation(null);
+    setError(null);
     setLoading(true);
     void localApiFetch('/api/v1/ai/explain-trend', {
       method: 'POST', body: JSON.stringify(payload),
@@ -66,7 +55,10 @@ export function ScientificExplanation({ location, series, trend }: { location: s
       if (!isExplanation(result)) throw new Error('Invalid explanation response');
       if (!controller.signal.aborted) setExplanation(result);
     }).catch(() => {
-      if (!controller.signal.aborted) setExplanation(localExplanation(series.variable_id, location, trend));
+      if (!controller.signal.aborted) {
+        setExplanation(null);
+        setError('Scientific explanation is unavailable. The trend results above remain available.');
+      }
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);
     });
@@ -80,6 +72,7 @@ export function ScientificExplanation({ location, series, trend }: { location: s
   return <section className="scientific-explanation" aria-label="Scientific explanation" aria-live="polite">
     <h4>Scientific interpretation</h4>
     {loading && <p role="status">Preparing a data-grounded explanation…</p>}
+    {error && <p role="status">{error}</p>}
     {explanation && <>
       <p>{explanation.executive_summary}</p>
       <h5>Possible physical context</h5>
@@ -88,7 +81,7 @@ export function ScientificExplanation({ location, series, trend }: { location: s
       <p>{explanation.scientific_uncertainty}</p>
       <h5>Suggested next steps</h5>
       <ul>{explanation.recommended_next_steps.map((step) => <li key={step}>{step}</li>)}</ul>
-      <p className="explanation-model">{explanation.is_fallback ? 'Deterministic offline explanation' : `Generated with ${explanation.model_used}`}</p>
+      <p className="explanation-model">Generated with {explanation.model_used}</p>
     </>}
     <details>
       <summary>Data provenance and method</summary>

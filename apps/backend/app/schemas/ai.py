@@ -21,7 +21,7 @@ class AIModelInfo(BaseModel):
     display_name: str = Field(..., description="Human-readable model name", json_schema_extra={"example": "Gemini 3.8 Flash"})
     capabilities: list[ModelCapability] = Field(..., description="Set of supported modality capabilities")
     recommended_use: str = Field(..., description="Recommended scenario or workflow")
-    context_window: int = Field(..., description="Nominal token context window limit")
+    context_window: int | None = Field(default=None, description="Nominal token context window limit reported by Google, if available")
 
 
 class ModelListResponse(BaseModel):
@@ -48,7 +48,6 @@ class DetectiveQueryResponse(BaseModel):
     target_coordinates: Coordinates | None = Field(default=None, description="Suggested geographical coordinates")
     hypothesis: str = Field(..., description="Scientific hypothesis and rationale for the investigation")
     model_used: str = Field(..., description="Model that generated the response")
-    is_fallback: bool = Field(default=False, description="Whether deterministic offline fallback was used")
 
 
 class TrendExplanationRequest(BaseModel):
@@ -75,7 +74,6 @@ class TrendExplanationResponse(BaseModel):
     scientific_uncertainty: str = Field(..., description="Explicit discussion of uncertainty, observational limits, and caveats")
     recommended_next_steps: list[str] = Field(..., description="Actionable investigative follow-ups for researchers")
     model_used: str = Field(..., description="Model that generated the synthesis")
-    is_fallback: bool = Field(default=False, description="Whether deterministic offline fallback was used")
 
 
 class AudioBriefRequest(BaseModel):
@@ -90,7 +88,6 @@ class AudioBriefResponse(BaseModel):
     """Spoken audio debrief payload encoded in Base64 for instant HTML5 audio playback."""
 
     audio_base64: str = Field(..., description="Base64-encoded audio bytes")
-    mime_type: str = Field(default="audio/wav", description="Audio container MIME type")
+    mime_type: str = Field(..., description="Audio MIME type returned by Gemini")
     voice_used: str = Field(..., description="Voice name applied")
     model_used: str = Field(..., description="TTS model applied")
-    is_fallback: bool = Field(default=False, description="Whether deterministic stub fallback was used")

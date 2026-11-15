@@ -34,6 +34,8 @@ tags:
     description: Seasonal Mann-Kendall trend analysis, Sen's slope, and regional comparisons
   - name: Integrations
     description: NASA AppEEARS asynchronous task submission and status monitoring
+  - name: Projections
+    description: NASA POWER CMIP6 scenario projections, model availability, and projected series
 
 paths:
   /health:
@@ -41,7 +43,7 @@ paths:
       tags:
         - Health
       summary: Health check and service status
-      description: Returns operational status, API version, offline demonstration readiness, and local cache statistics.
+      description: Returns operational status, API version, and the regions actually present in the local cache.
       operationId: getHealth
       responses:
         '200':
@@ -113,7 +115,7 @@ paths:
       tags:
         - Catalog
       summary: List NASA AppEEARS satellite products
-      description: Returns satellite missions and products accessible through NASA AppEEARS (e.g. MODIS Land Surface Temperature, Vegetation Indices, SMAP Soil Moisture).
+      description: Returns currently available products from the live NASA AppEEARS catalog. Layer names are provided by the product detail endpoint.
       operationId: listSatelliteProducts
       parameters:
         - name: platform
@@ -132,6 +134,33 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SatelliteProduct'
+
+  /api/v1/catalog/products/{product_id}:
+    get:
+      tags:
+        - Catalog
+      summary: Get current AppEEARS product metadata and layers
+      description: Reads product metadata and available layer names directly from NASA AppEEARS.
+      operationId: getSatelliteProduct
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          description: AppEEARS ProductAndVersion identifier.
+          schema:
+            type: string
+            example: MOD13Q1.061
+      responses:
+        '200':
+          description: Product metadata and currently available layers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatelliteProduct'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
 
   /api/v1/regions:
     get:
@@ -349,7 +378,7 @@ paths:
       tags:
         - AI
       summary: List available Gemini AI models and capabilities
-      description: Returns the full catalog of Gemini models supported by the smart router, including capability tags and recommended scenarios.
+      description: Returns models reported by Google's Gemini API that support content generation. The catalog is empty when no API key is configured.
       operationId: listAIModels
       responses:
         '200':
@@ -387,7 +416,7 @@ paths:
       tags:
         - AI
       summary: Deep scientific trend synthesis and physical driver explanation
-      description: Connects computed Mann-Kendall statistics, Sen's slope rates, and Pettitt structural breaks to planetary atmospheric and oceanic processes using Gemini extended thinking models.
+      description: Sends computed trend statistics to Gemini for a scientific explanation. Provider errors are returned without substituting generated fallback text.
       operationId: explainTrend
       requestBody:
         required: true
@@ -410,7 +439,7 @@ paths:
       tags:
         - AI
       summary: NASA Mission Control spoken audio debrief (TTS)
-      description: Generates spoken speech audio (Base64-encoded WAV/MP3) for desktop audio playback via Gemini Flash TTS.
+      description: Generates speech through Gemini TTS and returns the provider's Base64 audio data and MIME type.
       operationId: generateAudioBrief
       requestBody:
         required: true
@@ -517,6 +546,88 @@ paths:
               schema:
                 $ref: '#/components/schemas/AppEEARSAuthStatus'
 
+  /api/v1/projections/scenarios:
+    get:
+      tags: [Projections]
+      summary: List supported SSP pathways
+      description: Returns the NASA POWER CMIP6 pathways supported by this service. Scenarios are conditional model projections, not exact predictions.
+      operationId: listProjectionScenarios
+      responses:
+        '200':
+          description: Supported pathways
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionScenariosResponse'
+
+  /api/v1/projections/models:
+    get:
+      tags: [Projections]
+      summary: List currently available monthly CMIP6 models
+      description: Proxies NASA POWER's monthly model catalog; availability can change upstream.
+      operationId: listProjectionModels
+      responses:
+        '200':
+          description: Monthly models available upstream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionModelsResponse'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/projections/series:
+    get:
+      tags: [Projections]
+      summary: Retrieve a monthly CMIP6 projection series
+      description: Returns a single NASA POWER/NEX-GDDP-CMIP6 model and SSP pathway for 2015–2100, with actual upstream units, source metadata, missing values, and nearest-grid coordinates. Projection records remain separate from historical observations.
+      operationId: getProjectionSeries
+      parameters:
+        - name: variable_id
+          in: query
+          required: true
+          schema: { type: string, example: T2M }
+        - name: latitude
+          in: query
+          required: true
+          schema: { type: number, minimum: -59.875, maximum: 89.875 }
+        - name: longitude
+          in: query
+          required: true
+          schema: { type: number, minimum: -179.875, maximum: 179.875 }
+        - name: start_year
+          in: query
+          schema: { type: integer, minimum: 2015, maximum: 2100, default: 2015 }
+        - name: end_year
+          in: query
+          schema: { type: integer, minimum: 2015, maximum: 2100, default: 2100 }
+        - name: scenario
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/SSPScenario' }
+        - name: model
+          in: query
+          schema: { type: string, default: ensemble, example: cesm2 }
+      responses:
+        '200':
+          description: Projected monthly values and provenance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionSeriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/BadGateway'
+
 
 components:
   schemas:
@@ -548,6 +659,58 @@ components:
           type: string
           format: date-time
           example: "2026-11-14T16:00:00Z"
+
+    SSPScenario:
+      type: string
+      enum: [ssp126, ssp245, ssp370]
+    ProjectionScenariosResponse:
+      type: object
+      required: [scenarios]
+      properties:
+        scenarios:
+          type: array
+          items:
+            type: object
+            required: [scenario, name, description, caveat]
+            properties:
+              scenario: { $ref: '#/components/schemas/SSPScenario' }
+              name: { type: string }
+              description: { type: string }
+              caveat: { type: string }
+    ProjectionModelsResponse:
+      type: object
+      required: [temporal, models, source]
+      properties:
+        temporal: { type: string, example: monthly }
+        models: { type: array, items: { type: string } }
+        source: { type: string, example: NASA POWER Projection API }
+    ProjectionDataPoint:
+      type: object
+      required: [date, value, quality]
+      properties:
+        date: { type: string, format: "YYYY-MM" }
+        value: { type: number, nullable: true }
+        quality: { type: string, enum: [projected, missing] }
+    ProjectionSeriesResponse:
+      type: object
+      required: [variable_id, scenario, model, unit, temporal_resolution, spatial_resolution, requested_coordinates, grid_coordinates, source, source_url, period, points, is_projection, caveat]
+      properties:
+        variable_id: { type: string }
+        scenario: { $ref: '#/components/schemas/SSPScenario' }
+        model: { type: string }
+        unit: { type: string }
+        temporal_resolution: { type: string, example: monthly }
+        spatial_resolution: { type: string, example: "0.25° x 0.25°" }
+        requested_coordinates: { type: object, additionalProperties: { type: number } }
+        grid_coordinates: { type: object, additionalProperties: { type: number } }
+        source: { type: string }
+        source_url: { type: string, format: uri }
+        period: { type: object, additionalProperties: { type: string } }
+        points: { type: array, items: { $ref: '#/components/schemas/ProjectionDataPoint' } }
+        uncertainty: { type: [number, "null"], description: NASA POWER monthly point response does not include an uncertainty interval. }
+        uncertainty_note: { type: string }
+        is_projection: { type: boolean, const: true }
+        caveat: { type: string }
 
     VariableCategory:
       type: string
@@ -617,7 +780,6 @@ components:
         - description
         - resolution
         - temporal_granularity
-        - available_layers
       properties:
         product_id:
           type: string
@@ -636,6 +798,8 @@ components:
           example: 16 day
         available_layers:
           type: array
+          nullable: true
+          description: Null in list responses; live available layers are populated in product detail responses.
           items:
             type: string
           example: ["_250m_16_days_NDVI", "_250m_16_days_EVI"]
@@ -1158,7 +1322,6 @@ components:
         - display_name
         - capabilities
         - recommended_use
-        - context_window
       properties:
         model_id:
           type: string
@@ -1176,6 +1339,7 @@ components:
           example: Fast natural language query translation and hypothesis formulation
         context_window:
           type: integer
+          nullable: true
           example: 1048576
 
     DetectiveQueryRequest:
@@ -1198,7 +1362,6 @@ components:
         - recommended_variables
         - hypothesis
         - model_used
-        - is_fallback
       properties:
         query:
           type: string
@@ -1220,9 +1383,6 @@ components:
         model_used:
           type: string
           example: gemini-3.8-flash
-        is_fallback:
-          type: boolean
-          example: false
 
     TrendExplanationRequest:
       type: object
@@ -1275,7 +1435,6 @@ components:
         - scientific_uncertainty
         - recommended_next_steps
         - model_used
-        - is_fallback
       properties:
         variable_id:
           type: string
@@ -1300,9 +1459,6 @@ components:
         model_used:
           type: string
           example: gemini-3.8-live-extended-thinking
-        is_fallback:
-          type: boolean
-          example: false
 
     AudioBriefRequest:
       type: object
@@ -1328,23 +1484,20 @@ components:
         - mime_type
         - voice_used
         - model_used
-        - is_fallback
       properties:
         audio_base64:
           type: string
-          example: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+          example: "<Gemini-generated audio bytes encoded as Base64>"
         mime_type:
           type: string
-          example: audio/wav
+          description: MIME type returned by Gemini, such as audio/L16;codec=pcm;rate=24000.
+          example: "audio/L16;codec=pcm;rate=24000"
         voice_used:
           type: string
           example: Puck
         model_used:
           type: string
           example: gemini-3.8-flash-tts
-        is_fallback:
-          type: boolean
-          example: false
 
     AppEEARSTaskRequest:
       type: object

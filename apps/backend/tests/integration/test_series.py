@@ -103,8 +103,8 @@ def test_get_series_not_found_region_or_variable(client):
     assert res2.json()["title"] == "Resource Not Found"
 
 
-def test_get_series_offline_mode_and_fallback(client):
-    """Verify offline=true serves from cache and upstream failure triggers fallback to cache."""
+def test_get_series_offline_mode_and_no_stale_fallback(client):
+    """Verify offline mode uses an exact cached period and provider errors stay visible."""
     mock_payload = {
         "properties": {
             "parameter": {
@@ -130,10 +130,9 @@ def test_get_series_offline_mode_and_fallback(client):
     uncached_res = client.get("/api/v1/series?variable_id=PRECTOTCORR&region_id=sahel&offline=true")
     assert uncached_res.status_code == 404
 
-    # 4. Test upstream network failure triggers automatic cache fallback
+    # 4. A different requested period must not be disguised as cached results.
     from app.core.exceptions import NASAUpstreamTimeoutError
     with patch.object(PowerClient, "fetch_monthly_point", side_effect=NASAUpstreamTimeoutError()):
-        # Query amazon T2M with different year where upstream fails: falls back to cached series
-        fallback_res = client.get("/api/v1/series?variable_id=T2M&region_id=amazon&start_year=2021&end_year=2021")
-        assert fallback_res.status_code == 200
-        assert fallback_res.json()["is_cached"] is True
+        failed_res = client.get("/api/v1/series?variable_id=T2M&region_id=amazon&start_year=2021&end_year=2021")
+        assert failed_res.status_code == 504
+        assert failed_res.json()["title"] == "Upstream Service Timeout"
