@@ -8,10 +8,13 @@ from app.schemas.analytics import (
     RegionalComparisonResponse,
     AnomalyDetectionRequest,
     AnomalyDetectionResponse,
+    ChangePointRequest,
+    ChangePointResponse,
 )
 from app.services.trend_service import TrendService
 from app.services.anomaly_service import AnomalyService
-from app.api.deps import get_trend_service, get_anomaly_service
+from app.services.changepoint_service import ChangePointService
+from app.api.deps import get_trend_service, get_anomaly_service, get_changepoint_service
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -59,3 +62,18 @@ async def detect_anomalies(
 ) -> AnomalyDetectionResponse:
     """Compute monthly climatology and identify extreme statistical deviations."""
     return anomaly_service.detect_anomalies(request)
+
+
+@router.post(
+    "/changepoints",
+    response_model=ChangePointResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Detect structural breaks and regime shifts using Pettitt's test",
+    description="Identifies non-parametric structural change points and evaluates segmented pre/post rates of change.",
+)
+async def detect_changepoints(
+    request: ChangePointRequest,
+    changepoint_service: Annotated[ChangePointService, Depends(get_changepoint_service)],
+) -> ChangePointResponse:
+    """Detect critical structural break date and quantify regime shift."""
+    return changepoint_service.detect_changepoints(request)

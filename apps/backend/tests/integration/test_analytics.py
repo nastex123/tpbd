@@ -116,3 +116,36 @@ def test_post_analytics_anomalies_success(client):
     assert "scientific_caveat" in data
     assert data["severe_anomaly_count"] >= 1
 
+
+def test_post_analytics_changepoints_success(client):
+    """Verify POST /api/v1/analytics/changepoints endpoint detects structural break."""
+    points = []
+    # 24 months before shift (mean ~15)
+    for i in range(24):
+        y = 2010 + i // 12
+        m = (i % 12) + 1
+        points.append({"date": f"{y}-{m:02d}", "value": 15.0 + (0.3 if i % 2 == 0 else -0.3), "quality": "observed"})
+
+    # 24 months after shift (mean ~25)
+    for i in range(24, 48):
+        y = 2010 + i // 12
+        m = (i % 12) + 1
+        points.append({"date": f"{y}-{m:02d}", "value": 25.0 + (0.3 if i % 2 == 0 else -0.3), "quality": "observed"})
+
+    payload = {
+        "variable_id": "T2M",
+        "alpha": 0.05,
+        "points": points,
+    }
+
+    res = client.post("/api/v1/analytics/changepoints", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["variable_id"] == "T2M"
+    assert data["has_significant_break"] is True
+    assert data["change_point_date"] is not None
+    assert data["p_value"] < 0.01
+    assert "Pettitt" in data["method"]
+    assert "°C/decade" in data["unit_per_decade"]
+
