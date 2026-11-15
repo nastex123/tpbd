@@ -19,6 +19,12 @@ def client():
 
 
 def test_appeears_auth_flow(client, monkeypatch):
+    from app.api.deps import get_appeears_client
+    appeears = get_appeears_client()
+    appeears._token = None
+    appeears._username = None
+    appeears._token_expiration = None
+
     post = AsyncMock(return_value=json_response(200, {"token": "nasa-integration-token"}))
     monkeypatch.setattr(httpx.AsyncClient, "post", post)
 
