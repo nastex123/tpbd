@@ -2,6 +2,7 @@ import { Component, useEffect, useEffectEvent, useMemo, useRef, useState, type R
 import Globe, { type GlobeMethods } from 'react-globe.gl';
 import { Mesh, MeshBasicMaterial, SphereGeometry, SRGBColorSpace, TextureLoader } from 'three';
 import { parseCoordinate, type LocationSelection } from '../../stores/navigationStore';
+import { deleteInvestigation, INVESTIGATIONS_KEY, readInvestigations, saveInvestigation, type Investigation } from '../../stores/investigations';
 import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
@@ -130,6 +131,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const variables = useVariableAvailability();
   const variableRange = variables.find(({ id }) => id === variable) ?? variableOptions[0];
   const [variableSearch, setVariableSearch] = useState('');
+  const [investigations, setInvestigations] = useState<Investigation[]>([]);
+  const [saveMessage, setSaveMessage] = useState('');
   const [periodNotice, setPeriodNotice] = useState('');
   const [period, setPeriod] = useState({ start: 1990, end: 2025 });
   const [periodError, setPeriodError] = useState('');
@@ -226,6 +229,22 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const searchItems: (Region | Place)[] = search.trim() ? [...regions, ...worldMap.places]
     .filter(({ name }) => name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
       .includes(search.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, ''))).slice(0, 8) : [];
+
+  useEffect(() => {
+    function refresh() {
+      try {
+        setInvestigations(readInvestigations(window.localStorage));
+      } catch {
+        setSaveMessage('Saved investigations could not be read. Existing data has been preserved.');
+      }
+    }
+    refresh();
+    function onStorage(event: StorageEvent) {
+      if (event.key === INVESTIGATIONS_KEY || event.key === null) refresh();
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   useEffect(() => {
     if (!playing || dates.length < 2) return;
@@ -538,6 +557,73 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             </button></li>;
           })}</ul>
         </details>}
+        <details className="exploration-tools">
+          <summary>Saved investigations</summary>
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            if (!location) {
+              setSaveMessage('Choose a location before saving.');
+              return;
+            }
+            const form = event.currentTarget;
+            const name = String(new FormData(form).get('investigationName') ?? '').trim();
+            try {
+              const updated = saveInvestigation(window.localStorage, {
+                name, variable, location, comparison: compare, period,
+              }, crypto.randomUUID(), new Date().toISOString());
+              setInvestigations(updated);
+              setSaveMessage('Investigation saved on this device.');
+              form.reset();
+            } catch (error) {
+              setSaveMessage(error instanceof Error ? error.message : 'Could not save the investigation.');
+            }
+          }}>
+            <label>Investigation name <input name="investigationName" maxLength={80} required /></label>
+            <button type="submit">Save current investigation</button>
+          </form>
+          <p role="status">{saveMessage}</p>
+          {investigations.length === 0 ? <p>No saved investigations.</p> : <ul>
+            {investigations.map((item) => <li key={item.id} className="globe-report">
+              <strong>{item.name}</strong>
+              <p>{item.variable} · {item.period.start}–{item.period.end}</p>
+              <p>{item.source.provider} · {item.source.reference}</p>
+              <div className="globe-actions">
+                <button type="button" onClick={() => {
+                  const supported = variables.find(({ id }) => id === item.variable);
+                  const place = item.location.kind === 'region'
+                    ? regions.find(({ id }) => id === (item.location as { id: string }).id)
+                    : item.location;
+                  const other = item.comparison?.kind === 'region'
+                    ? regions.find(({ id }) => id === (item.comparison as { id: string }).id)
+                    : item.comparison;
+                  if (!supported || !place || (item.comparison && !other)
+                    || item.period.start < supported.start || item.period.end > supported.end) {
+                    setSaveMessage('This investigation uses a variable, location, or period that is currently unavailable.');
+                    return;
+                  }
+                  setPlaying(false);
+                  setStep(null);
+                  setVariableSearch('');
+                  setVariable(item.variable);
+                  setPeriod(item.period);
+                  setPeriodNotice('');
+                  setSelectedDate('');
+                  setCompare(item.comparison);
+                  visit(item.location, place);
+                  setSaveMessage(`Loaded “${item.name}”.`);
+                }}>Load</button>
+                <button type="button" onClick={() => {
+                  try {
+                    setInvestigations(deleteInvestigation(window.localStorage, item.id));
+                    setSaveMessage(`Deleted “${item.name}”.`);
+                  } catch {
+                    setSaveMessage('Could not delete the saved investigation.');
+                  }
+                }}>Delete</button>
+              </div>
+            </li>)}
+          </ul>}
+        </details>
         <div ref={dataPanel} className="globe-data">
           <h2>Historical data</h2>
           <details>
