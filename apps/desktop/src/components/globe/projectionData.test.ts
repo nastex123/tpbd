@@ -80,13 +80,12 @@ test('fetchProjectionModels throws cleanly on HTTP failure', async () => {
   }
 });
 
-test('fetchProjectionSeries posts request body and parses points with years and months', async () => {
+test('fetchProjectionSeries sends GET query and parses points with years and months', async () => {
   const originalFetch = globalThis.fetch;
-  let sentBody: string | undefined;
+  let requestedUrl: string | undefined;
   globalThis.fetch = async (url, options) => {
-    assert.equal(String(url), '/api/local/api/v1/projections/series');
-    assert.equal(options?.method, 'POST');
-    sentBody = options?.body as string;
+    requestedUrl = String(url);
+    assert.equal(options?.method, 'GET');
     return new Response(JSON.stringify({
       variable_id: 'T2M',
       scenario: 'ssp245',
@@ -114,11 +113,16 @@ test('fetchProjectionSeries posts request body and parses points with years and 
       endYear: 2055,
     });
 
-    assert.ok(sentBody);
-    const parsedBody = JSON.parse(sentBody!);
-    assert.equal(parsedBody.variable_id, 'T2M');
-    assert.equal(parsedBody.scenario, 'ssp245');
-    assert.equal(parsedBody.lat, -3.1);
+    assert.ok(requestedUrl);
+    const urlObj = new URL(requestedUrl!, 'http://localhost');
+    assert.equal(urlObj.pathname, '/api/local/api/v1/projections/series');
+    assert.equal(urlObj.searchParams.get('variable_id'), 'T2M');
+    assert.equal(urlObj.searchParams.get('latitude'), '-3.1');
+    assert.equal(urlObj.searchParams.get('longitude'), '-60');
+    assert.equal(urlObj.searchParams.get('scenario'), 'ssp245');
+    assert.equal(urlObj.searchParams.get('model'), 'ensemble');
+    assert.equal(urlObj.searchParams.get('start_year'), '2050');
+    assert.equal(urlObj.searchParams.get('end_year'), '2055');
 
     assert.equal(result.variable_id, 'T2M');
     assert.equal(result.scenario, 'ssp245');

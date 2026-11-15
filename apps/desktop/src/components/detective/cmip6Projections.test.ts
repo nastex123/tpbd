@@ -4,6 +4,7 @@ import {
   getScenarioMetadata,
   calculateProjectionMetrics,
   MANDATORY_PROJECTION_CAVEAT,
+  CMIP6_SUPPORTED_VARIABLES,
   SCENARIO_METADATA_MAP,
   type SSPScenario,
 } from './cmip6Projections.ts';
@@ -141,4 +142,13 @@ test('mandatory caveat verbatim string is preserved', () => {
     MANDATORY_PROJECTION_CAVEAT,
     'Conditional climate-model scenario, not an exact prediction or observation. Forward trajectories reflect model assumptions under specified greenhouse gas concentration pathways.',
   );
+});
+
+test('CMIP6_SUPPORTED_VARIABLES restricts forward projections to T2M, RH2M, and PRECTOTCORR', () => {
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('T2M'), true);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('RH2M'), true);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('PRECTOTCORR'), true);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('GWETROOT'), false);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('EVPTRNS'), false);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('MOD13Q1_NDVI'), false);
 });

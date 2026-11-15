@@ -12,7 +12,10 @@ import {
   getScenarioMetadata,
   calculateProjectionMetrics,
   MANDATORY_PROJECTION_CAVEAT,
+  CMIP6_SUPPORTED_VARIABLES,
 } from './cmip6Projections.ts';
+
+export { CMIP6_SUPPORTED_VARIABLES };
 
 export interface CMIP6ProjectionsViewProps {
   place: { name: string; lat: number; lng: number };
@@ -20,6 +23,7 @@ export interface CMIP6ProjectionsViewProps {
   variableName: string;
   unit: string;
   historicalPoints?: Array<{ date: string; value: number | null }>;
+  onSelectVariable?: (variableId: string) => void;
 }
 
 export function CMIP6ProjectionsView({
@@ -28,7 +32,17 @@ export function CMIP6ProjectionsView({
   variableName,
   unit,
   historicalPoints,
+  onSelectVariable,
 }: CMIP6ProjectionsViewProps) {
+  const [localVariableId, setLocalVariableId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalVariableId(null);
+  }, [variableId]);
+
+  const activeVariableId = localVariableId || variableId;
+  const isSupported = CMIP6_SUPPORTED_VARIABLES.has(activeVariableId);
+
   const [scenario, setScenario] = useState<SSPScenario>('ssp245');
   const [scenarios, setScenarios] = useState<ProjectionScenarioInfo[]>([]);
   const [models, setModels] = useState<ProjectionModelInfo[]>([]);
@@ -76,6 +90,13 @@ export function CMIP6ProjectionsView({
 
   // Fetch projection series when parameters or reload trigger changes
   useEffect(() => {
+    if (!isSupported) {
+      setLoading(false);
+      setError(null);
+      setProjection(null);
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadProjectionSeries() {
@@ -84,7 +105,7 @@ export function CMIP6ProjectionsView({
 
       try {
         const seriesData = await fetchProjectionSeries({
-          variableId,
+          variableId: activeVariableId,
           lat: place.lat,
           lon: place.lng,
           scenario,
@@ -113,11 +134,16 @@ export function CMIP6ProjectionsView({
     return () => {
       controller.abort();
     };
-  }, [place.lat, place.lng, variableId, scenario, selectedModel, reloadTrigger]);
+  }, [place.lat, place.lng, activeVariableId, isSupported, scenario, selectedModel, reloadTrigger]);
 
   const handleRetry = useCallback(() => {
     setReloadTrigger((count) => count + 1);
   }, []);
+
+  const handleQuickSwitch = useCallback((newVariableId: string) => {
+    onSelectVariable?.(newVariableId);
+    setLocalVariableId(newVariableId);
+  }, [onSelectVariable]);
 
   // Metric readouts: Baseline (2015-2025 mean), End-of-Century (2090-2100 mean), and Net Change (Delta)
   const metrics = useMemo(() => {
@@ -251,6 +277,40 @@ export function CMIP6ProjectionsView({
 
   return (
     <div className="deck-pane-projections-panoramic" role="region" aria-label="CMIP6 Climate Projections">
+      {!isSupported && (
+        <div className="projections-unsupported-banner" role="status">
+          <div className="unsupported-icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div className="unsupported-details">
+            <h4 className="unsupported-title">NASA POWER CMIP6 Projections Variable Scope</h4>
+            <p className="unsupported-message">
+              NASA POWER CMIP6 climate models provide forward projections for Air Temperature (T2M), Precipitation (PRECTOTCORR), and Relative Humidity (RH2M).
+            </p>
+          </div>
+          <div className="unsupported-actions">
+            <button
+              type="button"
+              className="btn-switch-variable"
+              onClick={() => handleQuickSwitch('T2M')}
+            >
+              Select Temperature (T2M)
+            </button>
+            <button
+              type="button"
+              className="btn-switch-variable"
+              onClick={() => handleQuickSwitch('PRECTOTCORR')}
+            >
+              Select Precipitation (PRECTOTCORR)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Controls Strip: Scenario Badges, Model Dropdown, Historical Toggle */}
       <div className="projections-controls-panel">
         <div className="scenario-selector-strip" role="group" aria-label="SSP Climate Scenarios">
@@ -336,39 +396,47 @@ export function CMIP6ProjectionsView({
 
       {/* Main Trajectory Visualizer & Metric Readouts */}
       <div className="projections-chart-container">
-        {loading && (
-          <div className="projections-loading-overlay">
-            <span className="deck-spinner" />
+        {!isSupported ? (
+          <div className="projections-loading-overlay" style={{ padding: '2.5rem 1rem', textAlign: 'center' }}>
             <p>
-              Retrieving NASA POWER CMIP6 projections for {place.name} ({activeScenarioMeta.name})...
+              NASA POWER CMIP6 projections are not available for {variableName || variableId}. Please select Air Temperature (T2M) or Precipitation (PRECTOTCORR) using the buttons above to inspect forward climate scenarios.
             </p>
           </div>
-        )}
+        ) : (
+          <>
+            {loading && (
+              <div className="projections-loading-overlay">
+                <span className="deck-spinner" />
+                <p>
+                  Retrieving NASA POWER CMIP6 projections for {place.name} ({activeScenarioMeta.name})...
+                </p>
+              </div>
+            )}
 
-        {error && !loading && (
-          <div className="projections-error-panel" role="alert">
-            <div className="error-icon-box">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <div className="error-details">
-              <h4 className="error-title">Projection Stream Unavailable</h4>
-              <p className="error-message">{error}</p>
-            </div>
-            <button
-              type="button"
-              className="btn-retry-action"
-              onClick={handleRetry}
-            >
-              Retry Query
-            </button>
-          </div>
-        )}
+            {error && !loading && (
+              <div className="projections-error-panel" role="alert">
+                <div className="error-icon-box">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <div className="error-details">
+                  <h4 className="error-title">Projection Stream Unavailable</h4>
+                  <p className="error-message">{error}</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-retry-action"
+                  onClick={handleRetry}
+                >
+                  Retry Query
+                </button>
+              </div>
+            )}
 
-        {!error && (
+            {!error && (
           <>
             {/* Chart Legend & Status Bar */}
             <div className="chart-legend-bar">
@@ -572,6 +640,8 @@ export function CMIP6ProjectionsView({
                 </span>
               </div>
             </div>
+          </>
+        )}
           </>
         )}
       </div>

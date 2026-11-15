@@ -217,21 +217,18 @@ export async function fetchProjectionSeries(params: {
   const startYear = params.startYear ?? 2015;
   const endYear = params.endYear ?? 2100;
 
-  const payload = {
+  const query = new URLSearchParams({
     variable_id: params.variableId,
-    lat: params.lat,
-    lon: params.lon,
-    latitude: params.lat,
-    longitude: params.lon,
+    latitude: String(params.lat),
+    longitude: String(params.lon),
     scenario: params.scenario,
     model,
-    start_year: startYear,
-    end_year: endYear,
-  };
+    start_year: String(startYear),
+    end_year: String(endYear),
+  });
 
-  const response = await localApiFetch('/api/v1/projections/series', {
-    method: 'POST',
-    body: JSON.stringify(payload),
+  const response = await localApiFetch(`/api/v1/projections/series?${query}`, {
+    method: 'GET',
     signal: params.signal,
   });
 

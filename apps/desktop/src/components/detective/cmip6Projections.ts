@@ -5,6 +5,8 @@ export type { SSPScenario };
 export const MANDATORY_PROJECTION_CAVEAT =
   'Conditional climate-model scenario, not an exact prediction or observation. Forward trajectories reflect model assumptions under specified greenhouse gas concentration pathways.';
 
+export const CMIP6_SUPPORTED_VARIABLES = new Set(['T2M', 'RH2M', 'PRECTOTCORR']);
+
 export interface ScenarioMetadata {
   scenario: SSPScenario;
   badgeLabel: string;

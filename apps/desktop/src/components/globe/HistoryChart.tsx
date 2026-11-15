@@ -28,8 +28,11 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context) return;
+    if (!canvas) return;
+    canvas.width = canvas.parentElement?.clientWidth || 420;
+    canvas.height = canvas.parentElement?.clientHeight || 110;
+    const context = canvas.getContext('2d');
+    if (!context) return;
     const { width, height } = canvas;
     const [low, high] = bounds;
     const values = new Map(points.map(({ date, value }) => [date, value]));
@@ -94,7 +97,7 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
   return <canvas
     ref={canvasRef}
     width={420}
-    height={120}
+    height={110}
     role="img"
     aria-label={`Historical series for ${name}. Use the month slider to inspect values.`}
     onPointerDown={(event) => {

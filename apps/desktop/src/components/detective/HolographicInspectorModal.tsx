@@ -473,6 +473,7 @@ export function HolographicInspectorModal({
                 variableName={variableRange.name}
                 unit={seriesA?.unit || variableRange.unit || ''}
                 historicalPoints={seriesA?.points}
+                onSelectVariable={onSelectVariable}
               />
             )}
           </div>

@@ -8,13 +8,14 @@ const routes = new Map([
   ['/api/v1/analytics/changepoints', 'POST'],
   ['/api/v1/projections/scenarios', 'GET'],
   ['/api/v1/projections/models', 'GET'],
-  ['/api/v1/projections/series', 'POST'],
+  ['/api/v1/projections/series', ['GET', 'POST']],
   ['/api/v1/ai/models', 'GET'],
   ['/api/v1/ai/investigate', 'POST'],
   ['/api/v1/ai/explain-trend', 'POST'],
   ['/api/v1/ai/audio-brief', 'POST'],
 ]);
 const seriesParameters = new Set(['variable_id', 'region_id', 'lat', 'lon', 'start_year', 'end_year', 'offline', 'location_name']);
+const projectionParameters = new Set(['variable_id', 'latitude', 'longitude', 'lat', 'lon', 'start_year', 'end_year', 'scenario', 'model']);
 const limit = 2 * 1024 * 1024;
 
 export function validateRequest(request) {
@@ -22,16 +23,28 @@ export function validateRequest(request) {
     throw new Error('Invalid local API request');
   }
   const url = new URL(request.path, 'http://127.0.0.1:8000');
+  const allowed = routes.get(url.pathname);
+  const methodMatch = Array.isArray(allowed) ? allowed.includes(request.method) : allowed === request.method;
   if (!request.path.startsWith('/') || request.path.startsWith('//')
     || url.origin !== 'http://127.0.0.1:8000' || url.hash
-    || !routes.has(url.pathname) || routes.get(url.pathname) !== request.method) {
+    || !routes.has(url.pathname) || !methodMatch) {
     throw new Error('Local API route not allowed');
   }
-  if (url.pathname !== '/api/v1/series' && url.search) throw new Error('Unexpected query');
+  if (url.pathname !== '/api/v1/series' && url.pathname !== '/api/v1/projections/series' && url.search) {
+    throw new Error('Unexpected query');
+  }
   if (url.pathname === '/api/v1/series') {
     const seen = new Set();
     for (const [key, value] of url.searchParams) {
       if (!seriesParameters.has(key) || seen.has(key) || value.length > 128) throw new Error('Invalid query');
+      seen.add(key);
+    }
+  }
+  if (url.pathname === '/api/v1/projections/series') {
+    if (request.method === 'POST' && url.search) throw new Error('Unexpected query');
+    const seen = new Set();
+    for (const [key, value] of url.searchParams) {
+      if (!projectionParameters.has(key) || seen.has(key) || value.length > 128) throw new Error('Invalid query');
       seen.add(key);
     }
   }
