@@ -108,7 +108,7 @@ export function MissionControlHeader() {
         {/* NASA Data Detective Student Guide Trigger */}
         <button
           type="button"
-          className="telemetry-badge header-guide-trigger"
+          className="telemetry-badge header-guide-trigger btn-tactile"
           onClick={() => setGuideOpen(true)}
           title="Open NASA Data Detective Student Guide"
           aria-label="Open NASA Data Detective Student Guide"
@@ -119,6 +119,23 @@ export function MissionControlHeader() {
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
           <span className="telemetry-mono">GUIDE</span>
+        </button>
+
+        {/* NASA AI Mission Control Copilot Trigger */}
+        <button
+          type="button"
+          className="telemetry-badge header-copilot-trigger btn-tactile"
+          onClick={() => window.dispatchEvent(new CustomEvent('tpbd:open-copilot'))}
+          title="Open NASA AI Copilot Terminal (Cmd+K / Ctrl+K)"
+          aria-label="Open NASA AI Copilot Terminal"
+        >
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="22" />
+          </svg>
+          <span className="telemetry-mono">COPILOT</span>
+          <kbd className="header-kbd">Cmd+K</kbd>
         </button>
       </div>
 

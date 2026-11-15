@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { LocationSelection } from '../../stores/navigationStore';
 import type { Place } from '../globe/globeGeography';
 import type { Trend } from '../globe/globeData';
@@ -22,16 +22,34 @@ export const FloatingCopilotTrigger: React.FC<FloatingCopilotTriggerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
+  useEffect(() => {
+    function handleOpenEvent() {
+      setIsOpen(true);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener('tpbd:open-copilot', handleOpenEvent);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('tpbd:open-copilot', handleOpenEvent);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <>
       <button
         type="button"
-        className="copilot-floating-trigger"
+        className="copilot-floating-trigger btn-tactile shadow-bevel"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label="Open NASA Mission Control AI Copilot"
-        title="Open NASA AI Copilot Terminal"
+        title="Open NASA AI Copilot Terminal (Cmd+K / Ctrl+K)"
       >
-        <span className="trigger-pulse-dot" />
+        <span className="trigger-status-dot" />
         <span>AI Copilot · Mission Control</span>
       </button>
 

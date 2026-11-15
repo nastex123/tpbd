@@ -137,7 +137,7 @@ export function HolographicInspectorModal({
 
           <button
             type="button"
-            className="deck-btn-tool"
+            className="deck-btn-tool btn-tactile"
             onClick={() => setIsMinimized((v) => !v)}
             title={isMinimized ? 'Expand flight deck' : 'Minimize flight deck'}
             aria-label={isMinimized ? 'Expand flight deck' : 'Minimize flight deck'}
@@ -156,7 +156,7 @@ export function HolographicInspectorModal({
 
           <button
             type="button"
-            className="deck-btn-close"
+            className="deck-btn-close btn-tactile"
             onClick={onClose}
             aria-label="Close Telemetry Deck"
             title="Close Telemetry Deck"

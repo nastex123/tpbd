@@ -211,9 +211,9 @@ export function StudyRegionsDrawer({
       aria-label="Study Regions and Variable Catalog"
     >
       {/* Top Header Row */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-sky-500/20 bg-slate-900/60">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-slate-900/60 shadow-bevel-subtle">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
           <h2 className="text-sm font-semibold tracking-wide text-slate-100 font-sans">
             Study Regions & Catalog
           </h2>
@@ -302,10 +302,14 @@ export function StudyRegionsDrawer({
             <button
               type="button"
               onClick={() => onSearchChange('')}
-              className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
+              className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
               title="Clear search"
+              aria-label="Clear search"
             >
-              ✕
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           )}
         </div>
@@ -402,11 +406,11 @@ export function StudyRegionsDrawer({
                     onPointerEnter={() => onHoverRegion(region.id)}
                     onPointerLeave={() => onHoverRegion(null)}
                     onClick={() => onSelectRegion(region)}
-                    className={`w-full text-left p-2.5 rounded-lg border transition-all duration-150 cursor-pointer ${
+                    className={`w-full text-left p-2.5 rounded-lg border transition-all duration-150 cursor-pointer btn-tactile ${
                       isSelected
-                        ? 'bg-sky-950/50 border-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.25)]'
+                        ? 'bg-sky-950/50 border-sky-400/60 shadow-bevel'
                         : isHovered
-                        ? 'bg-slate-900/90 border-sky-500/40'
+                        ? 'bg-slate-900/90 border-white/20'
                         : 'bg-slate-900/50 border-slate-800/80 hover:bg-slate-900/80 hover:border-slate-700'
                     }`}
                   >
@@ -414,13 +418,13 @@ export function StudyRegionsDrawer({
                       <div className="font-semibold text-xs text-slate-100 flex items-center gap-1.5 truncate">
                         <span
                           className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                            isSelected ? 'bg-sky-400 shadow-[0_0_6px_#38bdf8]' : 'bg-slate-600'
+                            isSelected ? 'bg-sky-400' : 'bg-slate-600'
                           }`}
                         />
                         <span className="truncate">{region.name}</span>
                       </div>
                       {meta && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-950/70 border border-sky-500/30 text-sky-300 shrink-0">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-900 border border-white/10 text-sky-300 shadow-bevel-subtle shrink-0">
                           {meta.tag}
                         </span>
                       )}

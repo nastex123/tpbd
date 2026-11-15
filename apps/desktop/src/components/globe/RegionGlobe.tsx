@@ -16,6 +16,8 @@ import { trendLine } from './trendLine';
 import { nextObservationDate, observationDates } from './historyTimeline';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
 import { computeArcAltitude, sphericalMidpoint } from './teleconnectionComparison';
+import { computeRadarRangeRings, getVariableProfile } from './variableVisualization';
+import { VariableRadarLegend } from './VariableRadarLegend';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
 
@@ -298,17 +300,31 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const gridResolution = reportA?.series?.spatial_resolution;
   const cell = useMemo(() => gridOutline(gridCell, gridResolution), [gridCell, gridResolution]);
   const area = selectedId ? studyAreas[selectedId] : null;
+
+  // Active scientific profile defining variable-specific color ramps and kinematics
+  const activeProfile = useMemo(() => getVariableProfile(variable), [variable]);
+
   const paths = useMemo(() => {
     const path = (points: GeoPath, color: string, altitude: number) => ({
       points: points.map(([lat, lng]) => ({ lat, lng, altitude })),
       color,
     });
-    return [
+    const result = [
       ...(zoomed && boundaries ? worldMap.paths.map((points) => path(points, '#b7ccd5', 0.012)) : []),
       ...(area ? [path(area, '#ffcd70', 0.018)] : []),
       ...(cell ? [path(cell, '#90f5b1', 0.022)] : []),
     ];
-  }, [zoomed, boundaries, worldMap, area, cell]);
+
+    // Geodesic Doppler weather radar range rings for precipitation
+    if (variable === 'PRECTOTCORR' && selected) {
+      result.push(...computeRadarRangeRings(selected.lat, selected.lng, [60, 160], 0.014));
+    }
+    if (variable === 'PRECTOTCORR' && targetB && keyA !== keyB) {
+      result.push(...computeRadarRangeRings(targetB.lat, targetB.lng, [60, 160], 0.014));
+    }
+
+    return result;
+  }, [zoomed, boundaries, worldMap, area, cell, variable, selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB]);
   const searchItems: (Region | Place)[] = search.trim() ? [...regions,
     ...countries.map(({ properties: { name, lat, lng } }) => ({ name, lat, lng }))]
     .filter(({ name }) => name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -664,15 +680,51 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
 
   const activeRings = useMemo(() => {
     if (reduced || !motionAllowed()) return [];
-    const rings: { lat: number; lng: number; color: string }[] = [];
+    interface RingItem {
+      lat: number;
+      lng: number;
+      color: (t: number) => string;
+      maxR: number;
+      propagationSpeed: number;
+      repeatPeriod: number;
+    }
+    const rings: RingItem[] = [];
     if (selected) {
-      rings.push({ lat: selected.lat, lng: selected.lng, color: '#38bdf8' });
+      const valA = pointValue(reportA?.series?.points, visibleDate);
+      rings.push({
+        lat: selected.lat,
+        lng: selected.lng,
+        color: (t: number) => activeProfile.getRingColor(t, valA),
+        maxR: activeProfile.ringMaxRadius,
+        propagationSpeed: activeProfile.ringPropagationSpeed,
+        repeatPeriod: activeProfile.ringRepeatPeriod,
+      });
     }
     if (targetB && keyA !== keyB) {
-      rings.push({ lat: targetB.lat, lng: targetB.lng, color: '#f59e0b' });
+      const valB = pointValue(reportB?.series?.points, visibleDate);
+      rings.push({
+        lat: targetB.lat,
+        lng: targetB.lng,
+        color: (t: number) => activeProfile.getRingColor(t, valB),
+        maxR: activeProfile.ringMaxRadius,
+        propagationSpeed: activeProfile.ringPropagationSpeed,
+        repeatPeriod: activeProfile.ringRepeatPeriod,
+      });
     }
     return rings;
-  }, [selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB, reduced]);
+  }, [
+    selected?.lat,
+    selected?.lng,
+    targetB?.lat,
+    targetB?.lng,
+    keyA,
+    keyB,
+    reduced,
+    activeProfile,
+    reportA?.series?.points,
+    reportB?.series?.points,
+    visibleDate,
+  ]);
 
   // Continuously track 3D screen coordinate of active target during rotations / interactions
   useEffect(() => {
@@ -826,9 +878,14 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               pointColor={(point) => markerColor(point as typeof markers[number])}
               pointRadius={(point) => {
                 const { key } = point as typeof markers[number];
-                return key === hovered || key === keyA || key === keyB ? 1.3 : 0.75;
+                const base = key === hovered || key === keyA || key === keyB ? 1.3 : 0.75;
+                return (key === keyA || key === keyB) ? base * activeProfile.pointRadiusFactor : base;
               }}
-              pointAltitude={(point) => (point as typeof markers[number]).id === null ? 0.004 : 0.003}
+              pointAltitude={(point) => {
+                const isTarget = (point as typeof markers[number]).key === keyA || (point as typeof markers[number]).key === keyB;
+                if (isTarget) return activeProfile.pointAltitude;
+                return (point as typeof markers[number]).id === null ? 0.004 : 0.003;
+              }}
               pointLabel={(point) => {
                 const label = document.createElement('span');
                 label.textContent = markers.find((marker) => marker === point)?.name ?? '';
@@ -877,9 +934,10 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               arcDashAnimateTime={(entry: unknown) => (entry as GlobeArc).dashAnimateTime ?? 0}
               arcsTransitionDuration={0}
               ringsData={activeRings}
-              ringColor={(d: unknown) => (d as { color?: string }).color || '#38bdf8'}
-              ringMaxRadius={2.8}
-              ringRepeatPeriod={1400}
+              ringColor={(d: unknown) => (d as { color?: string | ((t: number) => string) }).color || '#38bdf8'}
+              ringMaxRadius={(d: unknown) => (d as { maxR?: number })?.maxR ?? activeProfile.ringMaxRadius}
+              ringPropagationSpeed={(d: unknown) => (d as { propagationSpeed?: number })?.propagationSpeed ?? activeProfile.ringPropagationSpeed}
+              ringRepeatPeriod={(d: unknown) => (d as { repeatPeriod?: number })?.repeatPeriod ?? activeProfile.ringRepeatPeriod}
             />
           </GlobeBoundary>
         )}
@@ -889,23 +947,34 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           </div>
         )}
         {ready && available && (
-          <div className="globe-overlay pointer-events-none">
-            <div className="globe-zoom pointer-events-auto" aria-label="Globe zoom">
-              <button type="button" aria-label="Zoom in" onClick={() => {
-                setIdleRotation(false);
-                cameraTo({ altitude: Math.max(0.32, (globe.current?.pointOfView().altitude ?? 2.4) / 1.4) });
-              }}>+</button>
-              <button type="button" aria-label="Zoom out" onClick={() => {
-                setIdleRotation(false);
-                cameraTo({ altitude: Math.min(5.4, (globe.current?.pointOfView().altitude ?? 2.4) * 1.4) });
-              }}>−</button>
-              <button type="button" onClick={() => cameraTo(initialView)}>Reset</button>
+          <>
+            <div className="globe-overlay pointer-events-none">
+              <div className="globe-zoom pointer-events-auto" aria-label="Globe zoom">
+                <button type="button" className="btn-tactile" aria-label="Zoom in" onClick={() => {
+                  setIdleRotation(false);
+                  cameraTo({ altitude: Math.max(0.32, (globe.current?.pointOfView().altitude ?? 2.4) / 1.4) });
+                }}>+</button>
+                <button type="button" className="btn-tactile" aria-label="Zoom out" onClick={() => {
+                  setIdleRotation(false);
+                  cameraTo({ altitude: Math.min(5.4, (globe.current?.pointOfView().altitude ?? 2.4) * 1.4) });
+                }}>−</button>
+                <button type="button" className="btn-tactile" onClick={() => cameraTo(initialView)}>Reset</button>
+              </div>
+              {hovered && (() => {
+                const marker = markers.find(({ key }) => key === hovered);
+                return marker && <p className="globe-hover pointer-events-auto">{marker.name} · {marker.lat.toFixed(2)}°, {marker.lng.toFixed(2)}°</p>;
+              })()}
             </div>
-            {hovered && (() => {
-              const marker = markers.find(({ key }) => key === hovered);
-              return marker && <p className="globe-hover pointer-events-auto">{marker.name} · {marker.lat.toFixed(2)}°, {marker.lng.toFixed(2)}°</p>;
-            })()}
-          </div>
+
+            <VariableRadarLegend
+              variableId={variable}
+              currentValue={selected ? pointValue(reportA?.series?.points, visibleDate) : null}
+              unit={variableRange.unit}
+              date={visibleDate}
+              locationName={selected?.name}
+              isDeckOpen={isInspectorOpen}
+            />
+          </>
         )}
         <div className="absolute bottom-2 left-4 z-10 pointer-events-none text-[10px] text-sky-300/40 select-none">
           {area && 'Gold: approximate study area. '}
