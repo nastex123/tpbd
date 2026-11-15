@@ -7,6 +7,7 @@ import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
+import { InvestigationReport } from './InvestigationReport';
 import { TemporalComparison } from './TemporalComparison';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
@@ -617,6 +618,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         </details>
         <div ref={dataPanel} className="globe-data">
           <h2>Historical data</h2>
+          <button className="report-print-trigger" type="button" disabled={!reportA?.series}
+            onClick={() => window.print()}>Print or save report as PDF</button>
           <details>
             <summary>Understanding the results</summary>
             <p>A trend describes change over the selected period. A significant result indicates statistical evidence under the stated method and does not establish a cause.</p>
@@ -757,6 +760,19 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         </div>
         {children}
       </div>
+      {reportA?.series && selected && <InvestigationReport
+        variableName={variableRange.name}
+        variable={variable}
+        period={period}
+            comparisonIssues={reportB?.series && keyA !== keyB ? issues : undefined}
+            trendComparisonNote={reportB?.series && keyA !== keyB ? trendIssue : undefined}
+        locations={[
+          { name: selected.name, series: reportA.series, trend: reportA.trend },
+          ...(reportB?.series && targetB && keyA !== keyB
+            ? [{ name: targetB.name, series: reportB.series, trend: reportB.trend }]
+            : []),
+        ]}
+      />}
       <div className="globe-viewport">
         <div className="globe-surface" ref={viewport} onPointerDown={() => {
           setIdleRotation(false);

@@ -4,8 +4,8 @@
 - HU ID: HU-22
 - Owner: Brandon
 - Branch: `feature/hu-22-historical-playback`
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#31](https://github.com/nastex123/tpbd/pull/31)
+- Status: Merged
 
 ## User story and acceptance criteria
 

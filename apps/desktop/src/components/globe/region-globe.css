@@ -121,6 +121,10 @@ a {
   color: white;
 }
 
+.pdf-report {
+  display: none;
+}
+
 .region-panel form,
 .region-panel form label {
   display: grid;
@@ -307,4 +311,57 @@ a {
   .globe-surface {
     height: clamp(260px, 65vw, 540px);
   }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  body {
+    color: #111;
+    background: #fff;
+    font: 10pt/1.35 Arial, sans-serif;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .region-picker {
+    display: block;
+    height: auto;
+  }
+
+  .pdf-report,
+  .pdf-report * {
+    visibility: visible !important;
+  }
+
+  .pdf-report {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    color: #111;
+    background: #fff;
+  }
+
+  .pdf-report h1,
+  .pdf-report h2,
+  .pdf-report h3,
+  .pdf-report p,
+  .pdf-report table {
+    color: #111;
+  }
+
+  .pdf-report h1 { font-size: 20pt; }
+  .pdf-report h2 { margin: 1.2em 0 0.4em; font-size: 15pt; }
+  .pdf-report h3 { margin: 0.9em 0 0.3em; font-size: 11pt; }
+  .pdf-report h2, .pdf-report h3 { break-after: avoid; }
+  .pdf-report table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  .pdf-report thead { display: table-header-group; }
+  .pdf-report tr { break-inside: avoid; }
+  .pdf-report th, .pdf-report td { padding: 3px 5px; border: 1px solid #999; text-align: left; }
+  .pdf-report a { color: #0645ad; }
 }
