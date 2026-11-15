@@ -199,7 +199,8 @@ class GeminiClient:
             )
 
         resolved_model = self.resolve_model(model, task="query")
-        url = f"{self.base_url}/models/{resolved_model}:generateContent?key={self.api_key}"
+        url = f"{self.base_url}/models/{resolved_model}:generateContent"
+        headers = {"x-goog-api-key": self.api_key}
 
         payload: dict[str, Any] = {
             "contents": [{"parts": [{"text": prompt}]}],
@@ -212,7 +213,7 @@ class GeminiClient:
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url, json=payload)
+                res = await client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     candidates = data.get("candidates", [])
@@ -229,10 +230,14 @@ class GeminiClient:
                         error_type="https://tpbd.nasa.gov/errors/unauthorized",
                     )
                 else:
+                    try:
+                        err_msg = res.json().get("error", {}).get("message", f"HTTP {res.status_code}")
+                    except Exception:
+                        err_msg = f"HTTP {res.status_code}"
                     raise AppException(
                         title="Gemini Upstream Error",
                         status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail=f"Google AI Studio returned HTTP {res.status_code}: {res.text}",
+                        detail=f"Google AI Studio returned an error: {err_msg[:200]}",
                         error_type="https://tpbd.nasa.gov/errors/gemini-upstream-error",
                     )
         except httpx.RequestError as exc:
@@ -260,7 +265,8 @@ class GeminiClient:
             )
 
         resolved_model = self.resolve_model(model, task="tts")
-        url = f"{self.base_url}/models/{resolved_model}:generateContent?key={self.api_key}"
+        url = f"{self.base_url}/models/{resolved_model}:generateContent"
+        headers = {"x-goog-api-key": self.api_key}
 
         payload: dict[str, Any] = {
             "contents": [{"parts": [{"text": text}]}],
@@ -278,7 +284,7 @@ class GeminiClient:
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url, json=payload)
+                res = await client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     candidates = data.get("candidates", [])
@@ -296,10 +302,14 @@ class GeminiClient:
                         error_type="https://tpbd.nasa.gov/errors/unauthorized",
                     )
                 else:
+                    try:
+                        err_msg = res.json().get("error", {}).get("message", f"HTTP {res.status_code}")
+                    except Exception:
+                        err_msg = f"HTTP {res.status_code}"
                     raise AppException(
                         title="Gemini TTS Upstream Error",
                         status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail=f"Google AI Studio TTS returned HTTP {res.status_code}: {res.text}",
+                        detail=f"Google AI Studio TTS returned an error: {err_msg[:200]}",
                         error_type="https://tpbd.nasa.gov/errors/gemini-upstream-error",
                     )
         except httpx.RequestError as exc:
