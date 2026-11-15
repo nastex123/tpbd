@@ -6,6 +6,7 @@ from app.services.projection_service import ProjectionService
 from app.schemas.projections import (
     ProjectionModelsResponse,
     ProjectionScenariosResponse,
+    ProjectionSeriesRequest,
     ProjectionSeriesResponse,
     SSPScenario,
 )
@@ -57,3 +58,35 @@ async def get_projection_series(
         scenario=scenario,
         model=model,
     )
+
+
+@router.post("/series", response_model=ProjectionSeriesResponse)
+async def post_projection_series(
+    payload: ProjectionSeriesRequest,
+    service: Annotated[ProjectionService, Depends(get_projection_service)],
+) -> ProjectionSeriesResponse:
+    """Fetch monthly scenario series via JSON payload for desktop IPC compatibility."""
+    lat = payload.latitude if payload.latitude is not None else payload.lat
+    lon = payload.longitude if payload.longitude is not None else payload.lon
+    if lat is None or lon is None:
+        raise AppException(
+            title="Missing Coordinates", status_code=400,
+            detail="latitude/longitude or lat/lon must be provided.",
+            error_type="https://tpbd.nasa.gov/errors/missing-coordinates",
+        )
+    if payload.start_year > payload.end_year:
+        raise AppException(
+            title="Invalid Projection Period", status_code=400,
+            detail="start_year cannot be later than end_year.",
+            error_type="https://tpbd.nasa.gov/errors/invalid-projection-period",
+        )
+    return await service.get_monthly_series(
+        variable_id=payload.variable_id.upper(),
+        latitude=lat,
+        longitude=lon,
+        start_year=payload.start_year,
+        end_year=payload.end_year,
+        scenario=payload.scenario,
+        model=payload.model,
+    )
+

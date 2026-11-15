@@ -942,8 +942,50 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           </GlobeBoundary>
         )}
         {!available && (
-          <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sky-200/80 bg-slate-950/80">
-            <p role="status">The 3D globe is unavailable. Select a region from the list.</p>
+          <div className="absolute inset-0 flex items-center justify-center p-6 bg-slate-950/90 z-20">
+            <div
+              className="max-w-md w-full p-6 rounded-2xl bg-slate-900 border border-sky-400/40 shadow-2xl text-center flex flex-col items-center gap-4"
+              role="status"
+              aria-label="2D Accessible Mode Status"
+            >
+              <div className="w-14 h-14 rounded-full bg-sky-950/80 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-inner">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="28"
+                  height="28"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                  <path d="M2 12h20" />
+                </svg>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-sky-100 tracking-wide">
+                  2D Accessible Mode Active
+                </h3>
+                <p className="text-xs text-sky-200/80 leading-relaxed">
+                  WebGL hardware acceleration is offline or unsupported in this environment. All observational telemetry, empirical trend calculations, teleconnections, and climate projections remain fully accessible.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(true)}
+                className="btn-tactile px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs tracking-wider uppercase transition-colors shadow-lg border border-sky-400/30 cursor-pointer flex items-center gap-2"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+                <span>Browse Planetary Biomes</span>
+              </button>
+            </div>
           </div>
         )}
         {ready && available && (

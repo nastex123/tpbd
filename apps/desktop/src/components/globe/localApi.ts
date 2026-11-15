@@ -8,7 +8,8 @@ declare global {
 }
 
 export async function localApiFetch(path: string, options: { method?: 'GET' | 'POST'; body?: string; signal?: AbortSignal } = {}) {
-  if (!window.localApi) {
+  const localApi = typeof window !== 'undefined' ? window.localApi : undefined;
+  if (!localApi) {
     return fetch(`/api/local${path}`, {
       method: options.method ?? 'GET',
       headers: options.body ? { 'Content-Type': 'application/json' } : {},
@@ -18,7 +19,7 @@ export async function localApiFetch(path: string, options: { method?: 'GET' | 'P
   }
   const signal = options.signal;
   if (signal?.aborted) throw signal.reason;
-  const request = window.localApi.request({ path, method: options.method ?? 'GET', body: options.body });
+  const request = localApi.request({ path, method: options.method ?? 'GET', body: options.body });
   const result = await new Promise<LocalResponse>((resolve, reject) => {
     const abort = () => reject(signal?.reason);
     signal?.addEventListener('abort', abort, { once: true });
