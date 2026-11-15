@@ -1,4 +1,4 @@
-# ADR 0004: Local Desktop API Bridge
+# ADR 0005: Local Desktop API Bridge
 
 **Status:** Accepted
 
