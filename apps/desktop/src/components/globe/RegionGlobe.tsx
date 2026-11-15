@@ -6,6 +6,7 @@ import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
+import { trendLine } from './trendLine';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
 
@@ -198,8 +199,12 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const visibleDate = dates.includes(selectedDate) ? selectedDate : dates.at(-1) ?? '';
   const bounds = useMemo<readonly [number, number]>(() => {
     const values = [...(pointsA ?? []), ...(comparable ? pointsB ?? [] : [])].flatMap(({ value }) => value === null ? [] : [value]);
+    for (const [points, trend] of [[pointsA, reportA?.trend], ...(comparable ? [[pointsB, reportB?.trend] as const] : [])] as const) {
+      const line = trendLine(points ?? [], trend);
+      if (line) values.push(line.start, line.end);
+    }
     return values.length ? [Math.min(...values), Math.max(...values)] : [0, 1];
-  }, [pointsA, pointsB, comparable]);
+  }, [pointsA, pointsB, comparable, reportA?.trend, reportB?.trend]);
   const gridCell = reportA?.series?.representative_grid_cell;
   const gridResolution = reportA?.series?.spatial_resolution;
   const cell = useMemo(() => gridOutline(gridCell, gridResolution), [gridCell, gridResolution]);
@@ -618,15 +623,24 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               <h3>{targetB ? `${index === 0 ? 'A' : 'B'} · ` : ''}{place.name}</h3>
               {series ? <>
                 <p>{valid} of {series.points.length} months with data · {series.provider}</p>
+                <p>{variableRange.name} ({series.variable_id}) · {series.unit} · {series.is_cached ? 'Cached data' : series.provider.includes('offline') ? 'Offline snapshot' : 'Source data'}</p>
+                {series.query_coordinates && <p>Requested location: {series.query_coordinates.latitude}, {series.query_coordinates.longitude}</p>}
+                {series.representative_grid_cell && <p>Grid cell: {series.representative_grid_cell} · {series.spatial_resolution}</p>}
                 <p>{series.points.length ? `Available period: ${series.points[0].date} to ${series.points[series.points.length - 1].date}.` : 'No data is available for this period.'}</p>
-                {visibleDate && <p>{visibleDate}: {value === null ? 'No data' : `${value} ${series.unit}`}</p>}
+                {visibleDate && <p>{place.name} · {variableRange.name} · {visibleDate}: {value === null ? 'No data' : `${value} ${series.unit}`} · {series.provider}</p>}
                 {valid > 0 && (comparable || index === 0) && <HistoryChart points={series.points} dates={dates} date={visibleDate}
-                  bounds={bounds} name={place.name} color={color} highlighted={hovered === key}
+                  bounds={bounds} name={place.name} color={color} highlighted={hovered === key} trend={report.trend}
                   onHover={(active) => setHovered(active ? key : null)} onDate={(date) => {
                     setPlaying(false);
                     setSelectedDate(date);
                   }} />}
+                {trendLine(series.points, report.trend) && <p>Dashed line: Sen slope, anchored to the median residual of the displayed data.</p>}
                 <p>{report.trend?.plain_language_verdict ?? 'Trend analysis unavailable.'}</p>
+                {report.trend && <p>
+                  Method: {report.trend.method}. {report.trend.p_value !== null ? `p = ${report.trend.p_value}.` : 'p-value unavailable.'}
+                  {report.trend.confidence_interval_95 && ` 95% interval: ${report.trend.confidence_interval_95.join(' to ')} ${report.trend.rate_unit}.`}
+                  {' '}{report.trend.scientific_caveat}
+                </p>}
               </> : <p role="status">{report.message}</p>}
             </section>;
           })}

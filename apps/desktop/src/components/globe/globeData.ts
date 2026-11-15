@@ -36,15 +36,26 @@ export function useVariableAvailability() {
 }
 
 export type DataPoint = { date: string; value: number | null; quality: string };
-type Series = {
+export type Series = {
   variable_id: string;
   unit: string;
   provider: string;
   representative_grid_cell: string;
   spatial_resolution: string;
   points: DataPoint[];
+  query_coordinates?: { latitude: number; longitude: number };
+  is_cached?: boolean;
 };
-type Trend = { rate_per_decade: number | null; rate_unit: string; plain_language_verdict: string };
+export type Trend = {
+  direction: 'increasing_significant' | 'decreasing_significant' | 'no_significant_trend' | 'not_evaluable';
+  rate_per_decade: number | null;
+  rate_unit: string;
+  method: string;
+  p_value: number | null;
+  confidence_interval_95: number[] | null;
+  plain_language_verdict: string;
+  scientific_caveat: string;
+};
 type Report = { key: string; series?: Series; trend?: Trend; message?: string };
 
 export function locationKey(location: LocationSelection | null) {
@@ -65,7 +76,12 @@ function isSeries(value: unknown): value is Series {
 function isTrend(value: unknown): value is Trend {
   const trend = value as Partial<Trend> | null;
   return !!trend && (trend.rate_per_decade === null || Number.isFinite(trend.rate_per_decade))
-    && typeof trend.rate_unit === 'string' && typeof trend.plain_language_verdict === 'string';
+    && ['increasing_significant', 'decreasing_significant', 'no_significant_trend', 'not_evaluable'].includes(trend.direction ?? '')
+    && typeof trend.rate_unit === 'string' && typeof trend.method === 'string'
+    && (trend.p_value === null || Number.isFinite(trend.p_value))
+    && (trend.confidence_interval_95 === null || (Array.isArray(trend.confidence_interval_95)
+      && trend.confidence_interval_95.length === 2 && trend.confidence_interval_95.every(Number.isFinite)))
+    && typeof trend.plain_language_verdict === 'string' && typeof trend.scientific_caveat === 'string';
 }
 
 export function useLocationReport(location: LocationSelection | null, variable: string, presentation: boolean, startYear: number, endYear: number) {

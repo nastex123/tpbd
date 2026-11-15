@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import type { DataPoint } from './globeData';
+import type { Trend } from './globeData';
+import { trendLine } from './trendLine';
 
-export function HistoryChart({ points, dates, date, bounds, name, color, highlighted, onHover, onDate }: {
+export function HistoryChart({ points, dates, date, bounds, name, color, highlighted, trend, onHover, onDate }: {
   points: DataPoint[];
   dates: string[];
   date: string;
@@ -9,6 +11,7 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
   name: string;
   color: string;
   highlighted: boolean;
+  trend?: Trend;
   onHover: (active: boolean) => void;
   onDate: (date: string) => void;
 }) {
@@ -38,6 +41,22 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
       connected = true;
     });
     context.stroke();
+    const line = trendLine(points, trend);
+    if (line) {
+      const first = dates.indexOf(line.startDate);
+      const last = dates.indexOf(line.endDate);
+      if (first >= 0 && last >= 0) {
+        context.save();
+        context.strokeStyle = '#303030';
+        context.lineWidth = 2;
+        context.setLineDash([7, 4]);
+        context.beginPath();
+        context.moveTo(x(first), y(line.start));
+        context.lineTo(x(last), y(line.end));
+        context.stroke();
+        context.restore();
+      }
+    }
     const index = dates.indexOf(date);
     if (index >= 0) {
       context.strokeStyle = '#a6c2d9';
@@ -54,7 +73,7 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
         context.fill();
       }
     }
-  }, [bounds, color, date, dates, highlighted, points]);
+  }, [bounds, color, date, dates, highlighted, points, trend]);
 
   return <canvas
     ref={canvasRef}
