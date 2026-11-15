@@ -3,9 +3,8 @@ import type { LocationSelection } from '../../stores/navigationStore';
 import temperatureSnapshot from './demo-temperature.json';
 
 export const variableOptions = [
-  { id: 'T2M', name: 'Air temperature', start: 1981, end: 2025 },
-  { id: 'PRECTOTCORR', name: 'Precipitation', start: 1981, end: 2025 },
-  { id: 'RH2M', name: 'Relative humidity', start: 1981, end: 2025 },
+  { id: 'T2M', name: 'Air temperature', start: 1981, end: 2025, unit: '°C', description: 'Monthly average air temperature at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'RH2M', name: 'Relative humidity', start: 1981, end: 2025, unit: '%', description: 'Monthly average relative humidity of air at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
 ];
 
 export function useVariableAvailability() {
@@ -23,10 +22,12 @@ export function useVariableAvailability() {
         const entry = catalog.find((item) => item?.variable_id === option.id);
         const range = typeof entry?.temporal_range === 'string'
           ? /^(\d{4})-\d{2}\s+to\s+(\d{4})-\d{2}$/.exec(entry.temporal_range) : null;
-        if (!range) return option;
+        if (!range || entry.provider !== 'NASA_POWER'
+          || typeof entry.data_community !== 'string' || !entry.data_community.startsWith('AG')
+          || typeof entry.spatial_resolution !== 'string') return option;
         const start = Number(range[1]);
         const end = Math.min(Number(range[2]), 2026);
-        return start >= 1981 && start <= end ? { ...option, start, end } : option;
+        return start >= 1981 && start <= end ? { ...option, start, end, resolution: entry.spatial_resolution, community: entry.data_community } : option;
       }));
     }).catch(() => {});
     return () => controller.abort();
