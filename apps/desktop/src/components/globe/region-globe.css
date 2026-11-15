@@ -209,6 +209,27 @@ a {
   background: #f2f6fa;
 }
 
+.scientific-explanation {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(121, 220, 255, 0.24);
+  border-radius: 0.8rem;
+  background: rgba(8, 24, 38, 0.72);
+}
+
+.scientific-explanation h4,
+.scientific-explanation h5 {
+  margin: 0.7rem 0 0.35rem;
+  color: #d8f1f4;
+}
+
+.scientific-explanation h4 { margin-top: 0; }
+.scientific-explanation p { line-height: 1.5; }
+.scientific-explanation details { margin-top: 0.8rem; }
+.scientific-explanation summary { cursor: pointer; color: #a9d8e5; }
+.scientific-explanation a { color: #8fdcff; }
+.explanation-model { color: #a9d8e5; font-size: 0.85rem; }
+
 .globe-scale {
   display: flex;
   align-items: center;

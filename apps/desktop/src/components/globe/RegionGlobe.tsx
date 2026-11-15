@@ -8,6 +8,7 @@ import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
 import { InvestigationReport } from './InvestigationReport';
+import { ScientificExplanation } from './ScientificExplanation';
 import { TemporalComparison } from './TemporalComparison';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
@@ -769,6 +770,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                   {report.trend.confidence_interval_95 && ` 95% interval: ${report.trend.confidence_interval_95.join(' to ')} ${report.trend.rate_unit}.`}
                   {' '}{report.trend.scientific_caveat}
                 </p>}
+                {index === 0 && <ScientificExplanation location={place.name} series={series} trend={report.trend} />}
               </> : <p role="status">{report.message}</p>}
             </section>;
           })}
