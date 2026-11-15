@@ -6,8 +6,9 @@
 - **Title:** Gemini AI Smart Model Router & Natural Language Scientific Copilot
 - **Owner:** Daniel (Backend & Data Science Specialist)
 - **Branch:** `feature/HU-27-gemini-copilot-router`
+- **Pull Request:** [#26](https://github.com/nastex123/tpbd/pull/26)
 - **Target Branch:** `dev`
-- **Status:** Complete (Ready for PR)
+- **Status:** Merged
 
 ---
 

@@ -6,8 +6,9 @@
 - **Title:** Gemini AI Scientific Explainer & NASA Mission Control Voice Debrief (TTS)
 - **Owner:** Daniel (Backend & Data Science Specialist)
 - **Branch:** `feature/HU-28-ai-explainer-and-tts`
+- **Pull Request:** [#27](https://github.com/nastex123/tpbd/pull/27)
 - **Target Branch:** `dev`
-- **Status:** Complete (Ready for PR)
+- **Status:** Merged
 
 ---
 

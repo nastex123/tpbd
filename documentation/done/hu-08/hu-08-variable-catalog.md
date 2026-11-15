@@ -3,8 +3,8 @@
 - Epic: Desktop experience
 - Owner: Brandon
 - Branch: feature/hu-08-variable-catalog
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#19](https://github.com/nastex123/tpbd/pull/19)
+- Status: Merged
 
 ## Story and acceptance criteria
 

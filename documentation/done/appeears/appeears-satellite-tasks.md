@@ -6,6 +6,7 @@
 - **Title:** Integración de tareas y autenticación NASA AppEEARS
 - **Owner / Developer:** Daniel (Backend & Data Science)
 - **Branch:** `feature/APPEEARS-satellite-tasks`
+- **Pull Request:** [#12](https://github.com/nastex123/tpbd/pull/12)
 - **Target Integration Branch:** `dev`
 - **Status:** Completed
 - **Date:** 2026-11-14

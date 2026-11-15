@@ -3,8 +3,8 @@
 - Epic: Desktop experience
 - Owner: Brandon
 - Branch: feature/hu-00-visual-system
-- Pull request: See associated pull request
-- Status: Review
+- Pull request: [#17](https://github.com/nastex123/tpbd/pull/17)
+- Status: Merged; narrow-window and presentation review pending
 
 ## Story and acceptance criteria
 

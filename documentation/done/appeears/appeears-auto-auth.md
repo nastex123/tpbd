@@ -6,8 +6,9 @@
 - **Title:** Zero-Friction Auto-Authentication and Token Lifecycle for NASA AppEEARS Client
 - **Owner:** Daniel (Backend & Data Science Specialist)
 - **Branch:** `feature/appeears-auto-auth`
+- **Pull Request:** [#16](https://github.com/nastex123/tpbd/pull/16)
 - **Target Branch:** `dev`
-- **Status:** Complete (Ready for PR)
+- **Status:** Merged
 
 ---
 

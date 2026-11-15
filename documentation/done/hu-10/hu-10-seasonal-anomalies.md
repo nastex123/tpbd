@@ -6,8 +6,9 @@
 - **Title:** Seasonal Z-Score Anomaly Detection
 - **Owner:** Daniel (Backend & Data Science Specialist)
 - **Branch:** `feature/HU-10-anomaly-detection`
+- **Pull Request:** [#14](https://github.com/nastex123/tpbd/pull/14)
 - **Target Branch:** `dev`
-- **Status:** Complete (Ready for PR)
+- **Status:** Merged
 
 ---
 

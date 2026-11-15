@@ -6,6 +6,7 @@
 - **Title:** Modo demo sin internet
 - **Owner / Developer:** Daniel (Backend & Data Science)
 - **Branch:** `feature/HU-14-offline-demo`
+- **Pull Request:** [#10](https://github.com/nastex123/tpbd/pull/10)
 - **Target Integration Branch:** `dev`
 - **Status:** Completed
 - **Date:** 2026-11-14

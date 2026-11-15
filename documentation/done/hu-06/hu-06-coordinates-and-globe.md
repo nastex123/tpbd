@@ -3,8 +3,8 @@
 **Epic:** Desktop geography
 **Owner:** Brandon
 **Branch:** feature/hu-06-coordinates
-**Pull request:** See the associated pull request
-**Status:** Implemented; backend integration and manual review pending.
+**Pull request:** [#13](https://github.com/nastex123/tpbd/pull/13)
+**Status:** Merged; metadata discrepancy and manual review pending.
 
 ## User story and acceptance criteria
 
@@ -28,4 +28,4 @@ The Electron view adds coordinate selection, globe navigation, layers, local geo
 
 ## Deliverables and pending work
 
-The globe, location selector, navigation controls, offline snapshots, and comparison interface are included. Live series, trends, and grid outlines require integration verification against the newly updated backend. Packaged Electron currently displays bundled snapshots and does not query the local API. A full manual review of globe interactions and WebGL fallback remains pending before closing HU-06.
+The globe, location selector, navigation controls, offline snapshots, and comparison interface are included. The Electron API bridge was added in HU-13. A live series request returned coordinates, a representative cell, and resolution, but its `0.5° x 0.5°` resolution conflicts with the catalog's `0.5° x 0.625°` value for T2M. Daniel must reconcile this backend metadata before CA-03 can be closed. Manual WebGL fallback review also remains pending.

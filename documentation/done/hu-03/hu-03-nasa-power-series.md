@@ -5,6 +5,7 @@
 **User Story Name:** Consulta de series históricas NASA  
 **Owner / Assignee:** Daniel (Backend & Scientific Data Engineering)  
 **Branch:** `feature/HU-03-nasa-power-series`  
+**Pull Request:** [#7](https://github.com/nastex123/tpbd/pull/7)
 **Status:** Completed  
 **Date:** 2026-11-14  
 

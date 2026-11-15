@@ -221,21 +221,26 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-16 — Explicación científica asistida [P1]
 - Resumir solo estadísticas y metadata recibidas; no inventar datos ni causalidad.
 - Incluir citas/procedencia del resultado y alternativa determinista si el servicio no responde.
+**Estado:** pendiente. HU-28 aporta el endpoint y el fallback determinista, pero su respuesta no incluye referencias/procedencia y el desktop aún no consume el endpoint.
 
 ### HU-17 — Comparador temporal [P1]
 - Contrastar dos rangos para el mismo lugar/variable con reglas explícitas de período y cobertura.
+**Estado:** completada (PR #29).
 
 ### HU-19 — Informes PDF [P2]
 - Exportar series, método, resultados, fuentes y limitaciones en un informe trazable.
+**Estado:** completada (PR #32).
 
 ### HU-20 — Investigaciones guardadas [P2]
 - Guardar consultas, variables, ubicaciones, rangos y referencias sin secretos.
+**Estado:** completada (PR #25).
 
 ### HU-21 — Radar global de tendencias [P2]
 - Explorar tendencias en una malla solo después de validar costo estadístico, pruebas múltiples y resolución.
 
 ### HU-22 — Reproducción histórica animada [P1]
 - Recorrer períodos disponibles con controles de reproducción; no inventar fechas faltantes.
+**Estado:** completada (PR #31).
 
 ### HU-23 — Simulador de intervención [P2]
 - Investigación posterior; no modificar valores observados ni prometer causalidad sin modelo validado.
@@ -268,23 +273,23 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 
 | HU | Nombre | Responsable | Horas | Dependencias |
 |---|---|---|---:|---|
-| HU-00 | Sistema visual Data Detective | Brandon | 2 | — |
+| ~~HU-00~~ | ~~Sistema visual Data Detective~~ | Brandon | 2 | Completada (PR #17) |
 | ~~HU-01~~ | ~~Base Electron~~ | Brandon | 4 | Completada |
 | ~~HU-02~~ | ~~API y catálogo~~ | Daniel | 5 | Completada |
 | ~~HU-03~~ | ~~Series históricas~~ | Daniel | 6 | Completada |
 | ~~HU-04~~ | ~~Calidad y caché~~ | Daniel | 4 | Completada |
-| HU-05 | Globo 3D | Brandon | 4 | HU-01 |
-| HU-06 | Lugares y coordenadas | Brandon | 3 | HU-02, HU-05 |
-| HU-07 | Selector histórico | Brandon | 3 | HU-03 |
-| HU-08 | Selector de variables | Brandon | 2 | HU-02 |
-| HU-09 | Series y tendencia visual | Brandon | 3 | HU-03, HU-00 |
+| HU-05 | Globo 3D | Brandon | 4 | PR #6 integrada; revisión de CA-01, CA-02 y CA-04 pendiente |
+| HU-06 | Lugares y coordenadas | Brandon | 3 | PR #13 integrada; CA-03 bloqueado por metadatos de resolución divergentes |
+| ~~HU-07~~ | ~~Selector histórico~~ | Brandon | 3 | Completada (PR #18) |
+| ~~HU-08~~ | ~~Selector de variables~~ | Brandon | 2 | Completada (PR #19) |
+| ~~HU-09~~ | ~~Series y tendencia visual~~ | Brandon | 3 | Completada (PR #20) |
 | ~~HU-25~~ | ~~Tendencia y significancia~~ | Daniel | 10 | Completada |
-| HU-18 | Comparador regional | Brandon | 3 | HU-06, HU-07, HU-08, HU-09, HU-25 |
+| ~~HU-18~~ | ~~Comparador regional~~ | Brandon | 3 | Completada (PR #21) |
 | ~~HU-17~~ | ~~Comparador temporal~~ | Brandon | — | Completada (PR #29) |
-| HU-13 | Flujo Data Detective | Brandon | 2 | HU-06, HU-07, HU-08, HU-09, HU-18, HU-25 |
+| ~~HU-13~~ | ~~Flujo Data Detective~~ | Brandon | 2 | Completada (PR #22); demo integrada pendiente de revisión |
 | ~~HU-14~~ | ~~Demo offline~~ | Daniel | 1 | Completada |
 
-| HU-15 | Integración y QA | Brandon y Daniel | 4 | Todas las P0 |
+| ~~HU-15~~ | ~~Integración y QA~~ | Brandon y Daniel | 4 | Completada (PR #30); demo cronometrada pendiente de revisión |
 | **Total** | | | **56** | |
 
 ## Orden recomendado de implementación

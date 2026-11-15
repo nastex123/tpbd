@@ -6,8 +6,9 @@
 - **Title:** Non-Parametric Change-Point Detection and Regime Shifts (Pettitt Test)
 - **Owner:** Daniel (Backend & Data Science Specialist)
 - **Branch:** `feature/HU-26-changepoint-detection`
+- **Pull Request:** [#23](https://github.com/nastex123/tpbd/pull/23)
 - **Target Branch:** `dev`
-- **Status:** Complete (Ready for PR)
+- **Status:** Merged
 
 ---
 

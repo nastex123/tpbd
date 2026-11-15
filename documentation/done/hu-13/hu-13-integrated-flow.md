@@ -3,8 +3,8 @@
 - Epic: Desktop investigation
 - Owner: Brandon
 - Branch: feature/hu-13-integrated-flow
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#22](https://github.com/nastex123/tpbd/pull/22)
+- Status: Merged; timed Electron-to-FastAPI demo pending
 
 ## Story and acceptance criteria
 

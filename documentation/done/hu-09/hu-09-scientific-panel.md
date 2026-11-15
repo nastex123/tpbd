@@ -3,8 +3,8 @@
 - Epic: Desktop visualization
 - Owner: Brandon
 - Branch: feature/hu-09-scientific-panel
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#20](https://github.com/nastex123/tpbd/pull/20)
+- Status: Merged
 
 ## Story and acceptance criteria
 
