@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RegionGlobe } from './components/globe/RegionGlobe';
 import type { LocationSelection } from './stores/navigationStore';
+import { localApiFetch } from './components/globe/localApi';
 
 function App() {
   const [status, setStatus] = useState('');
@@ -12,7 +13,7 @@ function App() {
     setChecking(true);
     setStatus('Comprobando la conexión…');
     try {
-      const response = await fetch('/api/local/health', {
+      const response = await localApiFetch('/health', {
         signal: AbortSignal.timeout(4000),
       });
       if (!response.ok) {

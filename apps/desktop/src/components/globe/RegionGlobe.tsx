@@ -6,6 +6,7 @@ import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
+import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
 import naturalEarth from './natural-earth-110m.json';
@@ -251,10 +252,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   useEffect(() => () => flightTimers.current.forEach(window.clearTimeout), []);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(4000)]);
-    void fetch('/api/local/api/v1/regions', { signal })
+    void localApiFetch('/api/v1/regions', { signal })
       .then(async (response) => {
         if (!response.ok) return;
         const entries = readRegions(await response.json());
@@ -405,6 +405,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       const anchor = regions.find(({ id }) => id === 'amazon');
       if (anchor) visit({ kind: 'region', id: anchor.id }, anchor);
       setVariable('T2M');
+      setPeriod({ start: 1990, end: 2025 });
+      setPeriodNotice('');
       setSelectedDate('');
       setCompare(null);
     }
