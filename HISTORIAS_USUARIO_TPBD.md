@@ -280,6 +280,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 | HU-09 | Series y tendencia visual | Brandon | 3 | HU-03, HU-00 |
 | ~~HU-25~~ | ~~Tendencia y significancia~~ | Daniel | 10 | Completada |
 | HU-18 | Comparador regional | Brandon | 3 | HU-06, HU-07, HU-08, HU-09, HU-25 |
+| ~~HU-17~~ | ~~Comparador temporal~~ | Brandon | — | Implementada; PR en curso |
 | HU-13 | Flujo Data Detective | Brandon | 2 | HU-06, HU-07, HU-08, HU-09, HU-18, HU-25 |
 | ~~HU-14~~ | ~~Demo offline~~ | Daniel | 1 | Completada |
 
