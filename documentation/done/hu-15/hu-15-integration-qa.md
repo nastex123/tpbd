@@ -4,8 +4,8 @@
 - HU ID: HU-15
 - Owner: Brandon and Daniel
 - Branch: `feature/hu-15-integration-qa`
-- Pull request: See associated pull request
-- Status: Ready for review; full Electron-to-FastAPI demonstration pending
+- Pull request: [#30](https://github.com/nastex123/tpbd/pull/30)
+- Status: Merged; full Electron-to-FastAPI demonstration pending
 
 ## User story and acceptance criteria
 
