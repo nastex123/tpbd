@@ -517,6 +517,11 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         </details>}
         <div ref={dataPanel} className="globe-data">
           <h2>Historical data</h2>
+          <details>
+            <summary>Understanding the results</summary>
+            <p>A trend describes change over the selected period. A significant result indicates statistical evidence under the stated method and does not establish a cause.</p>
+            <p>A non-significant result means the evidence is insufficient to establish a trend. A result may also be non-evaluable when data or method requirements are not met.</p>
+          </details>
           <label>Variable <select value={variable} onChange={(event) => {
             setPlaying(false);
             setSelectedDate('');
@@ -548,7 +553,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             <p className="globe-scale">
               <span>{bounds[0].toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               <span aria-label="Low to high values" />
-              <span>{bounds[1].toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span>{bounds[1].toLocaleString(undefined, { maximumFractionDigits: 2 })} {reportA?.series?.unit ?? reportB?.series?.unit}</span>
             </p>
           </>}
           {reports.map(({ key, place, report, color }, index) => {

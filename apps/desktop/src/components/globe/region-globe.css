@@ -1,5 +1,72 @@
 body {
   margin: 0;
+  color: #e9f2fb;
+  background: #08121f;
+  font-family: "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button, select, input:not([type="checkbox"]):not([type="range"]) {
+  color: #e9f2fb;
+  background: #162b40;
+  border: 1px solid #557087;
+  border-radius: 0.4rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #264963;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+:focus-visible {
+  outline: 3px solid #ffcf70;
+  outline-offset: 3px;
+}
+
+a {
+  color: #9de2ff;
+}
+
+.desktop-shell > nav {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #344e64;
+}
+
+.region-panel h1 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.region-panel h2 {
+  font-size: 1.05rem;
+}
+
+.region-panel select,
+.region-panel input:not([type="checkbox"]):not([type="range"]) {
+  padding: 0.5rem;
+  max-width: 100%;
+}
+
+.region-panel [role="alert"] {
+  padding: 0.6rem;
+  border-left: 3px solid #ffbd84;
+  background: #492c27;
 }
 
 .desktop-shell {
@@ -116,7 +183,8 @@ body {
 .globe-report {
   padding: 0.5rem;
   margin: 0.65rem 0;
-  border: 1px solid #afbfcd;
+  border: 1px solid #48657d;
+  background: #102336;
   border-radius: 0.4rem;
 }
 
@@ -161,8 +229,8 @@ body {
   top: 0;
   z-index: 1;
   padding: 0.4rem 0;
-  background: Canvas;
-  color: CanvasText;
+  background: #08121f;
+  color: #e9f2fb;
 }
 
 .region-panel[data-presentation] .globe-data {
