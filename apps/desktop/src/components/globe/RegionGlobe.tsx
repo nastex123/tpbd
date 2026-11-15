@@ -4,7 +4,7 @@ import { Mesh, MeshBasicMaterial, SphereGeometry, SRGBColorSpace, TextureLoader 
 import { parseCoordinate, type LocationSelection } from '../../stores/navigationStore';
 import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
 import { addNightLayer } from './nightLayer';
-import { locationKey, pointValue, useLocationReport, variableOptions } from './globeData';
+import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
@@ -124,6 +124,17 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [tourPlaying, setTourPlaying] = useState(false);
   const [step, setStep] = useState<number | null>(null);
   const [variable, setVariable] = useState(variableOptions[0].id);
+  const variables = useVariableAvailability();
+  const variableRange = variables.find(({ id }) => id === variable) ?? variableOptions[0];
+  const [period, setPeriod] = useState({ start: 1990, end: 2025 });
+  const [periodError, setPeriodError] = useState('');
+  useEffect(() => {
+    setPeriod((current) => {
+      const start = Math.min(variableRange.end, Math.max(variableRange.start, current.start));
+      const end = Math.max(start, Math.min(variableRange.end, current.end));
+      return start === current.start && end === current.end ? current : { start, end };
+    });
+  }, [variableRange.start, variableRange.end]);
   const [selectedDate, setSelectedDate] = useState('');
   const [playing, setPlaying] = useState(false);
   const dataPanel = useRef<HTMLDivElement>(null);
@@ -169,8 +180,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const refreshLabelSpacing = useEffectEvent(updateLabelSpacing);
   useEffect(() => refreshLabelSpacing(), [ready, markers, width, height]);
   const worldMap = naturalEarth as WorldMap;
-  const reportA = useLocationReport(location, variable, step !== null);
-  const reportB = useLocationReport(keyA === keyB ? null : compare, variable, step !== null);
+  const reportA = useLocationReport(location, variable, step !== null, period.start, period.end);
+  const reportB = useLocationReport(keyA === keyB ? null : compare, variable, step !== null, period.start, period.end);
   const comparable = !reportA?.series || !reportB?.series || (
     reportA.series.unit === reportB.series.unit && reportA.series.provider === reportB.series.provider
       && reportA.series.spatial_resolution === reportB.series.spatial_resolution);
@@ -522,11 +533,37 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             <p>A trend describes change over the selected period. A significant result indicates statistical evidence under the stated method and does not establish a cause.</p>
             <p>A non-significant result means the evidence is insufficient to establish a trend. A result may also be non-evaluable when data or method requirements are not met.</p>
           </details>
+          <form key={`${variable}:${variableRange.start}:${variableRange.end}:${period.start}:${period.end}`} onSubmit={(event) => {
+            event.preventDefault();
+            const values = new FormData(event.currentTarget);
+            const start = Number(values.get('startYear'));
+            const end = Number(values.get('endYear'));
+            if (!Number.isInteger(start) || !Number.isInteger(end) || start < variableRange.start || end > variableRange.end || start > end) {
+              setPeriodError(`Choose a valid period from ${variableRange.start} through ${variableRange.end}.`);
+              return;
+            }
+            setPeriodError('');
+            setPlaying(false);
+            setSelectedDate('');
+            setPeriod({ start, end });
+          }}>
+            <p>Available years for this variable: {variableRange.start}–{variableRange.end}.</p>
+            <label>Start year <input name="startYear" type="number" min={variableRange.start} max={variableRange.end} defaultValue={period.start} required /></label>
+            <label>End year <input name="endYear" type="number" min={variableRange.start} max={variableRange.end} defaultValue={period.end} required /></label>
+            <button type="submit">Apply period</button>
+            {periodError && <p role="alert">{periodError}</p>}
+          </form>
           <label>Variable <select value={variable} onChange={(event) => {
             setPlaying(false);
             setSelectedDate('');
+            const nextRange = variables.find(({ id }) => id === event.target.value);
+            if (nextRange) setPeriod((current) => {
+              const start = Math.min(nextRange.end, Math.max(nextRange.start, current.start));
+              return { start, end: Math.max(start, Math.min(nextRange.end, current.end)) };
+            });
+            setPeriodError('');
             setVariable(event.target.value);
-          }}>{variableOptions.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}</select></label>
+          }}>{variables.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}</select></label>
           <label>Compare with <select value={compare?.kind === 'region' ? compare.id : compare ? 'custom' : ''} onChange={(event) => {
             if (event.target.value === 'custom') return;
             setCompare(event.target.value ? { kind: 'region', id: event.target.value } : null);
@@ -565,6 +602,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               <h3>{targetB ? `${index === 0 ? 'A' : 'B'} · ` : ''}{place.name}</h3>
               {series ? <>
                 <p>{valid} of {series.points.length} months with data · {series.provider}</p>
+                <p>{series.points.length ? `Available period: ${series.points[0].date} to ${series.points[series.points.length - 1].date}.` : 'No data is available for this period.'}</p>
                 {visibleDate && <p>{visibleDate}: {value === null ? 'No data' : `${value} ${series.unit}`}</p>}
                 {valid > 0 && (comparable || index === 0) && <HistoryChart points={series.points} dates={dates} date={visibleDate}
                   bounds={bounds} name={place.name} color={color} highlighted={hovered === key}
