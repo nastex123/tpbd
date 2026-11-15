@@ -20,13 +20,26 @@ logger = get_logger(__name__)
 class AppEEARSClient:
     """Client for NASA Earthdata authentication and AppEEARS point task processing."""
 
-    def __init__(self, base_url: str = "https://appeears.earthdatacloud.nasa.gov/api/v1", timeout: float = 15.0) -> None:
+    def __init__(
+        self,
+        base_url: str = "https://appeears.earthdatacloud.nasa.gov/api/v1",
+        timeout: float = 15.0,
+        token: str | None = None,
+        username: str | None = None,
+        auto_auth: bool = False,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.auto_auth = auto_auth
         self._token: str | None = None
         self._token_expiration: datetime | None = None
         self._username: str | None = None
         self._simulated_tasks: dict[str, dict] = {}
+
+        if token:
+            self._token = token
+            self._token_expiration = datetime.now(timezone.utc) + timedelta(days=30)
+            self._username = username or "earthdata_user"
 
     def is_authenticated(self) -> bool:
         """Check if client holds a valid, non-expired session token."""
@@ -42,6 +55,34 @@ class AppEEARSClient:
             username=self._username if auth else None,
             expiration=self._token_expiration if auth else None,
         )
+
+    async def auto_authenticate(
+        self,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+    ) -> bool:
+        """Attempt automatic authentication using injected token or environment credentials."""
+        if self.is_authenticated():
+            return True
+
+        if token:
+            self._token = token
+            self._token_expiration = datetime.now(timezone.utc) + timedelta(days=30)
+            self._username = username or "earthdata_user"
+            logger.info("Auto-authenticated AppEEARS client using direct Bearer token.")
+            return True
+
+        if username and password:
+            logger.info("Attempting auto-login for user '%s'...", username)
+            try:
+                await self.login(AppEEARSLoginRequest(username=username, password=password))
+                return True
+            except Exception as exc:
+                logger.warning("Auto-login failed for AppEEARS: %s", exc)
+                return False
+
+        return False
 
     async def login(self, credentials: AppEEARSLoginRequest) -> AppEEARSLoginResponse:
         """Authenticate with NASA Earthdata Login via HTTP Basic Auth."""
@@ -115,6 +156,14 @@ class AppEEARSClient:
 
     async def submit_task(self, task_req: AppEEARSTaskRequest) -> AppEEARSTaskResponse:
         """Submit a point extraction task to AppEEARS."""
+        if not self.is_authenticated() and self.auto_auth:
+            from app.core.config import settings
+            await self.auto_authenticate(
+                username=settings.EARTHDATA_USERNAME,
+                password=settings.EARTHDATA_PASSWORD,
+                token=settings.EARTHDATA_TOKEN,
+            )
+
         if not self.is_authenticated():
             raise AppException(
                 title="Unauthorized AppEEARS Session",
@@ -137,6 +186,14 @@ class AppEEARSClient:
 
     async def get_task_status(self, task_id: str) -> AppEEARSTaskStatus:
         """Query execution progress and result availability for an AppEEARS task."""
+        if not self.is_authenticated() and self.auto_auth:
+            from app.core.config import settings
+            await self.auto_authenticate(
+                username=settings.EARTHDATA_USERNAME,
+                password=settings.EARTHDATA_PASSWORD,
+                token=settings.EARTHDATA_TOKEN,
+            )
+
         if not self.is_authenticated():
             raise AppException(
                 title="Unauthorized AppEEARS Session",
