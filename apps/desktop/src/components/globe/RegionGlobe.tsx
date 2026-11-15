@@ -6,6 +6,8 @@ import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
+import { trendLine } from './trendLine';
+import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
 
@@ -139,6 +141,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     }
   }, [variableRange.start, variableRange.end, period.start, period.end]);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDateB, setSelectedDateB] = useState('');
   const [playing, setPlaying] = useState(false);
   const dataPanel = useRef<HTMLDivElement>(null);
   const flightTimers = useRef<number[]>([]);
@@ -185,9 +188,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const worldMap = naturalEarth as WorldMap;
   const reportA = useLocationReport(location, variable, step !== null, period.start, period.end);
   const reportB = useLocationReport(keyA === keyB ? null : compare, variable, step !== null, period.start, period.end);
-  const comparable = !reportA?.series || !reportB?.series || (
-    reportA.series.unit === reportB.series.unit && reportA.series.provider === reportB.series.provider
-      && reportA.series.spatial_resolution === reportB.series.spatial_resolution);
+  const issues = reportA?.series && reportB?.series ? comparisonIssues(reportA.series, reportB.series) : [];
+  const comparable = issues.length === 0;
+  const trendIssue = trendComparisonIssue(reportA?.trend, reportB?.trend);
   const reports = [
     { key: keyA, place: selected, report: reportA, color: '#197caa' },
     { key: keyB, place: targetB, report: reportB, color: '#a04194' },
@@ -198,8 +201,12 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const visibleDate = dates.includes(selectedDate) ? selectedDate : dates.at(-1) ?? '';
   const bounds = useMemo<readonly [number, number]>(() => {
     const values = [...(pointsA ?? []), ...(comparable ? pointsB ?? [] : [])].flatMap(({ value }) => value === null ? [] : [value]);
+    for (const [points, trend] of [[pointsA, reportA?.trend], ...(comparable ? [[pointsB, reportB?.trend] as const] : [])] as const) {
+      const line = trendLine(points ?? [], trend);
+      if (line) values.push(line.start, line.end);
+    }
     return values.length ? [Math.min(...values), Math.max(...values)] : [0, 1];
-  }, [pointsA, pointsB, comparable]);
+  }, [pointsA, pointsB, comparable, reportA?.trend, reportB?.trend]);
   const gridCell = reportA?.series?.representative_grid_cell;
   const gridResolution = reportA?.series?.spatial_resolution;
   const cell = useMemo(() => gridOutline(gridCell, gridResolution), [gridCell, gridResolution]);
@@ -595,7 +602,11 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           </div>}
           {!selected && <p>Select a location to load its history.</p>}
           {keyA && keyA === keyB && <p>Choose a different location for A to compare with B.</p>}
-          {!comparable && <p>The selected series have different units, sources, or resolutions. A shared scale is unavailable.</p>}
+          {!comparable && <p role="status">The series cannot share a comparison: {issues.join('; ')}. Each series is shown independently.</p>}
+          {reportA?.series && reportB?.series && comparable && <p>
+            Both series use {reportA.series.variable_id}, {reportA.series.unit}, monthly frequency, {reportA.series.provider}, and {reportA.series.spatial_resolution} resolution for the same available period.
+            {' '}{trendIssue ?? `Sen slopes: A ${reportA.trend?.rate_per_decade} and B ${reportB.trend?.rate_per_decade} ${reportA.trend?.rate_unit}. Different estimates alone do not establish a statistically significant difference or a common cause.`}
+          </p>}
           {dates.length > 0 && <>
             <label>Month <output>{visibleDate}</output>
               <input type="range" min={0} max={dates.length - 1} value={dates.indexOf(visibleDate)}
@@ -612,21 +623,47 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           {reports.map(({ key, place, report, color }, index) => {
             if (!place || !report || (index === 1 && key === keyA)) return null;
             const series = report.series;
-            const value = pointValue(series?.points, visibleDate);
             const valid = series?.points.filter((point) => point.value !== null).length ?? 0;
+            const independent = index === 1 && !comparable;
+            const chartDates = independent ? monthlyDates(series?.points ?? []) : dates;
+            const chartDate = independent
+              ? chartDates.includes(selectedDateB) ? selectedDateB : chartDates.at(-1) ?? ''
+              : visibleDate;
+            const chartValue = pointValue(series?.points, chartDate);
+            const chartBounds: readonly [number, number] = independent && series
+              ? (() => {
+                const values = series.points.flatMap(({ value: point }) => point === null ? [] : [point]);
+                const line = trendLine(series.points, report.trend);
+                if (line) values.push(line.start, line.end);
+                return values.length ? [Math.min(...values), Math.max(...values)] : [0, 1];
+              })() : bounds;
             return <section key={key} className="globe-report" data-highlighted={hovered === key || undefined}>
               <h3>{targetB ? `${index === 0 ? 'A' : 'B'} · ` : ''}{place.name}</h3>
               {series ? <>
                 <p>{valid} of {series.points.length} months with data · {series.provider}</p>
+                <p>{variableRange.name} ({series.variable_id}) · {series.unit} · {series.is_cached ? 'Cached data' : series.provider.includes('offline') ? 'Offline snapshot' : 'Source data'}</p>
+                {series.query_coordinates && <p>Requested location: {series.query_coordinates.latitude}, {series.query_coordinates.longitude}</p>}
+                {series.representative_grid_cell && <p>Grid cell: {series.representative_grid_cell} · {series.spatial_resolution}</p>}
                 <p>{series.points.length ? `Available period: ${series.points[0].date} to ${series.points[series.points.length - 1].date}.` : 'No data is available for this period.'}</p>
-                {visibleDate && <p>{visibleDate}: {value === null ? 'No data' : `${value} ${series.unit}`}</p>}
-                {valid > 0 && (comparable || index === 0) && <HistoryChart points={series.points} dates={dates} date={visibleDate}
-                  bounds={bounds} name={place.name} color={color} highlighted={hovered === key}
+                {chartDate && <p>{place.name} · {variableRange.name} · {chartDate}: {chartValue === null ? 'No data' : `${chartValue} ${series.unit}`} · {series.provider}</p>}
+                {independent && chartDates.length > 0 && <label>Month for B <output>{chartDate}</output>
+                  <input type="range" min={0} max={chartDates.length - 1} value={chartDates.indexOf(chartDate)}
+                    onChange={(event) => setSelectedDateB(chartDates[Number(event.target.value)])} />
+                </label>}
+                {valid > 0 && <HistoryChart points={series.points} dates={chartDates} date={chartDate}
+                  bounds={chartBounds} name={place.name} color={color} highlighted={hovered === key} trend={report.trend}
                   onHover={(active) => setHovered(active ? key : null)} onDate={(date) => {
                     setPlaying(false);
-                    setSelectedDate(date);
+                    if (independent) setSelectedDateB(date);
+                    else setSelectedDate(date);
                   }} />}
+                {trendLine(series.points, report.trend) && <p>Dashed line: Sen slope, anchored to the median residual of the displayed data.</p>}
                 <p>{report.trend?.plain_language_verdict ?? 'Trend analysis unavailable.'}</p>
+                {report.trend && <p>
+                  Method: {report.trend.method}. {report.trend.p_value !== null ? `p = ${report.trend.p_value}.` : 'p-value unavailable.'}
+                  {report.trend.confidence_interval_95 && ` 95% interval: ${report.trend.confidence_interval_95.join(' to ')} ${report.trend.rate_unit}.`}
+                  {' '}{report.trend.scientific_caveat}
+                </p>}
               </> : <p role="status">{report.message}</p>}
             </section>;
           })}
