@@ -45,6 +45,7 @@ export function validateRequest(request) {
     const seen = new Set();
     for (const [key, value] of url.searchParams) {
       if (!projectionParameters.has(key) || seen.has(key) || value.length > 128) throw new Error('Invalid query');
+      if (key === 'model' && !/^[a-z0-9_]+$/.test(value)) throw new Error('Invalid query');
       seen.add(key);
     }
   }

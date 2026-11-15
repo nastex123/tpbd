@@ -24,6 +24,7 @@ export interface HolographicInspectorModalProps {
   variableRange: VariableItem;
   availableVariables?: readonly VariableItem[];
   onSelectVariable?: (variableId: string) => void;
+  onSelectRegion?: (regionId: string) => void;
   period: { start: number; end: number };
   dates: string[];
   visibleDate: string;
@@ -56,6 +57,7 @@ export function HolographicInspectorModal({
   variableRange,
   availableVariables,
   onSelectVariable,
+  onSelectRegion,
   dates,
   visibleDate,
   onSetVisibleDate,
@@ -474,6 +476,7 @@ export function HolographicInspectorModal({
                 unit={seriesA?.unit || variableRange.unit || ''}
                 historicalPoints={seriesA?.points}
                 onSelectVariable={onSelectVariable}
+                onSelectRegion={onSelectRegion}
               />
             )}
           </div>

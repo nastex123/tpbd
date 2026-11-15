@@ -55,49 +55,37 @@ const KNOWN_MODELS: Record<string, { name: string; institution: string; resoluti
   },
   cesm2: {
     name: 'CESM2',
-    institution: 'NCAR (National Center for Atmospheric Research)',
+    institution: 'NCAR (USA)',
     resolution: '0.25° × 0.25°',
     is_default: false,
   },
-  'cnrm-cm6-1': {
-    name: 'CNRM-CM6-1',
-    institution: 'CNRM-CERFACS (France)',
+  ec_earth3: {
+    name: 'EC-Earth3',
+    institution: 'EC-Earth Consortium (Europe)',
     resolution: '0.25° × 0.25°',
     is_default: false,
   },
-  canesm5: {
-    name: 'CanESM5',
-    institution: 'CCCma (Canada)',
-    resolution: '0.25° × 0.25°',
-    is_default: false,
-  },
-  miroc6: {
-    name: 'MIROC6',
-    institution: 'MIROC (Japan)',
-    resolution: '0.25° × 0.25°',
-    is_default: false,
-  },
-  'mri-esm2-0': {
-    name: 'MRI-ESM2-0',
-    institution: 'MRI (Japan)',
-    resolution: '0.25° × 0.25°',
-    is_default: false,
-  },
-  'gfdl-esm4': {
+  gfdl_esm4: {
     name: 'GFDL-ESM4',
     institution: 'NOAA GFDL (USA)',
     resolution: '0.25° × 0.25°',
     is_default: false,
   },
-  'ipsl-cm6a-lr': {
+  giss_e2_1_g: {
+    name: 'GISS-E2-1-G',
+    institution: 'NASA GISS (USA)',
+    resolution: '0.25° × 0.25°',
+    is_default: false,
+  },
+  ipsl_cm6a_lr: {
     name: 'IPSL-CM6A-LR',
     institution: 'IPSL (France)',
     resolution: '0.25° × 0.25°',
     is_default: false,
   },
-  'ukesm1-0-ll': {
-    name: 'UKESM1-0-LL',
-    institution: 'Met Office Hadley Centre (UK)',
+  mpi_esm1_2_lr: {
+    name: 'MPI-ESM1-2-LR',
+    institution: 'Max Planck Institute (Germany)',
     resolution: '0.25° × 0.25°',
     is_default: false,
   },
@@ -166,8 +154,8 @@ export async function fetchProjectionModels(signal?: AbortSignal): Promise<Proje
   return rawModels
     .map((item): ProjectionModelInfo | null => {
       if (typeof item === 'string') {
-        const key = item.toLowerCase();
-        const known = KNOWN_MODELS[key];
+        const key = item.toLowerCase().replace(/-/g, '_');
+        const known = KNOWN_MODELS[key] ?? KNOWN_MODELS[item.toLowerCase()];
         return {
           model_id: item,
           name: known?.name ?? item.toUpperCase(),
@@ -182,8 +170,8 @@ export async function fetchProjectionModels(signal?: AbortSignal): Promise<Proje
           ? record.model_id
           : (typeof record.id === 'string' ? record.id : '');
         if (!modelId) return null;
-        const key = modelId.toLowerCase();
-        const known = KNOWN_MODELS[key];
+        const key = modelId.toLowerCase().replace(/-/g, '_');
+        const known = KNOWN_MODELS[key] ?? KNOWN_MODELS[modelId.toLowerCase()];
         return {
           model_id: modelId,
           name: typeof record.name === 'string' ? record.name : (known?.name ?? modelId.toUpperCase()),

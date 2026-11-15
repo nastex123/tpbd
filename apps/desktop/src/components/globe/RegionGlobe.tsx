@@ -1160,6 +1160,14 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         variableRange={variableRange}
         availableVariables={variableOptions}
         onSelectVariable={setVariable}
+        onSelectRegion={(id) => {
+          const reg = regions.find((r) => r.id === id);
+          if (reg) {
+            visit({ kind: 'region', id }, reg);
+          } else {
+            onSelect({ kind: 'region', id });
+          }
+        }}
         period={period}
         regions={regions}
         teleconnectionPresets={teleconnectionPresets}

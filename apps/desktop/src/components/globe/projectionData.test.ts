@@ -49,7 +49,7 @@ test('fetchProjectionModels parses model identifiers and applies known instituti
   globalThis.fetch = async (url) => {
     assert.equal(String(url), '/api/local/api/v1/projections/models');
     return new Response(JSON.stringify({
-      models: ['ensemble', 'cesm2', 'cnrm-cm6-1'],
+      models: ['ensemble', 'cesm2', 'ec_earth3'],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
 
@@ -59,8 +59,10 @@ test('fetchProjectionModels parses model identifiers and applies known instituti
     assert.equal(models[0].model_id, 'ensemble');
     assert.equal(models[0].is_default, true);
     assert.equal(models[1].model_id, 'cesm2');
+    assert.equal(models[1].institution, 'NCAR (USA)');
     assert.equal(models[1].is_default, false);
-    assert.equal(models[2].model_id, 'cnrm-cm6-1');
+    assert.equal(models[2].model_id, 'ec_earth3');
+    assert.equal(models[2].institution, 'EC-Earth Consortium (Europe)');
   } finally {
     globalThis.fetch = originalFetch;
   }

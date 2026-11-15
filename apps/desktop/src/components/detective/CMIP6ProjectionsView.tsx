@@ -24,6 +24,7 @@ export interface CMIP6ProjectionsViewProps {
   unit: string;
   historicalPoints?: Array<{ date: string; value: number | null }>;
   onSelectVariable?: (variableId: string) => void;
+  onSelectRegion?: (regionId: string) => void;
 }
 
 export function CMIP6ProjectionsView({
@@ -33,6 +34,7 @@ export function CMIP6ProjectionsView({
   unit,
   historicalPoints,
   onSelectVariable,
+  onSelectRegion,
 }: CMIP6ProjectionsViewProps) {
   const [localVariableId, setLocalVariableId] = useState<string | null>(null);
 
@@ -272,6 +274,7 @@ export function CMIP6ProjectionsView({
       hasHistorical,
       validHistorical,
       validProjected,
+      validProjectedCount: validProjected.length,
     };
   }, [historicalPoints, projection?.points, showHistorical]);
 
@@ -369,11 +372,12 @@ export function CMIP6ProjectionsView({
               ) : (
                 <>
                   <option value="ensemble">Multi-Model Ensemble (NASA POWER / NEX-GDDP-CMIP6)</option>
-                  <option value="cesm2">CESM2 (NCAR)</option>
-                  <option value="cnrm-cm6-1">CNRM-CM6-1 (CNRM-CERFACS)</option>
-                  <option value="canesm5">CanESM5 (CCCma)</option>
-                  <option value="miroc6">MIROC6 (MIROC)</option>
-                  <option value="gfdl-esm4">GFDL-ESM4 (NOAA GFDL)</option>
+                  <option value="cesm2">CESM2 (NCAR (USA))</option>
+                  <option value="ec_earth3">EC-Earth3 (EC-Earth Consortium (Europe))</option>
+                  <option value="gfdl_esm4">GFDL-ESM4 (NOAA GFDL (USA))</option>
+                  <option value="giss_e2_1_g">GISS-E2-1-G (NASA GISS (USA))</option>
+                  <option value="ipsl_cm6a_lr">IPSL-CM6A-LR (IPSL (France))</option>
+                  <option value="mpi_esm1_2_lr">MPI-ESM1-2-LR (Max Planck Institute (Germany))</option>
                 </>
               )}
             </select>
@@ -458,141 +462,156 @@ export function CMIP6ProjectionsView({
               </div>
             </div>
 
-            {/* Responsive SVG Chart */}
-            <div className="svg-chart-wrapper">
-              <svg
-                viewBox={`0 0 ${chartData.viewBoxWidth} ${chartData.viewBoxHeight}`}
-                className="projections-svg-chart"
-                preserveAspectRatio="xMidYMid meet"
-                aria-label={`Time series projection for ${variableName}`}
-                onMouseLeave={() => setHoveredPoint(null)}
-              >
-                {/* Horizontal Gridlines & Y Axis Ticks */}
-                {chartData.yTicks.map((t, idx) => (
-                  <g key={`ytick-${idx}`}>
-                    <line
-                      x1={chartData.padLeft}
-                      x2={chartData.viewBoxWidth - chartData.padRight}
-                      y1={t.y}
-                      y2={t.y}
-                      stroke="rgba(255, 255, 255, 0.08)"
-                      strokeDasharray="2 4"
-                    />
-                    <text
-                      x={chartData.padLeft - 8}
-                      y={t.y + 4}
-                      className="svg-axis-text svg-axis-y"
-                      textAnchor="end"
-                    >
-                      {t.val.toFixed(1)} {idx === chartData.yTicks.length - 1 ? effectiveUnit : ''}
-                    </text>
-                  </g>
-                ))}
-
-                {/* Vertical Year Gridlines & Labels */}
-                {chartData.yearTicks.map((yr) => {
-                  const x = chartData.dateToX(`${yr}-01`, yr, 1);
-                  return (
-                    <g key={`x-year-${yr}`}>
+            {/* Responsive SVG Chart or Coverage Notice */}
+            {chartData.validProjected.length === 0 ? (
+              <div className="projections-coverage-notice" role="status">
+                <p style={{ margin: 0, fontSize: '0.62rem', lineHeight: 1.35, color: '#fde68a' }}>
+                  NASA POWER CMIP6 Beta Archive Notice: No downscaled projection grid cells are reported by NASA POWER for these coordinates (Fill value -999). NASA POWER&apos;s CMIP6 projection beta archive currently indexes North American continental coordinates (CONUS). Projections (2025–2100) are fully active and verified on California Valley.
+                </p>
+                <button
+                  type="button"
+                  className="btn-switch-california"
+                  onClick={() => onSelectRegion?.('california_valley')}
+                >
+                  Inspect California Valley CMIP6 Projections →
+                </button>
+              </div>
+            ) : (
+              <div className="svg-chart-wrapper">
+                <svg
+                  viewBox={`0 0 ${chartData.viewBoxWidth} ${chartData.viewBoxHeight}`}
+                  className="projections-svg-chart"
+                  preserveAspectRatio="xMidYMid meet"
+                  aria-label={`Time series projection for ${variableName}`}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
+                  {/* Horizontal Gridlines & Y Axis Ticks */}
+                  {chartData.yTicks.map((t, idx) => (
+                    <g key={`ytick-${idx}`}>
                       <line
-                        x1={x}
-                        x2={x}
-                        y1={chartData.padTop}
-                        y2={chartData.padTop + chartData.plotHeight}
-                        stroke="rgba(255, 255, 255, 0.06)"
+                        x1={chartData.padLeft}
+                        x2={chartData.viewBoxWidth - chartData.padRight}
+                        y1={t.y}
+                        y2={t.y}
+                        stroke="rgba(255, 255, 255, 0.08)"
+                        strokeDasharray="2 4"
                       />
                       <text
-                        x={x}
-                        y={chartData.padTop + chartData.plotHeight + 18}
-                        className={`svg-axis-text svg-axis-x ${yr === 2025 ? 'highlight-2025' : ''}`}
-                        textAnchor="middle"
+                        x={chartData.padLeft - 8}
+                        y={t.y + 4}
+                        className="svg-axis-text svg-axis-y"
+                        textAnchor="end"
                       >
-                        {yr}
+                        {t.val.toFixed(1)} {idx === chartData.yTicks.length - 1 ? effectiveUnit : ''}
                       </text>
                     </g>
-                  );
-                })}
+                  ))}
 
-                {/* Vertical 2025 Transition Separator */}
-                {showHistorical && chartData.hasHistorical && (
-                  <g className="svg-transition-group">
-                    <line
-                      x1={chartData.transitionX}
-                      x2={chartData.transitionX}
-                      y1={chartData.padTop - 8}
-                      y2={chartData.padTop + chartData.plotHeight}
-                      stroke="rgba(245, 158, 11, 0.55)"
-                      strokeWidth="1.5"
-                      strokeDasharray="3 3"
+                  {/* Vertical Year Gridlines & Labels */}
+                  {chartData.yearTicks.map((yr) => {
+                    const x = chartData.dateToX(`${yr}-01`, yr, 1);
+                    return (
+                      <g key={`x-year-${yr}`}>
+                        <line
+                          x1={x}
+                          x2={x}
+                          y1={chartData.padTop}
+                          y2={chartData.padTop + chartData.plotHeight}
+                          stroke="rgba(255, 255, 255, 0.06)"
+                        />
+                        <text
+                          x={x}
+                          y={chartData.padTop + chartData.plotHeight + 18}
+                          className={`svg-axis-text svg-axis-x ${yr === 2025 ? 'highlight-2025' : ''}`}
+                          textAnchor="middle"
+                        >
+                          {yr}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Vertical 2025 Transition Separator */}
+                  {showHistorical && chartData.hasHistorical && (
+                    <g className="svg-transition-group">
+                      <line
+                        x1={chartData.transitionX}
+                        x2={chartData.transitionX}
+                        y1={chartData.padTop - 8}
+                        y2={chartData.padTop + chartData.plotHeight}
+                        stroke="rgba(245, 158, 11, 0.55)"
+                        strokeWidth="1.5"
+                        strokeDasharray="3 3"
+                      />
+                      <text
+                        x={chartData.transitionX + 4}
+                        y={chartData.padTop - 2}
+                        className="svg-transition-label"
+                      >
+                        2025 CMIP6 Projections →
+                      </text>
+                    </g>
+                  )}
+
+                  {/* Historical Series (Cyan Solid Line) */}
+                  {showHistorical && chartData.historicalPath && (
+                    <path
+                      d={chartData.historicalPath}
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="svg-historical-line"
                     />
-                    <text
-                      x={chartData.transitionX + 4}
-                      y={chartData.padTop - 2}
-                      className="svg-transition-label"
-                    >
-                      2025 CMIP6 Projections →
-                    </text>
-                  </g>
-                )}
+                  )}
 
-                {/* Historical Series (Cyan Solid Line) */}
-                {showHistorical && chartData.historicalPath && (
-                  <path
-                    d={chartData.historicalPath}
-                    fill="none"
-                    stroke="#38bdf8"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="svg-historical-line"
-                  />
-                )}
+                  {/* Projected Series (Amber Dashed Line, 2025-2100) */}
+                  {chartData.projectedPath && (
+                    <path
+                      d={chartData.projectedPath}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth="2.2"
+                      strokeDasharray="5 4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="svg-projected-line"
+                    />
+                  )}
 
-                {/* Projected Series (Amber Dashed Line, 2025-2100) */}
-                {chartData.projectedPath && (
-                  <path
-                    d={chartData.projectedPath}
-                    fill="none"
-                    stroke="#f59e0b"
-                    strokeWidth="2.2"
-                    strokeDasharray="5 4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="svg-projected-line"
-                  />
-                )}
+                  {/* Interactive Hover Point Overlay */}
+                  {hoveredPoint && (
+                    <g className="svg-hover-group">
+                      <circle
+                        cx={hoveredPoint.x}
+                        cy={hoveredPoint.y}
+                        r="4"
+                        fill={hoveredPoint.kind === 'historical' ? '#38bdf8' : '#f59e0b'}
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                    </g>
+                  )}
+                </svg>
 
-                {/* Interactive Hover Point Overlay */}
+                {/* Hover Tooltip Box */}
                 {hoveredPoint && (
-                  <g className="svg-hover-group">
-                    <circle
-                      cx={hoveredPoint.x}
-                      cy={hoveredPoint.y}
-                      r="4"
-                      fill={hoveredPoint.kind === 'historical' ? '#38bdf8' : '#f59e0b'}
-                      stroke="#ffffff"
-                      strokeWidth="1.5"
-                    />
-                  </g>
+                  <div
+                    className="chart-tooltip"
+                    style={{ left: `${hoveredPoint.x}px`, top: `${hoveredPoint.y}px` }}
+                  >
+                    <span className="tooltip-date">{hoveredPoint.date}</span>
+                    <span className="tooltip-val">
+                      {hoveredPoint.value.toFixed(2)} {effectiveUnit}
+                    </span>
+                    <span className={`tooltip-tag ${hoveredPoint.kind}`}>
+                      {hoveredPoint.kind === 'historical' ? 'Historical' : 'Projected'}
+                    </span>
+                  </div>
                 )}
-              </svg>
-
-              {/* Hover Tooltip Box */}
-              {hoveredPoint && (
-                <div
-                  className="chart-tooltip"
-                  style={{ left: `${hoveredPoint.x}px`, top: `${hoveredPoint.y}px` }}
-                >
-                  <span className="tooltip-date">{hoveredPoint.date}</span>
-                  <span className="tooltip-val">
-                    {hoveredPoint.value.toFixed(2)} {effectiveUnit}
-                  </span>
-                  <span className={`tooltip-tag ${hoveredPoint.kind}`}>
-                    {hoveredPoint.kind === 'historical' ? 'Historical' : 'Projected'}
-                  </span>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Metric Readouts Panel: Baseline, End-of-Century, Net Change */}
             <div className="projections-metrics-panel">

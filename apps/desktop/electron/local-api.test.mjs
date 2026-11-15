@@ -11,6 +11,7 @@ test('allows only expected local API requests', () => {
   assert.equal(validateRequest({ path: '/api/v1/projections/scenarios', method: 'GET' }).pathname, '/api/v1/projections/scenarios');
   assert.equal(validateRequest({ path: '/api/v1/projections/models', method: 'GET' }).pathname, '/api/v1/projections/models');
   assert.equal(validateRequest({ path: '/api/v1/projections/series?variable_id=T2M&latitude=0&longitude=0&scenario=ssp245', method: 'GET' }).pathname, '/api/v1/projections/series');
+  assert.equal(validateRequest({ path: '/api/v1/projections/series?variable_id=T2M&latitude=0&longitude=0&scenario=ssp245&model=ec_earth3', method: 'GET' }).pathname, '/api/v1/projections/series');
   assert.equal(validateRequest({ path: '/api/v1/projections/series', method: 'POST', body: '{"variable_id":"T2M"}' }).pathname, '/api/v1/projections/series');
   for (const request of [
     { path: '//example.com/health', method: 'GET' },
@@ -28,6 +29,8 @@ test('allows only expected local API requests', () => {
     { path: '/api/v1/projections/models', method: 'POST', body: '{}' },
     { path: '/api/v1/projections/series?invalid=1', method: 'GET' },
     { path: '/api/v1/projections/series?scenario=ssp245&scenario=ssp585', method: 'GET' },
+    { path: '/api/v1/projections/series?scenario=ssp245&model=invalid%20model', method: 'GET' },
+    { path: '/api/v1/projections/series?scenario=ssp245&model=../secret', method: 'GET' },
     { path: '/api/v1/projections/series?scenario=ssp245', method: 'POST', body: '{}' },
     { path: '/api/v1/projections/series', method: 'POST', body: 'invalid-json' },
     { path: '/api/v1/integrations/appeears/auth/login', method: 'POST', body: '{}' },
