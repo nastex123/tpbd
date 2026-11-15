@@ -121,7 +121,13 @@ npm install
 
 # Run the desktop app in development mode
 npm run desktop
+
+# Or build the renderer and open the desktop app
+npm run build
+npm start
 ```
+
+Run FastAPI separately as described above. Both desktop modes use the local backend when it is available. The presentation includes two stored NASA POWER temperature series if the backend is unavailable.
 
 ---
 

@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test:globe": "node --experimental-strip-types --test src/components/globe/trendLine.test.ts src/components/globe/seriesComparison.test.ts",
+    "test:local-api": "node --test electron/local-api.test.mjs",
     "desktop": "electron . --dev",
     "start": "electron ."
   },

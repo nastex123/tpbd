@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { LocationSelection } from '../../stores/navigationStore';
 import temperatureSnapshot from './demo-temperature.json';
+import { localApiFetch } from './localApi';
 
 export const variableOptions = [
   { id: 'T2M', name: 'Air temperature', start: 1981, end: 2025, unit: '°C', description: 'Monthly average air temperature at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
@@ -10,9 +11,8 @@ export const variableOptions = [
 export function useVariableAvailability() {
   const [options, setOptions] = useState(variableOptions);
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
     const controller = new AbortController();
-    void fetch('/api/local/api/v1/catalog/variables', {
+    void localApiFetch('/api/v1/catalog/variables', {
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(4000)]),
     }).then(async (response) => {
       if (!response.ok) return;
@@ -93,7 +93,7 @@ export function useLocationReport(location: LocationSelection | null, variable: 
   const snapshot = variable === 'T2M' ? (temperatureSnapshot as Partial<Record<string, Series & { source: string; retrieved_at: string }>>)[id] : undefined;
   const archive = snapshot && { ...snapshot, points: snapshot.points.filter(({ date }) => Number(date.slice(0, 4)) >= startYear && Number(date.slice(0, 4)) <= endYear) };
   useEffect(() => {
-    if (!key || !import.meta.env.DEV) return;
+    if (!key) return;
     const controller = new AbortController();
     const signal = () => AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]);
     const query = new URLSearchParams({ variable_id: variable, start_year: String(startYear), end_year: String(endYear) });
@@ -110,7 +110,7 @@ export function useLocationReport(location: LocationSelection | null, variable: 
       try {
         if (!presentation || !archive) {
           try {
-            const response = await fetch(`/api/local/api/v1/series?${query}`, { signal: signal() });
+            const response = await localApiFetch(`/api/v1/series?${query}`, { signal: signal() });
             if (!response.ok) throw new Error('Series unavailable');
             const payload: unknown = await response.json();
             if (!isSeries(payload) || payload.variable_id !== variable) throw new Error('Invalid series');
@@ -127,9 +127,8 @@ export function useLocationReport(location: LocationSelection | null, variable: 
         setReport({ key, series });
         if (!series.points.some(({ value }) => value !== null)) return;
 
-        const trendResponse = await fetch('/api/local/api/v1/analytics/trends', {
+        const trendResponse = await localApiFetch('/api/v1/analytics/trends', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ variable_id: variable, points: series.points }),
           signal: signal(),
         });
@@ -146,10 +145,9 @@ export function useLocationReport(location: LocationSelection | null, variable: 
   }, [snapshot, id, key, presentation, variable, startYear, endYear]);
 
   if (!key) return undefined;
-  if (archive && (report?.key !== key || !import.meta.env.DEV)) {
+  if (archive && report?.key !== key) {
     return { key, series: archive };
   }
-  if (!import.meta.env.DEV) return { key, message: 'No offline snapshot for this location and variable. Live data is available in desktop development mode.' };
   return report?.key === key ? report : { key, message: 'Loading historical data…' };
 }
 
