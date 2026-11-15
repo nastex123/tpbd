@@ -18,7 +18,7 @@
 ### Acceptance Criteria Checklist
 - [x] **CA-01 (Planetary Biome Expansion):** Expand curated preset regions from 4 to 12 representative Earth system biomes across tropical rainforests, polar cryospheres, endorheic basins, marine ecosystems, and alpine zones.
 - [x] **CA-02 (Opposing Teleconnection Pairs):** Define canonical teleconnection pairs with documented physical mechanisms (Hadley Cell, Polar Amplification, ENSO Asymmetry) where a single global driver causes opposite trend directions across biomes.
-- [x] **CA-03 (Structured Domain Grounding):** Implement an in-memory knowledge base (`teleconnections.json` + `KnowledgeService`) that grounds Gemini 2.5 Flash copilot responses with zero latency, zero vector DB bloat, and zero hallucination.
+- [x] **CA-03 (Structured Domain Grounding):** Implement an in-memory knowledge base (`teleconnections.json` + `KnowledgeService`) that grounds Gemini 3.8 Flash copilot responses with zero latency, zero vector DB bloat, and zero hallucination.
 - [x] **CA-04 (Frontend Dynamic Catalog & Region Ingestion):** Eliminate hardcoded 2-variable and 4-region limitations in desktop frontend (`globeData.ts` and `RegionGlobe.tsx`), supporting all validated NASA variables and 12 biomes dynamically.
 - [x] **CA-05 (1-Click Teleconnection Presets):** Integrate one-click teleconnection exploration shortcuts into the desktop globe interface to allow students to immediately load opposing biome pairs into dual comparative time series.
 - [x] **CA-06 (Zero-Hallucination & Robustness):** Enforce strict OpenAPI 3.1 contract compliance, zero synthetic fallbacks in production paths, and clean handling of insufficient observations (`not_evaluable`).
