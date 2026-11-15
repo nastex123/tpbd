@@ -3,7 +3,7 @@ import Globe, { type GlobeMethods } from 'react-globe.gl';
 import { Mesh, MeshBasicMaterial, SphereGeometry, SRGBColorSpace, TextureLoader } from 'three';
 import { parseCoordinate, type LocationSelection } from '../../stores/navigationStore';
 import { deleteInvestigation, INVESTIGATIONS_KEY, readInvestigations, saveInvestigation, type Investigation } from '../../stores/investigations';
-import { distanceKm, gridOutline, initialView, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
+import { distanceKm, gridOutline, initialView, type CountryCollection, type CountryFeature, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
@@ -39,10 +39,15 @@ const presentation = [
   'Compare two study regions for the same variable.',
 ];
 
+const countryColors = [
+  'rgba(54, 133, 159, 0.44)', 'rgba(71, 145, 132, 0.44)', 'rgba(85, 115, 171, 0.44)',
+  'rgba(151, 115, 76, 0.44)', 'rgba(113, 105, 163, 0.44)', 'rgba(61, 139, 119, 0.44)',
+  'rgba(152, 105, 126, 0.44)', 'rgba(102, 133, 91, 0.44)',
+];
+
 function motionAllowed() {
   return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
-
 function readRegions(payload: unknown): Region[] {
   if (!Array.isArray(payload)) return [];
   return payload.flatMap((item) => {
@@ -99,6 +104,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [reduced, setReduced] = useState(false);
   const [ready, setReady] = useState(false);
   const [regions, setRegions] = useState(offlineRegions);
+  const [countries, setCountries] = useState<CountryFeature[]>([]);
   const [inputError, setInputError] = useState('');
   const [cloudsEnabled, setCloudsEnabled] = useState(true);
   const [reliefEnabled, setReliefEnabled] = useState(true);
@@ -128,6 +134,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [period, setPeriod] = useState({ start: 1990, end: 2025 });
   const [periodError, setPeriodError] = useState('');
   useEffect(() => {
+    let active = true;
+    void import('./countries-50m.json').then((module) => {
+      if (active) setCountries((module.default as CountryCollection).features);
+    }).catch((error: unknown) => console.error('Country boundaries could not be loaded:', error));
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
     const start = Math.min(variableRange.end, Math.max(variableRange.start, period.start));
     const end = Math.max(start, Math.min(variableRange.end, period.end));
     if (start !== period.start || end !== period.end) {
@@ -154,6 +167,15 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     ...(selected?.id === null ? [{ ...selected, key: keyA }] : []),
     ...(targetB?.id === null && keyB !== keyA ? [{ ...targetB, key: keyB }] : []),
   ], [regions, selected, targetB, keyA, keyB]);
+  const worldMap = naturalEarth as WorldMap;
+  const countryLabels = useMemo(() => countries.map((country) => ({
+    key: `country:${country.properties.name}`,
+    name: country.properties.name,
+    lat: country.properties.lat,
+    lng: country.properties.lng,
+    country: true as const,
+  })), [countries]);
+  const labels = useMemo(() => [...markers, ...(zoomed ? countryLabels : [])], [markers, countryLabels, zoomed]);
   function updateLabelSpacing() {
     const world = globe.current;
     if (!world || !ready) return;
@@ -163,7 +185,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       - Number(a.key === keyA || a.key === keyB));
     const used: { x: number; y: number; width: number }[] = [];
     const hidden: string[] = [];
-    for (const marker of preferred) {
+    const candidates = [...preferred, ...(zoomed ? countryLabels : [])];
+    for (const marker of candidates) {
       const point = world.getCoords(marker.lat, marker.lng);
       if (camera.x * point.x + camera.y * point.y + camera.z * point.z < 0) continue;
       const mapped = world.getScreenCoords(marker.lat, marker.lng, 0.02);
@@ -179,8 +202,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   }
 
   const refreshLabelSpacing = useEffectEvent(updateLabelSpacing);
-  useEffect(() => refreshLabelSpacing(), [ready, markers, width, height]);
-  const worldMap = naturalEarth as WorldMap;
+  useEffect(() => refreshLabelSpacing(), [ready, labels, width, height]);
   const reportA = useLocationReport(location, variable, step !== null, period.start, period.end);
   const reportB = useLocationReport(keyA === keyB ? null : compare, variable, step !== null, period.start, period.end);
   const issues = reportA?.series && reportB?.series ? comparisonIssues(reportA.series, reportB.series) : [];
@@ -217,7 +239,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       ...(cell ? [path(cell, '#90f5b1', 0.022)] : []),
     ];
   }, [zoomed, boundaries, worldMap, area, cell]);
-  const searchItems: (Region | Place)[] = search.trim() ? [...regions, ...worldMap.places]
+  const searchItems: (Region | Place)[] = search.trim() ? [...regions,
+    ...countries.map(({ properties: { name, lat, lng } }) => ({ name, lat, lng }))]
     .filter(({ name }) => name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
       .includes(search.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, ''))).slice(0, 8) : [];
 
@@ -529,7 +552,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           <label><input type="checkbox" checked={cloudsEnabled} disabled={reduced} onChange={(event) => setCloudsEnabled(event.target.checked)} /> Clouds</label>
           <label><input type="checkbox" checked={reliefEnabled} disabled={reduced} onChange={(event) => setReliefEnabled(event.target.checked)} /> Surface relief</label>
           <label><input type="checkbox" checked={nightEnabled} disabled={reduced} onChange={(event) => setNightEnabled(event.target.checked)} /> Day and night (UTC)</label>
-          <label><input type="checkbox" checked={boundaries} onChange={(event) => setBoundaries(event.target.checked)} /> Borders and coastlines when zoomed in</label>
+          <label><input type="checkbox" checked={boundaries} onChange={(event) => setBoundaries(event.target.checked)} /> Detailed coastlines when zoomed in</label>
           <label><input type="checkbox" checked={graticules} onChange={(event) => setGraticules(event.target.checked)} /> Latitude and longitude grid</label>
           <label><input type="checkbox" checked={idleRotation} disabled={reduced || !!location} onChange={(event) => setIdleRotation(event.target.checked)} /> Rotate before selecting a location</label>
           <label><input type="checkbox" checked={measure} onChange={(event) => {
@@ -812,6 +835,17 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                 if (measure) addMeasurement(point);
                 else visit({ kind: 'coordinates', ...point }, point, false);
               }}
+              polygonsData={countries}
+              polygonCapColor={(feature) => countryColors[(feature as CountryFeature).properties.color % countryColors.length]}
+              polygonSideColor={() => 'rgba(16, 37, 52, 0.58)'}
+              polygonStrokeColor={() => '#c4e0e8'}
+              polygonAltitude={0.0015}
+              polygonLabel={(feature) => (feature as CountryFeature).properties.name}
+              onPolygonClick={(_, __, coords) => {
+                const point = { lat: Number(coords.lat.toFixed(5)), lng: Number(coords.lng.toFixed(5)) };
+                if (measure) addMeasurement(point);
+                else visit({ kind: 'coordinates', ...point }, point, false);
+              }}
               pointsData={markers}
               pointColor={(point) => markerColor(point as typeof markers[number])}
               pointRadius={(point) => {
@@ -827,9 +861,10 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               pointsTransitionDuration={0}
               onPointHover={(point) => setHovered((point as typeof markers[number] | null)?.key ?? null)}
               onPointClick={selectMarker}
-              labelsData={hiddenLabels ? markers.filter(({ key }) => !hiddenLabels.split('|').includes(key)) : markers}
+              labelsData={hiddenLabels ? labels.filter(({ key }) => !hiddenLabels.split('|').includes(key)) : labels}
               labelText={(point) => {
-                const marker = point as typeof markers[number];
+                const marker = point as (typeof markers[number] & { country?: true });
+                if (marker.country) return marker.name;
                 const prefix = keyB && keyA !== keyB ? marker.key === keyA ? 'A · ' : marker.key === keyB ? 'B · ' : '' : '';
                 const trend = marker.key === keyA ? reportA?.trend : marker.key === keyB ? reportB?.trend : undefined;
                 const rate = trend?.rate_per_decade;
@@ -838,11 +873,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                   ? ` · ${rate === 0 ? '→' : rate > 0 ? '↑' : '↓'} ${Math.abs(rate).toFixed(2)} ${trend.rate_unit}`
                   : ''}`;
               }}
-              labelColor={() => '#fff'}
-              labelSize={1.3}
+              labelColor={(point) => (point as { country?: true }).country ? '#d8f1f4' : '#fff'}
+              labelSize={(point) => (point as { country?: true }).country ? 0.85 : 1.3}
               labelDotRadius={0}
               labelsTransitionDuration={0}
-              onLabelClick={selectMarker}
+              onLabelClick={(point) => {
+                if (!(point as { country?: true }).country) selectMarker(point);
+              }}
               pathsData={paths}
               pathPoints="points"
               pathPointLat="lat"
