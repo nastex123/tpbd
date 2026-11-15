@@ -85,22 +85,24 @@ class GeminiClient:
         return models
 
     def resolve_model(self, requested_model: str, task: str = "query") -> str:
-        """Resolve automatic routing to documented live model identifiers."""
+        """Resolve automatic routing to documented live Gemini 3 model identifiers."""
         if requested_model != "auto":
             return requested_model
         if task == "tts":
             return "gemini-3.8-flash-tts"
         if task == "vision":
             return "gemini-3-pro-image"
-        return "gemini-3.8-flash"
+        if task == "thinking":
+            return "gemini-3.8-flash"
+        return "gemini-3.5-flash-lite"
 
     async def generate_content(
         self,
         prompt: str,
         system_instruction: str,
-        model: str = "gemini-3.8-flash",
+        model: str = "gemini-3.5-flash-lite",
     ) -> str:
-        """Generate text using Gemini's generateContent endpoint."""
+        """Generate text using Gemini's generateContent endpoint with automatic fallback."""
         self._require_api_key()
         resolved_model = self.resolve_model(model, task="query")
         payload: dict[str, Any] = {
@@ -108,9 +110,25 @@ class GeminiClient:
             "systemInstruction": {"parts": [{"text": system_instruction}]},
             "generationConfig": {"temperature": 0.2, "topP": 0.95},
         }
-        response = await self._post_json(
-            f"/models/{resolved_model}:generateContent", json=payload
-        )
+
+        attempt_timeout = 8.0 if resolved_model == "gemini-3.8-flash" else self.timeout
+        try:
+            response = await self._post_json(
+                f"/models/{resolved_model}:generateContent", json=payload, timeout=attempt_timeout
+            )
+        except UpstreamServiceError as err:
+            if resolved_model != "gemini-3.5-flash-lite":
+                logger.warning(
+                    "Model %s failed (%s), attempting fallback to gemini-3.5-flash-lite",
+                    resolved_model,
+                    err.detail,
+                )
+                response = await self._post_json(
+                    "/models/gemini-3.5-flash-lite:generateContent", json=payload
+                )
+            else:
+                raise
+
         candidates = response.get("candidates", [])
         if isinstance(candidates, list):
             for candidate in candidates:
@@ -199,9 +217,12 @@ class GeminiClient:
             ) from exc
         return self._parse_response(response)
 
-    async def _post_json(self, path: str, json: dict[str, Any]) -> dict:
+    async def _post_json(
+        self, path: str, json: dict[str, Any], timeout: float | None = None
+    ) -> dict:
+        req_timeout = timeout if timeout is not None else self.timeout
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=req_timeout) as client:
                 response = await client.post(
                     f"{self.base_url}{path}",
                     headers={"x-goog-api-key": self.api_key or ""},

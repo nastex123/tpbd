@@ -1,0 +1,138 @@
+/* TPBD Mission Control Header Styles */
+
+.mission-control-header {
+  height: var(--header-height, 54px);
+  background-color: var(--sphere-navy, #0c1829);
+  border-bottom: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  user-select: none;
+  z-index: 100;
+  position: relative;
+}
+
+.header-brand-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-mission-logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(121, 220, 255, 0.25));
+}
+
+.header-brand-titles {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-logotype {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.brand-tpbd {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--sand-ivory, #d6c7b2);
+}
+
+.brand-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+  letter-spacing: 0.02em;
+}
+
+.header-telemetry-section {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.telemetry-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: var(--sphere-navy-surface, #112238);
+  border: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+  border-radius: var(--radius-hud, 4px);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.telemetry-label {
+  color: var(--text-muted, #64748b);
+  font-size: 0.7rem;
+}
+
+.telemetry-value {
+  color: var(--text-primary, #f0f6fc);
+}
+
+.status-badge {
+  padding-left: 0.5rem;
+}
+
+.status-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-online .status-indicator-dot {
+  background-color: var(--sensor-emerald, #10b981);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.status-online {
+  color: #a7f3d0;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.status-offline .status-indicator-dot {
+  background-color: var(--sensor-rose, #f43f5e);
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
+}
+
+.status-offline {
+  color: #fecdd3;
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.clock-badge {
+  background-color: rgba(12, 24, 41, 0.85);
+  border-color: var(--terminal-border-bright, rgba(121, 220, 255, 0.38));
+  color: var(--pale-blue-dot, #79dcff);
+  font-weight: 500;
+}
+
+.header-guide-trigger {
+  cursor: pointer;
+  background-color: rgba(12, 24, 41, 0.85);
+  border-color: var(--terminal-border-bright, rgba(121, 220, 255, 0.38));
+  color: var(--sand-ivory, #d6c7b2);
+  font-weight: 600;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.header-guide-trigger:hover {
+  color: var(--pale-blue-dot, #79dcff);
+  border-color: var(--pale-blue-dot, #79dcff);
+  background-color: rgba(121, 220, 255, 0.12);
+}
+
+.header-guide-trigger:focus-visible {
+  outline: 2px solid var(--pale-blue-dot, #79dcff);
+  outline-offset: 1px;
+}

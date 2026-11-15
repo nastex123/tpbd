@@ -50,3 +50,37 @@ export function solarPosition(time: Date): GeoPoint {
   const minutes = time.getUTCHours() * 60 + time.getUTCMinutes() + time.getUTCSeconds() / 60;
   return { lat: declination * 180 / Math.PI, lng: ((720 - (minutes + equation) / 4) % 360) - 180 };
 }
+
+function pointInRing(x: number, y: number, ring: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+export function findCountryAt(lat: number, lng: number, countries: CountryFeature[]): string | undefined {
+  if (!countries || !countries.length) return undefined;
+  for (const feature of countries) {
+    const geom = feature.geometry;
+    if (!geom || !geom.coordinates) continue;
+    if (geom.type === 'Polygon') {
+      const ring = (geom.coordinates as [number, number][][])[0];
+      if (ring && pointInRing(lng, lat, ring)) {
+        return feature.properties.name || feature.properties.nameEn;
+      }
+    } else if (geom.type === 'MultiPolygon') {
+      for (const poly of geom.coordinates as [number, number][][][]) {
+        if (poly && poly[0] && pointInRing(lng, lat, poly[0])) {
+          return feature.properties.name || feature.properties.nameEn;
+        }
+      }
+    }
+  }
+  return undefined;
+}

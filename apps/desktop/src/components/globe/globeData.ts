@@ -86,7 +86,7 @@ export type Trend = {
   plain_language_verdict: string;
   scientific_caveat: string;
 };
-type Report = { key: string; series?: Series; trend?: Trend; message?: string };
+export type Report = { key: string; series?: Series; trend?: Trend; message?: string };
 
 export function locationKey(location: LocationSelection | null) {
   if (!location) return '';
@@ -121,63 +121,77 @@ export function useLocationReport(location: LocationSelection | null, variable: 
   const [report, setReport] = useState<Report>();
   const snapshot = variable === 'T2M' ? (temperatureSnapshot as Partial<Record<string, Series & { source: string; retrieved_at: string }>>)[id] : undefined;
   const archive = snapshot && { ...snapshot, points: snapshot.points.filter(({ date }) => Number(date.slice(0, 4)) >= startYear && Number(date.slice(0, 4)) <= endYear) };
+
   useEffect(() => {
     if (!key) return;
     const controller = new AbortController();
-    const signal = () => AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]);
+    const signal = () => AbortSignal.any([controller.signal, AbortSignal.timeout(40_000)]);
     const query = new URLSearchParams({ variable_id: variable, start_year: String(startYear), end_year: String(endYear) });
     if (id.includes(',')) {
       const [lat, lng] = id.split(',');
       query.set('lat', lat);
       query.set('lon', lng);
+      if (location && location.kind === 'coordinates' && location.label) {
+        query.set('location_name', location.label);
+      }
     } else {
       query.set('region_id', id);
     }
 
     async function load() {
-      let series: Series | undefined = archive;
+      let series: Series | undefined;
       try {
-        if (!presentation || !archive) {
-          try {
-            const response = await localApiFetch(`/api/v1/series?${query}`, { signal: signal() });
-            if (!response.ok) throw new Error('Series unavailable');
-            const payload: unknown = await response.json();
-            if (!isSeries(payload) || payload.variable_id !== variable) throw new Error('Invalid series');
-            series = { ...payload, points: payload.points
-              .filter(({ date }) => Number(date.slice(0, 4)) >= startYear && Number(date.slice(0, 4)) <= endYear)
-              .map((point) => point.quality === 'missing' ? { ...point, value: null } : point)
-              .sort((a, b) => a.date.localeCompare(b.date)) };
-          } catch (error) {
-            if (!archive) throw error;
+        // ALWAYS query the live local FastAPI backend directly (Zero Mocks / Live Pipeline)
+        const response = await localApiFetch(`/api/v1/series?${query}`, { signal: signal() });
+        if (!response.ok) throw new Error(`Series API returned HTTP ${response.status}`);
+        const payload: unknown = await response.json();
+        if (!isSeries(payload) || payload.variable_id !== variable) throw new Error('Invalid series payload');
+        series = {
+          ...payload,
+          points: payload.points
+            .filter(({ date }) => Number(date.slice(0, 4)) >= startYear && Number(date.slice(0, 4)) <= endYear)
+            .map((point) => point.quality === 'missing' ? { ...point, value: null } : point)
+            .sort((a, b) => a.date.localeCompare(b.date)),
+        };
+      } catch (error) {
+        // Only use bundled snapshot if local API is unreachable (physical network failure)
+        if (archive) {
+          series = archive;
+        } else {
+          if (!controller.signal.aborted) {
+            setReport((current) => current?.key === key && current.series
+              ? current : { key, message: 'Historical series unavailable from local API.' });
           }
+          return;
         }
-        if (controller.signal.aborted) return;
-        if (!series) throw new Error('Series unavailable');
-        setReport({ key, series });
-        if (!series.points.some(({ value }) => value !== null)) return;
+      }
 
+      if (controller.signal.aborted || !series) return;
+      setReport({ key, series });
+      if (!series.points.some(({ value }) => value !== null)) return;
+
+      try {
         const trendResponse = await localApiFetch('/api/v1/analytics/trends', {
           method: 'POST',
           body: JSON.stringify({ variable_id: variable, points: series.points }),
           signal: signal(),
         });
-        if (!trendResponse.ok) return;
-        const trend: unknown = await trendResponse.json();
-        if (isTrend(trend) && !controller.signal.aborted) setReport({ key, series, trend });
+        if (trendResponse.ok) {
+          const trend: unknown = await trendResponse.json();
+          if (isTrend(trend) && !controller.signal.aborted) {
+            setReport({ key, series, trend });
+          }
+        }
       } catch {
-        if (!controller.signal.aborted) setReport((current) => current?.key === key && current.series
-          ? current : { key, message: 'Historical data could not be loaded. Check the local API.' });
+        // Trend calculation unavailable
       }
     }
     void load();
     return () => controller.abort();
-  }, [snapshot, id, key, presentation, variable, startYear, endYear]);
+  }, [id, key, variable, startYear, endYear]);
 
   if (!key) return undefined;
-  if (archive && report?.key !== key) {
-    return { key, series: archive };
-  }
-  return report?.key === key ? report : { key, message: 'Loading historical data…' };
+  return report?.key === key ? report : { key, message: 'Loading live observations from backend…' };
 }
 
 export function pointValue(points: DataPoint[] | undefined, date: string): number | null {

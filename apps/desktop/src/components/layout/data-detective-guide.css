@@ -1,0 +1,357 @@
+/* NASA Data Detective Field Manual Styles (Hallmark Compliant) */
+
+.guide-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: guideOverlayFadeIn 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes guideOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.guide-modal-container {
+  width: 100%;
+  max-width: 820px;
+  max-height: 85vh;
+  background: var(--sphere-navy, #060d1a);
+  border: 1px solid var(--terminal-border-bright, rgba(121, 220, 255, 0.28));
+  border-radius: var(--radius-hud, 4px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 24px rgba(121, 220, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: guideContainerPopIn 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes guideContainerPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+/* Header */
+.guide-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: rgba(12, 24, 41, 0.85);
+  border-bottom: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+}
+
+.guide-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.guide-svg-icon {
+  color: var(--pale-blue-dot, #79dcff);
+  flex-shrink: 0;
+}
+
+.guide-header-title h2 {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.15rem;
+  color: var(--sand-ivory, #d6c7b2);
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+.guide-subtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.guide-close-button {
+  background: transparent;
+  border: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+  border-radius: var(--radius-hud, 4px);
+  color: var(--text-muted, #94a3b8);
+  padding: 0.35rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.guide-close-button:hover,
+.guide-close-button:focus-visible {
+  color: var(--pale-blue-dot, #79dcff);
+  border-color: var(--pale-blue-dot, #79dcff);
+  background-color: rgba(121, 220, 255, 0.08);
+}
+
+/* Tabs */
+.guide-tabs-nav {
+  display: flex;
+  background: var(--space-black, #030712);
+  border-bottom: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+  padding: 0.25rem 0.5rem 0;
+  gap: 0.5rem;
+}
+
+.guide-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-hud, 4px) var(--radius-hud, 4px) 0 0;
+  color: var(--text-muted, #94a3b8);
+  padding: 0.6rem 0.9rem;
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.guide-tab-btn:hover {
+  color: var(--text-primary, #f0f6fc);
+  background-color: rgba(121, 220, 255, 0.04);
+}
+
+.guide-tab-btn.active {
+  color: var(--pale-blue-dot, #79dcff);
+  background-color: var(--sphere-navy, #060d1a);
+  border-color: var(--terminal-border, rgba(121, 220, 255, 0.16));
+  border-bottom-color: var(--pale-blue-dot, #79dcff);
+}
+
+.guide-tab-btn:focus-visible {
+  outline: 2px solid var(--pale-blue-dot, #79dcff);
+  outline-offset: -2px;
+}
+
+/* Body */
+.guide-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.guide-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.guide-modal-body::-webkit-scrollbar-track {
+  background: var(--space-black, #030712);
+}
+
+.guide-modal-body::-webkit-scrollbar-thumb {
+  background: var(--sphere-navy-elevated, #162c49);
+  border-radius: 3px;
+}
+
+.guide-lead-text {
+  font-size: 0.88rem;
+  color: var(--sand-ivory, #d6c7b2);
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+}
+
+/* Variable Cards Grid */
+.guide-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+}
+
+.guide-card {
+  background: rgba(12, 24, 41, 0.7);
+  border: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.14));
+  border-radius: var(--radius-hud, 4px);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.guide-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.var-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--pale-blue-dot, #79dcff);
+  background: rgba(121, 220, 255, 0.12);
+  border: 1px solid rgba(121, 220, 255, 0.24);
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.guide-card-head h3 {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.85rem;
+  color: var(--text-primary, #f0f6fc);
+  margin: 0;
+}
+
+.guide-card p {
+  font-size: 0.78rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.guide-card p strong {
+  color: var(--text-primary, #f0f6fc);
+}
+
+.source-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-top: 0.35rem;
+  display: block;
+}
+
+/* Method Steps */
+.method-step-card {
+  display: flex;
+  gap: 1rem;
+  background: rgba(12, 24, 41, 0.7);
+  border: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.14));
+  border-radius: var(--radius-hud, 4px);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.step-number {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--pale-blue-dot, #79dcff);
+  flex-shrink: 0;
+}
+
+.method-step-card h3 {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.95rem;
+  color: var(--text-primary, #f0f6fc);
+  margin: 0 0 0.35rem;
+}
+
+.method-step-card p {
+  font-size: 0.82rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.method-step-card code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  background: var(--space-black, #030712);
+  color: var(--sand-ivory, #d6c7b2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  border: 1px solid rgba(121, 220, 255, 0.12);
+}
+
+/* Teleconnection Archetypes */
+.teleconnection-archetypes {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.archetype-card {
+  background: rgba(12, 24, 41, 0.7);
+  border: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.14));
+  border-radius: var(--radius-hud, 4px);
+  padding: 1rem;
+}
+
+.archetype-card h3 {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.95rem;
+  color: var(--sand-ivory, #d6c7b2);
+  margin: 0 0 0.5rem;
+}
+
+.archetype-card p {
+  font-size: 0.82rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.45;
+  margin: 0 0 0.4rem;
+}
+
+.archetype-card p strong {
+  color: var(--pale-blue-dot, #79dcff);
+}
+
+/* Footer */
+.guide-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: rgba(12, 24, 41, 0.85);
+  border-top: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+}
+
+.footer-status-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.btn-guide-dismiss {
+  background: var(--pale-blue-dot, #79dcff);
+  color: var(--space-black, #030712);
+  border: none;
+  border-radius: var(--radius-hud, 4px);
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.btn-guide-dismiss:hover {
+  opacity: 0.9;
+  transform: translate3d(0, -1px, 0);
+}
+
+.btn-guide-dismiss:focus-visible {
+  outline: 2px solid var(--sand-ivory, #d6c7b2);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-modal-overlay,
+  .guide-modal-container,
+  .guide-close-button,
+  .guide-tab-btn,
+  .btn-guide-dismiss {
+    animation: none;
+    transition: none;
+  }
+}

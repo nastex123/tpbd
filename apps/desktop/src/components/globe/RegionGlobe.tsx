@@ -3,17 +3,20 @@ import Globe, { type GlobeMethods } from 'react-globe.gl';
 import { Mesh, MeshBasicMaterial, SphereGeometry, SRGBColorSpace, TextureLoader } from 'three';
 import { parseCoordinate, type LocationSelection } from '../../stores/navigationStore';
 import { deleteInvestigation, INVESTIGATIONS_KEY, readInvestigations, saveInvestigation, type Investigation } from '../../stores/investigations';
-import { distanceKm, gridOutline, initialView, type CountryCollection, type CountryFeature, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
+import { distanceKm, findCountryAt, gridOutline, initialView, type CountryCollection, type CountryFeature, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
 import { InvestigationReport } from './InvestigationReport';
 import { ScientificExplanation } from './ScientificExplanation';
-import { TemporalComparison } from './TemporalComparison';
+import { DataDetectiveWorkbench } from '../detective/DataDetectiveWorkbench';
+import { HolographicInspectorModal } from '../detective/HolographicInspectorModal';
+import { FloatingCopilotTrigger } from '../copilot/FloatingCopilotTrigger';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
 import { nextObservationDate, observationDates } from './historyTimeline';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
+import { computeArcAltitude, sphericalMidpoint } from './teleconnectionComparison';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
 
@@ -174,15 +177,39 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateB, setSelectedDateB] = useState('');
   const [playing, setPlaying] = useState(false);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [screenCoords, setScreenCoords] = useState<{ x: number; y: number } | null>(null);
+  const [sidebarDocked, setSidebarDocked] = useState(false);
+
+  function updateScreenPosition(lat: number, lng: number) {
+    if (globe.current) {
+      const coords = globe.current.getScreenCoords(lat, lng, 0.05);
+      if (coords && Number.isFinite(coords.x) && Number.isFinite(coords.y)) {
+        setScreenCoords(coords);
+      }
+    }
+  }
   const dataPanel = useRef<HTMLDivElement>(null);
   const flightTimers = useRef<number[]>([]);
   const selectedId = location?.kind === 'region' ? location.id : null;
-  const selected = useMemo(() => location?.kind === 'coordinates'
-    ? { ...location, id: null, name: 'Custom location', cell: undefined }
-    : regions.find(({ id }) => id === selectedId), [location, regions, selectedId]);
-  const targetB = useMemo(() => compare?.kind === 'coordinates'
-    ? { ...compare, id: null, name: 'Custom location B', cell: undefined }
-    : regions.find(({ id }) => id === compare?.id), [compare, regions]);
+  const selected = useMemo(() => {
+    if (!location) return undefined;
+    if (location.kind === 'region') return regions.find(({ id }) => id === selectedId);
+    const country = location.label || findCountryAt(location.lat, location.lng, countries);
+    const name = country
+      ? `${country} (${location.lat.toFixed(2)}°, ${location.lng.toFixed(2)}°)`
+      : `Coordinates (${location.lat.toFixed(2)}°, ${location.lng.toFixed(2)}°)`;
+    return { ...location, id: null, name, cell: undefined };
+  }, [location, regions, selectedId, countries]);
+  const targetB = useMemo(() => {
+    if (!compare) return undefined;
+    if (compare.kind === 'region') return regions.find(({ id }) => id === compare.id);
+    const country = compare.label || findCountryAt(compare.lat, compare.lng, countries);
+    const name = country
+      ? `${country} (${compare.lat.toFixed(2)}°, ${compare.lng.toFixed(2)}°)`
+      : `Coordinates (${compare.lat.toFixed(2)}°, ${compare.lng.toFixed(2)}°)`;
+    return { ...compare, id: null, name, cell: undefined };
+  }, [compare, regions, countries]);
   const keyA = locationKey(location);
   const keyB = locationKey(compare);
   const markers = useMemo(() => [
@@ -419,6 +446,12 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     const key = locationKey(next);
     setHistory((previous) => [next, ...previous.filter((item) => locationKey(item) !== key)].slice(0, 8));
     cameraTo({ ...point, altitude: 0.85 }, flight);
+    updateScreenPosition(point.lat, point.lng);
+    setIsInspectorOpen(true);
+    if (flight) {
+      window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 700);
+      window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 1100);
+    }
   }
 
   function selectMarker(marker: object) {
@@ -454,6 +487,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return () => window.clearTimeout(timer);
   }, [tour, tourPlaying, regions]);
 
+  function frameBothLocations(a: GeoPoint, b: GeoPoint) {
+    const dist = distanceKm(a, b);
+    const mid = sphericalMidpoint(a, b);
+    const altitude = Math.min(3.4, Math.max(1.4, 0.9 + (dist / 10000) * 1.5));
+    cameraTo({ lat: mid.lat, lng: mid.lng, altitude }, true);
+  }
+
   function showStep(next: number) {
     setStep(next);
     setTourPlaying(false);
@@ -469,7 +509,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     }
     if (next === 3 && regions[1]) {
       const other = regions.find(({ id }) => id === (selectedId === 'sahel' ? 'amazon' : 'sahel'));
-      if (other) setCompare({ kind: 'region', id: other.id });
+      if (other) {
+        setCompare({ kind: 'region', id: other.id });
+        const anchor = regions.find(({ id }) => id === selectedId);
+        if (anchor) {
+          window.setTimeout(() => frameBothLocations(anchor, other), 450);
+        }
+      }
     }
     if (next > 0) dataPanel.current?.scrollIntoView({ block: 'nearest' });
   }
@@ -489,6 +535,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     setPeriod({ start: 1990, end: 2025 });
     setPeriodNotice('');
     setSelectedDate('');
+    if (regA && regB) {
+      window.setTimeout(() => frameBothLocations(regA, regB), 450);
+    }
   }
 
   function markerColor(marker: typeof markers[number]) {
@@ -505,7 +554,88 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return marker.key === keyB ? '#f0a4e5' : '#79dcff';
   }
 
-  const arc = measurePoints.length === 2 ? [{ start: measurePoints[0], end: measurePoints[1] }] : [];
+  interface GlobeArc {
+    start: { lat: number; lng: number };
+    end: { lat: number; lng: number };
+    color: string | string[];
+    altitude: number;
+    stroke: number;
+    dashLength?: number;
+    dashGap?: number;
+    dashAnimateTime?: number;
+  }
+
+  // Stable reference for the comparison arc so ThreeDigest does not thrash / flicker on re-renders
+  const lastArcRef = useRef<GlobeArc | null>(null);
+  const lastArcKey = useRef<string>('');
+
+  const allArcs = useMemo<GlobeArc[]>(() => {
+    const result: GlobeArc[] = [];
+    // 1. Manual distance measurement arc (amber, solid) - 100% preserved
+    if (measurePoints.length === 2) {
+      result.push({
+        start: measurePoints[0],
+        end: measurePoints[1],
+        color: '#ffcd70',
+        altitude: computeArcAltitude(measurePoints[0], measurePoints[1]),
+        stroke: 0.65,
+        dashLength: 1,
+        dashGap: 0,
+        dashAnimateTime: 0,
+      });
+    }
+    // 2. Planetary teleconnection / spatial comparison arc (luminous gradient tube, elevated above terrain, solid & crisp)
+    if (selected && targetB && keyA !== keyB) {
+      const currentKey = `${selected.lat.toFixed(4)},${selected.lng.toFixed(4)}->${targetB.lat.toFixed(4)},${targetB.lng.toFixed(4)}`;
+      const alt = computeArcAltitude(
+        { lat: selected.lat, lng: selected.lng },
+        { lat: targetB.lat, lng: targetB.lng }
+      );
+      if (lastArcKey.current === currentKey && lastArcRef.current) {
+        result.push(lastArcRef.current);
+      } else {
+        const newArc: GlobeArc = {
+          start: { lat: selected.lat, lng: selected.lng },
+          end: { lat: targetB.lat, lng: targetB.lng },
+          color: ['#38bdf8', '#818cf8', '#c084fc', '#f59e0b'],
+          altitude: alt,
+          stroke: 0.75,
+          dashLength: 1,
+          dashGap: 0,
+          dashAnimateTime: 0,
+        };
+        lastArcRef.current = newArc;
+        lastArcKey.current = currentKey;
+        result.push(newArc);
+      }
+    } else {
+      lastArcRef.current = null;
+      lastArcKey.current = '';
+    }
+    return result;
+  }, [measurePoints, selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB]);
+
+  const activeRings = useMemo(() => {
+    if (reduced || !motionAllowed()) return [];
+    const rings: { lat: number; lng: number; color: string }[] = [];
+    if (selected) {
+      rings.push({ lat: selected.lat, lng: selected.lng, color: '#38bdf8' });
+    }
+    if (targetB && keyA !== keyB) {
+      rings.push({ lat: targetB.lat, lng: targetB.lng, color: '#f59e0b' });
+    }
+    return rings;
+  }, [selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB, reduced]);
+
+  // Continuously track 3D screen coordinate of active target during rotations / interactions
+  useEffect(() => {
+    if (!selected) return;
+    updateScreenPosition(selected.lat, selected.lng);
+    const interval = window.setInterval(() => {
+      updateScreenPosition(selected.lat, selected.lng);
+    }, 120);
+    return () => window.clearInterval(interval);
+  }, [selected?.lat, selected?.lng, isInspectorOpen]);
 
   return (
     <section className="region-picker" aria-labelledby="region-heading">
@@ -558,7 +688,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             setInputError('Enter a latitude from −90 to 90 and a longitude from −180 to 180. Use a decimal point.');
             return;
           }
-          visit({ kind: 'coordinates', lat, lng }, { lat, lng });
+          const country = findCountryAt(lat, lng, countries);
+          visit({ kind: 'coordinates', lat, lng, label: country }, { lat, lng });
         }}>
           <label>Latitude <input name="latitude" inputMode="decimal" defaultValue={selected?.lat} /></label>
           <label>Longitude <input name="longitude" inputMode="decimal" defaultValue={selected?.lng} /></label>
@@ -599,8 +730,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             setMeasure(event.target.checked);
             setMeasurePoints([]);
           }} /> Measure distance</label>
-          {measure && <p role="status">{arc.length
-            ? `${Math.round(distanceKm(arc[0].start, arc[0].end)).toLocaleString()} km along the Earth's surface.`
+          {measure && <p role="status">{measurePoints.length === 2
+            ? `${Math.round(distanceKm(measurePoints[0], measurePoints[1])).toLocaleString()} km along the Earth's surface.`
             : 'Choose two points on the globe.'}</p>}
         </details>}
         {history.length > 0 && <details className="exploration-tools">
@@ -679,166 +810,95 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             </li>)}
           </ul>}
         </details>
-        <div ref={dataPanel} className="globe-data">
-          <h2>Historical data</h2>
-          <button className="report-print-trigger" type="button" disabled={!reportA?.series}
-            onClick={() => window.print()}>Print or save report as PDF</button>
-          <details>
-            <summary>Understanding the results</summary>
-            <p>A trend describes change over the selected period. A significant result indicates statistical evidence under the stated method and does not establish a cause.</p>
-            <p>A non-significant result means the evidence is insufficient to establish a trend. A result may also be non-evaluable when data or method requirements are not met.</p>
-          </details>
-          <form key={`${variable}:${variableRange.start}:${variableRange.end}:${period.start}:${period.end}`} onSubmit={(event) => {
-            event.preventDefault();
-            const values = new FormData(event.currentTarget);
-            const start = Number(values.get('startYear'));
-            const end = Number(values.get('endYear'));
-            if (!Number.isInteger(start) || !Number.isInteger(end) || start < variableRange.start || end > variableRange.end || start > end) {
-              setPeriodError(`Choose a valid period from ${variableRange.start} through ${variableRange.end}.`);
-              return;
-            }
-            setPeriodError('');
-            setPlaying(false);
-            setSelectedDate('');
-            setPeriod({ start, end });
-          }}>
-            <p>Available years for this variable: {variableRange.start}–{variableRange.end}.</p>
-            <label>Start year <input name="startYear" type="number" min={variableRange.start} max={variableRange.end} defaultValue={period.start} required /></label>
-            <label>End year <input name="endYear" type="number" min={variableRange.start} max={variableRange.end} defaultValue={period.end} required /></label>
-            <button type="submit">Apply period</button>
-            {periodError && <p role="alert">{periodError}</p>}
-          </form>
-          <label>Find a variable <input type="search" value={variableSearch} onChange={(event) => setVariableSearch(event.target.value)} placeholder="Search name or ID" /></label>
-          <label>Variable <select value={variable} onChange={(event) => {
-            setPlaying(false);
-            setSelectedDate('');
-            const nextRange = variables.find(({ id }) => id === event.target.value);
-            if (nextRange) setPeriodNotice(period.start < nextRange.start || period.end > nextRange.end
-              ? `Period adjusted to the available years ${nextRange.start}–${nextRange.end}.` : '');
-            if (nextRange) setPeriod((current) => {
-              const start = Math.min(nextRange.end, Math.max(nextRange.start, current.start));
-              return { start, end: Math.max(start, Math.min(nextRange.end, current.end)) };
-            });
-            setPeriodError('');
-            setVariable(event.target.value);
-          }}>{variables.filter(({ id, name }) => id === variable || `${id} ${name}`.toLowerCase().includes(variableSearch.trim().toLowerCase()))
-            .map(({ id, name }) => <option key={id} value={id}>{name} · {id}</option>)}</select></label>
-          {variableSearch && !variables.some(({ id, name }) => `${id} ${name}`.toLowerCase().includes(variableSearch.trim().toLowerCase())) && <p role="status">No matching variable.</p>}
-          <p role="status">{periodNotice}</p>
-          <section className="globe-report" aria-label="Variable information">
-            <strong>{variableRange.name} · {variableRange.id}</strong>
-            <p>{variableRange.description}</p>
-            <p>{variableRange.category} · {variableRange.unit} · Monthly · {variableRange.start}–{variableRange.end}</p>
-            <p>Source: {variableRange.source}. Community: {variableRange.community}. Grid: {variableRange.resolution}.</p>
-          </section>
-          <details className="exploration-tools" style={{ margin: '0.75rem 0' }}>
-            <summary>Planetary Teleconnections (Opposing Trends)</summary>
-            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#c5d3e8' }}>
-              Explore how single planetary climate processes drive opposing directional trends across paired biomes (NASA Space Apps Challenge 2026):
-            </p>
-            <div className="globe-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {teleconnectionPresets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => loadTeleconnectionPreset(preset.id)}
-                  style={{ textAlign: 'left', padding: '0.4rem 0.6rem' }}
-                >
-                  <strong>{preset.name}</strong> · <em>{preset.variable}</em>
-                  <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{preset.note}</div>
-                </button>
-              ))}
+        {selected && (
+          <div className="inspector-dock-banner">
+            <div className="inspector-dock-info">
+              <span className="dock-badge">ACTIVE TARGET</span>
+              <strong>{selected.name}</strong>
             </div>
-          </details>
-          <label>Compare with <select value={compare?.kind === 'region' ? compare.id : compare ? 'custom' : ''} onChange={(event) => {
-            if (event.target.value === 'custom') return;
-            setCompare(event.target.value ? { kind: 'region', id: event.target.value } : null);
-          }}>
-            <option value="">No comparison</option>
-            {regions.map(({ id, name }) => <option key={id} value={id} disabled={keyA === id}>{name}</option>)}
-            {compare?.kind === 'coordinates' && <option value="custom">Pinned coordinates</option>}
-          </select></label>
-          {location?.kind === 'coordinates' && <button type="button" onClick={() => setCompare(location)}>Pin coordinates as B</button>}
-          {selected && targetB && keyA !== keyB && <div className="globe-actions">
-            <button type="button" onClick={() => cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}>Go to A</button>
-            <button type="button" onClick={() => cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}>Go to B</button>
-          </div>}
-          {!selected && <p>Select a location to load its history.</p>}
-          {keyA && keyA === keyB && <p>Choose a different location for A to compare with B.</p>}
-          {!comparable && <p role="status">The series cannot share a comparison: {issues.join('; ')}. Each series is shown independently.</p>}
-          {reportA?.series && reportB?.series && comparable && <p>
-            Both series use {reportA.series.variable_id}, {reportA.series.unit}, monthly frequency, {reportA.series.provider}, and {reportA.series.spatial_resolution} resolution for the same available period.
-            {' '}{trendIssue ?? `Sen slopes: A ${reportA.trend?.rate_per_decade} and B ${reportB.trend?.rate_per_decade} ${reportA.trend?.rate_unit}. Different estimates alone do not establish a statistically significant difference or a common cause.`}
-          </p>}
-          {dates.length > 0 && <>
-            <label>Month <output>{visibleDate}</output>
-              <input type="range" min={0} max={dates.length - 1} value={dates.indexOf(visibleDate)}
-                onChange={(event) => setSelectedDate(dates[Number(event.target.value)])} />
-            </label>
-            <button type="button" disabled={dates.length < 2}
-              onClick={() => setPlaying((value) => !value)}>{playing ? 'Pause history' : 'Play history'}</button>
-            <p className="globe-scale">
-              <span>{bounds[0].toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              <span aria-label="Low to high values" />
-              <span>{bounds[1].toLocaleString(undefined, { maximumFractionDigits: 2 })} {reportA?.series?.unit ?? reportB?.series?.unit}</span>
-            </p>
-          </>}
-          {reports.map(({ key, place, report, color }, index) => {
-            if (!place || !report || (index === 1 && key === keyA)) return null;
-            const series = report.series;
-            const valid = series?.points.filter((point) => point.value !== null).length ?? 0;
-            const independent = index === 1 && !comparable;
-            const chartDates = independent ? observationDates(series?.points ?? []) : dates;
-            const chartDate = independent
-              ? chartDates.includes(selectedDateB) ? selectedDateB : chartDates.at(-1) ?? ''
-              : visibleDate;
-            const chartValue = pointValue(series?.points, chartDate);
-            const chartBounds: readonly [number, number] = independent && series
-              ? (() => {
-                const values = series.points.flatMap(({ value: point }) => point === null ? [] : [point]);
-                const line = trendLine(series.points, report.trend);
-                if (line) values.push(line.start, line.end);
-                return values.length ? [Math.min(...values), Math.max(...values)] : [0, 1];
-              })() : bounds;
-            return <section key={key} className="globe-report" data-highlighted={hovered === key || undefined}>
-              <h3>{targetB ? `${index === 0 ? 'A' : 'B'} · ` : ''}{place.name}</h3>
-              {series ? <>
-                <p>{valid} of {series.points.length} months with data · {series.provider}</p>
-                <p>{variableRange.name} ({series.variable_id}) · {series.unit} · {series.is_cached ? 'Cached data' : series.provider.includes('offline') ? 'Offline snapshot' : 'Source data'}</p>
-                {series.query_coordinates && <p>Requested location: {series.query_coordinates.latitude}, {series.query_coordinates.longitude}</p>}
-                {series.representative_grid_cell && <p>Grid cell: {series.representative_grid_cell} · {series.spatial_resolution}</p>}
-                <p>{series.points.length ? `Available period: ${series.points[0].date} to ${series.points[series.points.length - 1].date}.` : 'No data is available for this period.'}</p>
-                {chartDate && <p>{place.name} · {variableRange.name} · {chartDate}: {chartValue === null ? 'No data' : `${chartValue} ${series.unit}`} · {series.provider}</p>}
-                {independent && chartDates.length > 0 && <label>Month for B <output>{chartDate}</output>
-                  <input type="range" min={0} max={chartDates.length - 1} value={chartDates.indexOf(chartDate)}
-                    onChange={(event) => setSelectedDateB(chartDates[Number(event.target.value)])} />
-                </label>}
-                {valid > 0 && <HistoryChart points={series.points} dates={chartDates} date={chartDate}
-                  bounds={chartBounds} name={place.name} color={color} highlighted={hovered === key} trend={report.trend}
-                  onHover={(active) => setHovered(active ? key : null)} onDate={(date) => {
-                    setPlaying(false);
-                    if (independent) setSelectedDateB(date);
-                    else setSelectedDate(date);
-                  }} />}
-                {trendLine(series.points, report.trend) && <p>Dashed line: Sen slope, anchored to the median residual of the displayed data.</p>}
-                <p>{report.trend?.plain_language_verdict ?? 'Trend analysis unavailable.'}</p>
-                {report.trend && <p>
-                  Method: {report.trend.method}. {report.trend.p_value !== null ? `p = ${report.trend.p_value}.` : 'p-value unavailable.'}
-                  {report.trend.confidence_interval_95 && ` 95% interval: ${report.trend.confidence_interval_95.join(' to ')} ${report.trend.rate_unit}.`}
-                  {' '}{report.trend.scientific_caveat}
-                </p>}
-                {index === 0 && <ScientificExplanation location={place.name} series={series} trend={report.trend} />}
-              </> : <p role="status">{report.message}</p>}
-            </section>;
-          })}
-          {location && selected && <TemporalComparison
-            key={`${keyA}:${variable}:${variableRange.start}:${variableRange.end}`}
-            location={location}
-            locationName={selected.name}
-            variable={variable}
-            variableName={variableRange.name}
-            available={{ start: variableRange.start, end: variableRange.end }}
-          />}
+            <div className="inspector-dock-actions">
+              <button
+                type="button"
+                className="btn-open-inspector"
+                onClick={() => {
+                  setIsInspectorOpen(true);
+                  updateScreenPosition(selected.lat, selected.lng);
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+                <span>Hologram HUD</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-mode-toggle ${sidebarDocked ? 'active' : ''}`}
+                onClick={() => setSidebarDocked(!sidebarDocked)}
+              >
+                {sidebarDocked ? 'Undock' : 'Dock Sidebar'}
+              </button>
+            </div>
+          </div>
+        )}
+        <div ref={dataPanel}>
+          {sidebarDocked ? (
+            <DataDetectiveWorkbench
+              location={location}
+              selectedPlace={selected ?? null}
+              targetB={targetB ?? null}
+              compare={compare}
+              onSetCompare={setCompare}
+              variable={variable}
+              onSetVariable={setVariable}
+              variableRange={variableRange}
+              variables={variables}
+              period={period}
+              onSetPeriod={setPeriod}
+              regions={regions}
+              teleconnectionPresets={teleconnectionPresets}
+              onLoadTeleconnectionPreset={loadTeleconnectionPreset}
+              reportA={reportA}
+              reportB={reportB}
+              dates={dates}
+              visibleDate={visibleDate}
+              onSetVisibleDate={setSelectedDate}
+              playing={playing}
+              onSetPlaying={setPlaying}
+              bounds={bounds}
+              hovered={hovered}
+              onHover={setHovered}
+              onGoToA={() => selected && cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}
+              onGoToB={() => targetB && cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}
+              onFrameBoth={() => selected && targetB && frameBothLocations(selected, targetB)}
+            />
+          ) : (
+            selected && (
+              <div className="inspector-floating-notice">
+                <div className="notice-header">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                  <span>Interactive 3D Hologram Deployed</span>
+                </div>
+                <p>
+                  Comprehensive analytics deck is anchored to <strong>{selected.name.split(' (')[0]}</strong> on the globe with 5 streamlined tabs.
+                </p>
+                {!isInspectorOpen && (
+                  <button
+                    type="button"
+                    className="btn-reopen-hud"
+                    onClick={() => {
+                      setIsInspectorOpen(true);
+                      updateScreenPosition(selected.lat, selected.lng);
+                    }}
+                  >
+                    Re-open Holographic Inspector
+                  </button>
+                )}
+              </div>
+            )
+          )}
         </div>
         {children}
       </div>
@@ -888,11 +948,18 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               onZoom={({ altitude }) => {
                 setZoomed((current) => current ? altitude < 1.55 : altitude < 1.35);
                 updateLabelSpacing();
+                if (selected) {
+                  updateScreenPosition(selected.lat, selected.lng);
+                }
               }}
               onGlobeClick={({ lat, lng }) => {
                 const point = { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
+                const country = findCountryAt(point.lat, point.lng, countries);
                 if (measure) addMeasurement(point);
-                else visit({ kind: 'coordinates', ...point }, point, false);
+                else {
+                  updateScreenPosition(point.lat, point.lng);
+                  visit({ kind: 'coordinates', ...point, label: country }, point, false);
+                }
               }}
               polygonsData={countries}
               polygonCapColor={(feature) => countryColors[(feature as CountryFeature).properties.color % countryColors.length]}
@@ -900,18 +967,22 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               polygonStrokeColor={() => '#c4e0e8'}
               polygonAltitude={0.0015}
               polygonLabel={(feature) => (feature as CountryFeature).properties.name}
-              onPolygonClick={(_, __, coords) => {
+              onPolygonClick={(feature, _, coords) => {
                 const point = { lat: Number(coords.lat.toFixed(5)), lng: Number(coords.lng.toFixed(5)) };
+                const country = (feature as CountryFeature)?.properties?.name || (feature as CountryFeature)?.properties?.nameEn;
                 if (measure) addMeasurement(point);
-                else visit({ kind: 'coordinates', ...point }, point, false);
+                else {
+                  updateScreenPosition(point.lat, point.lng);
+                  visit({ kind: 'coordinates', ...point, label: country }, point, false);
+                }
               }}
               pointsData={markers}
               pointColor={(point) => markerColor(point as typeof markers[number])}
               pointRadius={(point) => {
                 const { key } = point as typeof markers[number];
-                return key === hovered || key === keyA || key === keyB ? 1.25 : 0.7;
+                return key === hovered || key === keyA || key === keyB ? 1.3 : 0.75;
               }}
-              pointAltitude={(point) => (point as typeof markers[number]).id === null ? 0.055 : 0.025}
+              pointAltitude={(point) => (point as typeof markers[number]).id === null ? 0.004 : 0.003}
               pointLabel={(point) => {
                 const label = document.createElement('span');
                 label.textContent = markers.find((marker) => marker === point)?.name ?? '';
@@ -928,8 +999,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                 const trend = marker.key === keyA ? reportA?.trend : marker.key === keyB ? reportB?.trend : undefined;
                 const rate = trend?.rate_per_decade;
                 const brief = marker.name.split(' (')[0];
+                const sign = rate != null ? (rate > 0 ? '+' : rate < 0 ? '-' : '') : '';
                 return `${prefix}${zoomed ? marker.name : brief}${rate != null && trend
-                  ? ` · ${rate === 0 ? '→' : rate > 0 ? '↑' : '↓'} ${Math.abs(rate).toFixed(2)} ${trend.rate_unit}`
+                  ? ` · ${sign}${Math.abs(rate).toFixed(2)} ${trend.rate_unit}`
                   : ''}`;
               }}
               labelColor={(point) => (point as { country?: true }).country ? '#d8f1f4' : '#fff'}
@@ -946,18 +1018,22 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               pathPointAlt="altitude"
               pathColor="color"
               pathTransitionDuration={0}
-              arcsData={arc}
-              arcStartLat={(entry) => (entry as typeof arc[number]).start.lat}
-              arcStartLng={(entry) => (entry as typeof arc[number]).start.lng}
-              arcEndLat={(entry) => (entry as typeof arc[number]).end.lat}
-              arcEndLng={(entry) => (entry as typeof arc[number]).end.lng}
-              arcAltitude={0.034}
-              arcColor={() => '#ffcd70'}
+              arcsData={allArcs}
+              arcStartLat={(entry: unknown) => (entry as GlobeArc).start.lat}
+              arcStartLng={(entry: unknown) => (entry as GlobeArc).start.lng}
+              arcEndLat={(entry: unknown) => (entry as GlobeArc).end.lat}
+              arcEndLng={(entry: unknown) => (entry as GlobeArc).end.lng}
+              arcAltitude={(entry: unknown) => (entry as GlobeArc).altitude}
+              arcColor={(entry: unknown) => (entry as GlobeArc).color}
+              arcStroke={(entry: unknown) => (entry as GlobeArc).stroke}
+              arcDashLength={(entry: unknown) => (entry as GlobeArc).dashLength ?? 1}
+              arcDashGap={(entry: unknown) => (entry as GlobeArc).dashGap ?? 0}
+              arcDashAnimateTime={(entry: unknown) => (entry as GlobeArc).dashAnimateTime ?? 0}
               arcsTransitionDuration={0}
-              ringsData={selected?.id === null && !reduced && motionAllowed() ? [selected] : []}
-              ringColor={() => '#90f5b1'}
-              ringMaxRadius={3.2}
-              ringRepeatPeriod={1250}
+              ringsData={activeRings}
+              ringColor={(d: unknown) => (d as { color?: string }).color || '#38bdf8'}
+              ringMaxRadius={2.8}
+              ringRepeatPeriod={1400}
             />
           </GlobeBoundary>
         )}
@@ -986,6 +1062,50 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           Earth: NASA Blue Marble, WebGL Earth and three-globe. Borders: Natural Earth.
         </small>
       </div>
+
+      <FloatingCopilotTrigger
+        activeLocation={selected}
+        activeVariable={variable}
+        activeTrend={reportA?.trend}
+        onSelectLocation={(loc) => {
+          if (loc.kind === 'region') {
+            const r = regions.find((cand) => cand.id === loc.id);
+            if (r) visit(loc, r);
+          } else {
+            const country = loc.label || findCountryAt(loc.lat, loc.lng, countries);
+            visit({ ...loc, label: country }, { lat: loc.lat, lng: loc.lng });
+          }
+        }}
+        onSelectVariable={setVariable}
+      />
+
+      <HolographicInspectorModal
+        isOpen={isInspectorOpen && !sidebarDocked && !!selected}
+        onClose={() => setIsInspectorOpen(false)}
+        screenCoords={screenCoords}
+        place={selected ?? null}
+        location={location}
+        targetB={targetB ?? null}
+        compare={compare}
+        onSetCompare={setCompare}
+        variable={variable}
+        variableRange={variableRange}
+        period={period}
+        regions={regions}
+        teleconnectionPresets={teleconnectionPresets}
+        onLoadTeleconnectionPreset={loadTeleconnectionPreset}
+        reportA={reportA}
+        reportB={reportB}
+        dates={dates}
+        visibleDate={visibleDate}
+        onSetVisibleDate={setSelectedDate}
+        playing={playing}
+        onSetPlaying={setPlaying}
+        bounds={bounds}
+        onGoToA={() => selected && cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}
+        onGoToB={() => targetB && cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}
+        onFrameBoth={() => selected && targetB && frameBothLocations(selected, targetB)}
+      />
     </section>
   );
 }

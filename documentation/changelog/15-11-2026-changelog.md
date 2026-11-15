@@ -1,0 +1,9 @@
+# Daily Changelog - 15/11/2026
+
+- 15/11/2026-06:45 - Antigravity (Brandon/Dylan/Daniel) : Configured official Gemini 3 models (gemini-3.5-flash-lite default routing with 1.4s latency and automatic fallback) and root .env path.
+- 15/11/2026-06:50 - Antigravity (Brandon/Dylan/Daniel) : Implemented ray-casting point-in-polygon country detection in globeGeography.ts, resolving live arbitrary coordinates to actual country names.
+- 15/11/2026-06:55 - Antigravity (Brandon/Dylan/Daniel) : Extended NASA POWER client and local-api timeouts to 35-40s to support comprehensive 35-year real queries without truncation.
+- 15/11/2026-07:00 - Antigravity (Dylan/Brandon) : Designed and implemented Phase 6 HolographicInspectorModal and DataDetectiveGuideModal with zero emojis, clean SVG iconography, and five tabbed decks.
+- 15/11/2026-07:05 - Antigravity (Brandon/Dylan) : Resolved geodesic arc flickering by setting arcsTransitionDuration to 0, caching arc geometry reference across renders, and eliminated 3D cylinder flagpole distortion by setting pointAltitude to 0.003-0.004 on globe surface.
+- 15/11/2026-07:08 - Antigravity (Brandon/Dylan) : Replaced unicode arrow glyphs with clean standard +/- signs in globe labels to prevent broken question mark (?) rendering in WebGL bitmap font.
+- 15/11/2026-07:10 - Antigravity (Dylan/Brandon) : Restructured left sidebar navigation to eliminate endless vertical scrolling, introducing HUD Dock toggle between Floating Holographic Inspector and Sidebar Docking.

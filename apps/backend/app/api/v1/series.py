@@ -23,6 +23,7 @@ async def get_time_series(
     end_year: int = Query(2025, ge=1981, le=2026, description="Ending calendar year"),
     station_id: str | None = Query(None, description="Optional ground station or marine buoy identifier"),
     offline: bool = Query(False, description="When true, serve strictly from local cache without contacting upstream APIs"),
+    location_name: str | None = Query(None, description="Optional custom name or country label for coordinates"),
 ) -> TimeSeriesResponse:
     """Retrieve normalized historical monthly time series observations."""
     # 1. Temporal bounds validation
@@ -47,11 +48,11 @@ async def get_time_series(
             raise NotFoundError(resource="Region", identifier=region_id)
         target_lat = region.center_coordinates.latitude
         target_lon = region.center_coordinates.longitude
-        location_name = region.name
+        resolved_name = region.name
     elif lat is not None and lon is not None:
         target_lat = lat
         target_lon = lon
-        location_name = f"Coordinates ({lat:.2f}, {lon:.2f})"
+        resolved_name = location_name if location_name else f"Coordinates ({lat:.2f}, {lon:.2f})"
     else:
         raise AppException(
             title="Missing Geographic Coordinates",
@@ -72,6 +73,6 @@ async def get_time_series(
         lon=target_lon,
         start_year=start_year,
         end_year=end_year,
-        location_name=location_name,
+        location_name=resolved_name,
         offline_only=offline,
     )
