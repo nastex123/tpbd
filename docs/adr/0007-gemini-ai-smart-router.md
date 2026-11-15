@@ -1,4 +1,4 @@
-# ADR 0005: Gemini AI Synthetic Intelligence Engine and Smart Model Router (HU-27)
+# ADR 0007: Gemini AI Synthetic Intelligence Engine and Smart Model Router (HU-27)
 
 ## Status
 Accepted

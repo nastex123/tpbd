@@ -4,8 +4,8 @@
 - HU ID: HU-17
 - Owner: Brandon
 - Branch: `feature/hu-17-temporal-comparison`
-- Pull request: See associated pull request
-- Status: Ready for review
+- Pull request: [#29](https://github.com/nastex123/tpbd/pull/29)
+- Status: Merged
 
 ## User story and acceptance criteria
 

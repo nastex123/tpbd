@@ -20,14 +20,14 @@
 - [x] **CA-02: Smart Intent Routing (`"auto"` mode):** Dynamically maps task complexity to optimal models (defaulting query investigations to `gemini-3.8-flash` for sub-second latency), while respecting explicit model overrides.
 - [x] **CA-03: Natural Language Investigation Copilot:** Endpoint `POST /api/v1/ai/investigate` maps free-form questions to exact NASA parameters (`T2M`, `PRECTOTCORR`, `RH2M`, `GWETROOT`, `EVPTRNS`), curated region IDs, and scientific hypothesis rationales.
 - [x] **CA-04: Deterministic Offline Fallback:** When `GEMINI_API_KEY` is not present or upstream network fails, seamlessly falls back to local semantic heuristics with `"is_fallback": true` without crashing or blocking users.
-- [x] **CA-05: OpenAPI 3.1 & ADR-0005 Governance:** Fully specified in `docs/openapi.yaml` and documented under `docs/adr/0005-gemini-ai-smart-router.md`.
+- [x] **CA-05: OpenAPI 3.1 & ADR-0007 Governance:** Fully specified in `docs/openapi.yaml` and documented under `docs/adr/0007-gemini-ai-smart-router.md`.
 
 ---
 
 ## 3. Technical Implementation Details
 
 ### Architecture & Modularity
-- **ADR-0005:** Documented in `docs/adr/0005-gemini-ai-smart-router.md` establishing asynchronous HTTPX connection, prompt grounding, and zero-hallucination policies.
+- **ADR-0007:** Documented in `docs/adr/0007-gemini-ai-smart-router.md` establishing asynchronous HTTPX connection, prompt grounding, and zero-hallucination policies.
 - **Contract Definition (`docs/openapi.yaml`):** Added `GET /api/v1/ai/models`, `POST /api/v1/ai/investigate`, `ModelListResponse`, `AIModelInfo`, `DetectiveQueryRequest`, and `DetectiveQueryResponse`.
 - **Client Layer (`apps/backend/app/clients/gemini_client.py`):** Asynchronous HTTPX client targeting Google AI Studio v1beta REST endpoints with 15s timeout and error wrapping.
 - **Service Layer (`apps/backend/app/services/ai_service.py`):** Orchestrates live LLM calls, JSON schema sanitization, and deterministic heuristic fallback.

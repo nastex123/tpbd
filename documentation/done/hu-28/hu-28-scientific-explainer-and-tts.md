@@ -21,14 +21,14 @@
 - [x] **CA-03: NASA Mission Control Voice Debrief (`POST /api/v1/ai/audio-brief`):** Transcribes narrative text into spoken mission audio debriefs via `gemini-3.8-flash-tts` supporting selectable voice profiles (e.g. Puck, Charon, Kore, Fenrir, Aoede).
 - [x] **CA-04: Base64 Audio Delivery:** Encodes audio payload into Base64 format (`mime_type: audio/wav`) for zero-friction client-side desktop `<audio>` tag playback without intermediate file writes.
 - [x] **CA-05: Deterministic Offline Fallback:** When `GEMINI_API_KEY` is not configured or network requests fail, supplies domain-accurate deterministic physical explanations and a valid 44-byte standard WAV container (`UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=`) with `is_fallback: true`.
-- [x] **CA-06: OpenAPI 3.1 & ADR-0006 Governance:** Formally specified in `docs/openapi.yaml` and documented in Architecture Decision Record `docs/adr/0006-multimodal-synthesis-and-mission-control-audio.md`.
+- [x] **CA-06: OpenAPI 3.1 & ADR-0008 Governance:** Formally specified in `docs/openapi.yaml` and documented in Architecture Decision Record `docs/adr/0008-multimodal-synthesis-and-mission-control-audio.md`.
 
 ---
 
 ## 3. Technical Implementation Details
 
 ### Architecture & Modularity
-- **ADR-0006:** Recorded in `docs/adr/0006-multimodal-synthesis-and-mission-control-audio.md` defining thinking model prompts, audio payload formats, and fallback semantics.
+- **ADR-0008:** Recorded in `docs/adr/0008-multimodal-synthesis-and-mission-control-audio.md` defining thinking model prompts, audio payload formats, and fallback semantics.
 - **Contract Schemas (`docs/openapi.yaml`):** Added endpoints `POST /api/v1/ai/explain-trend` and `POST /api/v1/ai/audio-brief`, along with `TrendExplanationRequest`, `TrendExplanationResponse`, `AudioBriefRequest`, and `AudioBriefResponse`.
 - **Pydantic Schemas (`apps/backend/app/schemas/ai.py`):** Fully typed models enforcing validation and OpenAPI schema parity.
 - **Gemini Client (`apps/backend/app/clients/gemini_client.py`):** Added `generate_audio_tts()` calling Gemini TTS REST endpoint with voice configuration.

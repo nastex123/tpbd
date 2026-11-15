@@ -19,7 +19,7 @@
 
 ```
 +---------------------------------------------------------------------------------+
-|                       Desktop Application (Tauri 2 / Electron)                   |
+|                       Desktop Application (Electron)                            |
 |                                                                                 |
 |   [ 3D WebGL Globe ]     [ Recharts Series ]     [ Trend & Anomaly Inspector ]  |
 |                                  |                                              |
@@ -71,8 +71,13 @@ All backend endpoints are prefixed with `/api/v1` and document interactive Swagg
 | `POST` | `/api/v1/analytics/trends` | Non-parametric Seasonal Mann-Kendall test & Sen's slope rate |
 | `POST` | `/api/v1/analytics/compare` | Dual-region comparative trend analysis and driver diagnostics |
 | `POST` | `/api/v1/analytics/anomalies` | Standardized monthly climatological departures (WMO 1991–2020 Z-scores) |
-| `POST` | `/api/v1/integrations/appeears/login` | NASA Earthdata OAuth login and bearer token generation |
-| `GET` | `/api/v1/integrations/appeears/auth-status`| AppEEARS session and token validity inspection |
+| `POST` | `/api/v1/analytics/changepoints` | Pettitt change-point and regime analysis |
+| `GET` | `/api/v1/ai/models` | Available AI models and capabilities |
+| `POST` | `/api/v1/ai/investigate` | Natural-language investigation routing with deterministic fallback |
+| `POST` | `/api/v1/ai/explain-trend` | Evidence-grounded scientific trend explanation |
+| `POST` | `/api/v1/ai/audio-brief` | Mission Control audio briefing synthesis |
+| `POST` | `/api/v1/integrations/appeears/auth/login` | NASA Earthdata OAuth login and bearer token generation |
+| `GET` | `/api/v1/integrations/appeears/auth/status`| AppEEARS session and token validity inspection |
 | `POST` | `/api/v1/integrations/appeears/tasks` | Asynchronous point/area satellite extraction task submission |
 | `GET` | `/api/v1/integrations/appeears/tasks/{id}` | Status check for submitted AppEEARS extraction tasks |
 
@@ -147,6 +152,11 @@ Key architectural decisions are preserved in [`docs/adr/`](docs/adr/):
 - **ADR-0001:** Team Standards, API Governance, and Concurrency Guidelines
 - **ADR-0002:** Seasonal Mann-Kendall Trend Engine and Autocorrelation Correction
 - **ADR-0003:** Standardized Monthly Climatology Z-Score Anomaly Engine
+- **ADR-0004:** Non-parametric change-point detection
+- **ADR-0005:** Electron local API bridge and renderer isolation
+- **ADR-0006:** Local investigation storage
+- **ADR-0007:** Gemini AI smart model router
+- **ADR-0008:** Scientific explanation and Mission Control audio
 
 ---
 
