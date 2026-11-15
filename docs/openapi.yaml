@@ -316,6 +316,34 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /api/v1/analytics/changepoints:
+    post:
+      tags:
+        - Analytics
+      summary: Detect structural breaks and regime shifts using Pettitt's test
+      description: |
+        Executes non-parametric Pettitt's rank test to detect critical change-points in Earth science time series:
+        - Evaluates rank-based Mann-Whitney statistics U_t.
+        - Identifies the maximum absolute statistic K_T and corresponding change-point date.
+        - Computes approximate p-value for the structural break.
+        - Calculates segmented pre-break vs. post-break Sen's slopes and classifies the regime shift.
+      operationId: detectChangePoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePointRequest'
+      responses:
+        '200':
+          description: Change-point detection completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePointResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/v1/integrations/appeears/tasks:
     post:
       tags:
@@ -938,6 +966,88 @@ components:
         scientific_caveat:
           type: string
           example: "Z-score anomalies quantify statistical departures from the reference climatology, but do not prove physical disaster impact without in-situ validation."
+
+    ChangePointRequest:
+      type: object
+      required:
+        - variable_id
+        - points
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        alpha:
+          type: number
+          default: 0.05
+          example: 0.05
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    ChangePointResponse:
+      type: object
+      required:
+        - variable_id
+        - has_significant_break
+        - change_point_date
+        - change_point_index
+        - statistic_k
+        - p_value
+        - alpha
+        - regime_shift_type
+        - pre_break_slope
+        - post_break_slope
+        - unit_per_decade
+        - method
+        - scientific_notes
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        has_significant_break:
+          type: boolean
+          example: true
+        change_point_date:
+          type: string
+          nullable: true
+          example: "2000-06"
+        change_point_index:
+          type: integer
+          nullable: true
+          example: 24
+        statistic_k:
+          type: number
+          nullable: true
+          example: 184.0
+        p_value:
+          type: number
+          nullable: true
+          example: 0.0042
+        alpha:
+          type: number
+          example: 0.05
+        regime_shift_type:
+          type: string
+          enum: [accelerating_increase, decelerating_increase, reversal_to_cooling, reversal_to_warming, abrupt_step_increase, no_significant_break, not_evaluable]
+          example: accelerating_increase
+        pre_break_slope:
+          type: number
+          nullable: true
+          example: 0.05
+        post_break_slope:
+          type: number
+          nullable: true
+          example: 0.38
+        unit_per_decade:
+          type: string
+          example: "°C/decade"
+        method:
+          type: string
+          example: "Pettitt's Non-Parametric Rank Test (1979) with Segmented Sen's Slopes"
+        scientific_notes:
+          type: string
+          example: "Significant structural break detected at 2000-06 (p=0.0042). Trend accelerated from 0.05 °C/decade to 0.38 °C/decade."
 
     AppEEARSTaskRequest:
       type: object

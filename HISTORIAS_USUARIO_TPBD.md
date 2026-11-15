@@ -243,6 +243,27 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-24 — Índice de estrés ambiental [P2]
 - Requiere metodología publicada, variables compatibles y trazabilidad; no crear un índice ad hoc para el MVP.
 
+### ~~HU-26 — Detección no paramétrica de puntos de cambio y quiebres de régimen [P1]~~
+**Estado:** completada. Motor no paramétrico basado en la prueba de rangos de Pettitt (1979) para detectar quiebres estructurales en series temporales climáticas, cálculo de significancia estadística aproximada ($p$-valor), estimación de pendientes de Sen segmentadas pre-quiebre y post-quiebre, clasificación de régimen (`accelerating_increase`, `reversal_to_cooling`, etc.) y endpoint `POST /api/v1/analytics/changepoints`.
+
+**Como** analista climático, **quiero** identificar puntos de quiebre o cambios de régimen en la serie histórica, **para** entender cuándo y cómo se aceleró o revirtió una tendencia ambiental.
+
+- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-25.
+- **CA-01:** la prueba de Pettitt calcula estadísticos $U_t$ y localiza el punto crítico $t^*$.
+- **CA-02:** calcula pendientes de Sen diferenciadas antes y después del quiebre.
+- **CA-03:** clasifica la dirección del régimen (`accelerating_increase`, etc.).
+- **CA-04:** series cortas (< 24 meses) o varianza cero devuelven `not_evaluable`.
+
+### HU-27 — Copiloto IA de investigación y enrutador dinámico Gemini [P1]
+**Estado:** planificada. Enrutador inteligente con soporte para el catálogo completo de modelos Gemini (Gemini 3.8 Flash, Gemini 3.8 Live, Gemini 3.6 Flash, Gemini 3.5 Flash-Lite, etc.), endpoint `GET /api/v1/ai/models`, mapeo de preguntas en lenguaje natural a variables NASA y coordenadas geográficas (`POST /api/v1/ai/investigate`), y modo determinista seguro sin API key.
+
+- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-02, HU-06.
+
+### HU-28 — Explicador científico y síntesis de voz Mission Control TTS [P1]
+**Estado:** planificada. Generador de explicaciones científicas de tendencias ancladas a datos estadísticos reales con modelos de pensamiento extendido (`gemini-3.8-live-extended-thinking`), y síntesis de voz NASA Mission Control (`gemini-3.8-flash-tts`) entregando audio Base64 para reproducción en frontend (`POST /api/v1/ai/explain-trend`, `POST /api/v1/ai/audio-brief`).
+
+- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-27, HU-25, HU-10.
+
 ## Matriz de planificación P0
 
 | HU | Nombre | Responsable | Horas | Dependencias |

@@ -130,3 +130,44 @@ class AnomalyDetectionResponse(BaseModel):
     method: str = Field(..., description="Method applied")
     scientific_caveat: str = Field(..., description="Scientific limitations and caveats")
 
+
+class RegimeShiftType(str, Enum):
+    """Categorical classification of structural break / regime shift."""
+
+    ACCELERATING_INCREASE = "accelerating_increase"
+    DECELERATING_INCREASE = "decelerating_increase"
+    REVERSAL_TO_COOLING = "reversal_to_cooling"
+    REVERSAL_TO_WARMING = "reversal_to_warming"
+    ABRUPT_STEP_INCREASE = "abrupt_step_increase"
+    NO_SIGNIFICANT_BREAK = "no_significant_break"
+    NOT_EVALUABLE = "not_evaluable"
+
+
+class ChangePointRequest(BaseModel):
+    """Request payload for non-parametric Pettitt change-point detection."""
+
+    variable_id: str = Field(..., description="Canonical variable identifier")
+    alpha: float = Field(default=0.05, ge=0.001, le=0.2, description="Significance threshold for structural break")
+    points: list[DataPoint] = Field(..., min_length=1, max_length=2400, description="Monthly observations to evaluate")
+
+
+class ChangePointResponse(BaseModel):
+    """Response payload with Pettitt change-point and segmented regime shift results."""
+
+    variable_id: str = Field(..., description="Canonical variable identifier")
+    has_significant_break: bool = Field(..., description="Whether a statistically significant change point was detected")
+    change_point_date: str | None = Field(default=None, description="Observation date (YYYY-MM) of maximum structural break")
+    change_point_index: int | None = Field(default=None, description="Zero-based index of the change point in input array")
+    statistic_k: float | None = Field(default=None, description="Pettitt's K_T rank test statistic")
+    p_value: float | None = Field(default=None, description="Two-tailed p-value for the detected change point")
+    alpha: float = Field(..., description="Significance alpha used for evaluation")
+    regime_shift_type: RegimeShiftType = Field(..., description="Classification of the regime shift")
+    pre_break_slope: float | None = Field(default=None, description="Sen's slope per decade prior to the change point")
+    post_break_slope: float | None = Field(default=None, description="Sen's slope per decade after the change point")
+    unit_per_decade: str = Field(..., description="Physical units per decade")
+    method: str = Field(
+        default="Pettitt's Non-Parametric Rank Test (1979) with Segmented Sen's Slopes",
+        description="Applied methodology",
+    )
+    scientific_notes: str = Field(..., description="Scientific interpretation and caveats")
+

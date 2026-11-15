@@ -6,6 +6,7 @@ from app.services.catalog_service import CatalogService
 from app.services.series_service import SeriesService
 from app.services.trend_service import TrendService
 from app.services.anomaly_service import AnomalyService
+from app.services.changepoint_service import ChangePointService
 from app.repositories.region_repository import RegionRepository
 
 from app.repositories.cache_repository import CacheRepository
@@ -44,6 +45,15 @@ def get_trend_service(
 def get_anomaly_service() -> AnomalyService:
     """Singleton instance of AnomalyService."""
     return AnomalyService()
+
+
+@lru_cache
+def get_changepoint_service(
+    catalog_service: Annotated[CatalogService, Depends(get_catalog_service)] = None,
+) -> ChangePointService:
+    """Singleton instance of ChangePointService."""
+    cs = catalog_service or get_catalog_service()
+    return ChangePointService(cs)
 
 
 
