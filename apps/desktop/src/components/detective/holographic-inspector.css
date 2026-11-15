@@ -217,6 +217,50 @@ body:has(.bottom-telemetry-deck.is-minimized) .copilot-floating-trigger {
   flex-direction: column;
 }
 
+.deck-variable-select-wrapper {
+  position: relative;
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.deck-variable-dropdown {
+  width: 100%;
+  background: rgba(4, 9, 18, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--sand-ivory, #d6c7b2);
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.74rem;
+  font-weight: 500;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.deck-variable-dropdown:hover {
+  border-color: #38bdf8;
+  background: rgba(8, 16, 32, 0.95);
+}
+
+.deck-variable-dropdown:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+.deck-variable-dropdown option {
+  background: #060e1c;
+  color: #f1f5f9;
+}
+
+.deck-variable-unit {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+  display: block;
+}
+
 .deck-variable-name {
   font-size: 0.82rem;
   color: var(--sand-ivory, #d6c7b2);

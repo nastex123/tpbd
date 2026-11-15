@@ -21,6 +21,8 @@ export interface HolographicInspectorModalProps {
   onSetCompare: (loc: LocationSelection | null) => void;
   variable: string;
   variableRange: VariableItem;
+  availableVariables?: readonly VariableItem[];
+  onSelectVariable?: (variableId: string) => void;
   period: { start: number; end: number };
   dates: string[];
   visibleDate: string;
@@ -51,6 +53,8 @@ export function HolographicInspectorModal({
   onSetCompare,
   variable,
   variableRange,
+  availableVariables,
+  onSelectVariable,
   dates,
   visibleDate,
   onSetVisibleDate,
@@ -171,9 +175,34 @@ export function HolographicInspectorModal({
           {/* 1. LEFT COLUMN: Identity, Metric & Sen's Slope Verdict */}
           <div className="deck-col-identity">
             <div className="deck-metric-box">
-              <span className="deck-col-label">OBSERVED VARIABLE</span>
-              <span className="deck-variable-name">{variableRange.name}</span>
-              <span className="deck-variable-code">({variable})</span>
+              <label htmlFor="deck-variable-select" className="deck-col-label">
+                OBSERVED VARIABLE
+              </label>
+              {onSelectVariable && availableVariables && availableVariables.length > 0 ? (
+                <div className="deck-variable-select-wrapper">
+                  <select
+                    id="deck-variable-select"
+                    className="deck-variable-dropdown"
+                    value={variable}
+                    onChange={(e) => onSelectVariable(e.target.value)}
+                    aria-label="Select NASA Earth observation variable"
+                  >
+                    {availableVariables.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} ({v.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <span className="deck-variable-name">{variableRange.name}</span>
+                  <span className="deck-variable-code">({variable})</span>
+                </>
+              )}
+              <span className="deck-variable-unit">
+                Unit: {seriesA?.unit || variableRange.unit || ''}
+              </span>
             </div>
 
             <div className="deck-trend-box">
@@ -276,7 +305,11 @@ export function HolographicInspectorModal({
                         min={0}
                         max={dates.length - 1}
                         value={dates.indexOf(visibleDate)}
-                        onChange={(e) => onSetVisibleDate(dates[Number(e.target.value)])}
+                        onPointerDown={() => onSetPlaying(false)}
+                        onChange={(e) => {
+                          onSetPlaying(false);
+                          onSetVisibleDate(dates[Number(e.target.value)]);
+                        }}
                         className="deck-slider"
                         aria-label="Timeline month slider"
                       />

@@ -193,6 +193,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [screenCoords, setScreenCoords] = useState<{ x: number; y: number } | null>(null);
   const [sidebarDocked, setSidebarDocked] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   function updateScreenPosition(lat: number, lng: number) {
     if (globe.current) {
@@ -331,9 +332,17 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  const visibleDateRef = useRef(visibleDate);
+  visibleDateRef.current = visibleDate;
+
   useEffect(() => {
     if (!playing || dates.length < 2) return;
-    const timer = window.setInterval(() => setSelectedDate((current) => nextObservationDate(current, dates)), 500);
+    const timer = window.setInterval(() => {
+      setSelectedDate((current) => {
+        const base = dates.includes(current) ? current : visibleDateRef.current;
+        return nextObservationDate(base, dates);
+      });
+    }, 450);
     return () => window.clearInterval(timer);
   }, [playing, dates]);
 
@@ -469,6 +478,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     cameraTo({ ...point, altitude: 0.85 }, flight);
     updateScreenPosition(point.lat, point.lng);
     setIsInspectorOpen(true);
+    setIsSidebarCollapsed(true);
     if (flight) {
       window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 700);
       window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 1100);
@@ -659,9 +669,23 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   }, [selected?.lat, selected?.lng, isInspectorOpen]);
 
   return (
-    <section className="region-picker" aria-labelledby="region-heading">
+    <section className={`region-picker ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`} aria-labelledby="region-heading">
       <div className="region-panel" tabIndex={0} role="region" aria-labelledby="region-heading" data-presentation={step !== null || undefined}>
-        {heading}
+        <div className="region-panel-header-row">
+          {heading}
+          <button
+            type="button"
+            className="btn-collapse-sidebar"
+            onClick={() => setIsSidebarCollapsed(true)}
+            title="Retract sidebar to expand globe view"
+            aria-label="Retract sidebar"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Retract</span>
+          </button>
+        </div>
         <h2 id="region-heading">Study regions</h2>
         <div className="globe-actions">
           <button type="button" onClick={() => step === null ? showStep(0) : (setStep(null), setPlaying(false))}>
@@ -937,6 +961,22 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         ]}
       />}
       <div className="globe-viewport">
+        {isSidebarCollapsed && (
+          <button
+            type="button"
+            className="btn-expand-sidebar-floating"
+            onClick={() => setIsSidebarCollapsed(false)}
+            title="Expand study regions & variable catalog"
+            aria-label="Expand study regions & variable catalog"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            <span>Study Regions & Catalog</span>
+          </button>
+        )}
         <div className="globe-surface" ref={viewport} onPointerDown={() => {
           setIdleRotation(false);
           setTourPlaying(false);
@@ -1111,6 +1151,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         onSetCompare={setCompare}
         variable={variable}
         variableRange={variableRange}
+        availableVariables={variableOptions}
+        onSelectVariable={setVariable}
         period={period}
         regions={regions}
         teleconnectionPresets={teleconnectionPresets}
