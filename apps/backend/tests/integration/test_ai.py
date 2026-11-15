@@ -40,3 +40,50 @@ def test_post_ai_investigate_fallback_success(client):
     assert data["recommended_region_id"] == "amazon_basin"
     assert "hypothesis" in data
     assert len(data["hypothesis"]) > 10
+
+
+def test_post_ai_explain_trend_fallback_success(client):
+    """Verify POST /api/v1/ai/explain-trend generates publication-grade synthesis."""
+    payload = {
+        "variable_id": "T2M",
+        "location_name": "Amazon Basin",
+        "direction": "increasing_significant",
+        "rate_per_decade": 0.35,
+        "rate_unit": "°C/decade",
+        "p_value": 0.0021,
+        "change_point_date": "2005-08",
+        "regime_shift_type": "accelerating_increase",
+        "model": "auto",
+    }
+    res = client.post("/api/v1/ai/explain-trend", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["variable_id"] == "T2M"
+    assert data["location_name"] == "Amazon Basin"
+    assert "increasing significant" in data["executive_summary"]
+    assert "Amazon Basin" in data["executive_summary"]
+    assert len(data["mechanisms_and_drivers"]) > 20
+    assert len(data["scientific_uncertainty"]) > 20
+    assert len(data["recommended_next_steps"]) >= 2
+    assert data["is_fallback"] is True
+
+
+def test_post_ai_audio_brief_fallback_success(client):
+    """Verify POST /api/v1/ai/audio-brief produces Base64 WAV container."""
+    payload = {
+        "text": "This is TPBD Earth System Mission Control reporting on detected thermal anomalies.",
+        "voice": "Puck",
+        "model": "auto",
+    }
+    res = client.post("/api/v1/ai/audio-brief", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert "audio_base64" in data
+    assert data["mime_type"] == "audio/wav"
+    assert "Puck" in data["voice_used"]
+    assert data["is_fallback"] is True
+    # Verify standard WAV header in Base64 (UklGR...)
+    assert data["audio_base64"].startswith("UklGR")
+

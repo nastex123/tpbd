@@ -243,3 +243,70 @@ class GeminiClient:
                 detail=f"Failed to reach Google AI Studio: {str(exc)}",
                 error_type="https://tpbd.nasa.gov/errors/network-timeout",
             )
+
+    async def generate_audio_tts(
+        self,
+        text: str,
+        voice_name: str = "Puck",
+        model: str = "gemini-3.8-flash-tts",
+    ) -> str:
+        """Generate base64-encoded audio speech from Gemini TTS API."""
+        if not self.is_configured():
+            raise AppException(
+                title="Missing Gemini API Key",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="GEMINI_API_KEY is not configured in environment or .env file.",
+                error_type="https://tpbd.nasa.gov/errors/missing-api-key",
+            )
+
+        resolved_model = self.resolve_model(model, task="tts")
+        url = f"{self.base_url}/models/{resolved_model}:generateContent?key={self.api_key}"
+
+        payload: dict[str, Any] = {
+            "contents": [{"parts": [{"text": text}]}],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"],
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {
+                            "voiceName": voice_name
+                        }
+                    }
+                },
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        parts = candidates[0]["content"].get("parts", [])
+                        for part in parts:
+                            if "inlineData" in part and "data" in part["inlineData"]:
+                                return part["inlineData"]["data"]
+                    return ""
+                elif res.status_code in (401, 403):
+                    raise AppException(
+                        title="Invalid Gemini API Key",
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Google AI Studio rejected the provided GEMINI_API_KEY.",
+                        error_type="https://tpbd.nasa.gov/errors/unauthorized",
+                    )
+                else:
+                    raise AppException(
+                        title="Gemini TTS Upstream Error",
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Google AI Studio TTS returned HTTP {res.status_code}: {res.text}",
+                        error_type="https://tpbd.nasa.gov/errors/gemini-upstream-error",
+                    )
+        except httpx.RequestError as exc:
+            logger.warning("Network failure connecting to Gemini TTS: %s", exc)
+            raise AppException(
+                title="Gemini TTS Network Failure",
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=f"Failed to reach Google AI Studio TTS: {str(exc)}",
+                error_type="https://tpbd.nasa.gov/errors/network-timeout",
+            )

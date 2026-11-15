@@ -6,6 +6,10 @@ from app.schemas.ai import (
     ModelListResponse,
     DetectiveQueryRequest,
     DetectiveQueryResponse,
+    TrendExplanationRequest,
+    TrendExplanationResponse,
+    AudioBriefRequest,
+    AudioBriefResponse,
 )
 from app.schemas.common import Coordinates
 from app.services.catalog_service import CatalogService
@@ -36,6 +40,22 @@ Return your response strictly in valid JSON format matching this schema:
   "recommended_region_id": "region_id_or_null",
   "target_coordinates": {"latitude": float, "longitude": float},
   "hypothesis": "One concise sentence explaining what Earth system process to investigate."
+}
+Do not include any commentary or code fences outside the JSON object.
+"""
+
+SYSTEM_EXPLAIN_INSTRUCTION = """You are a senior Earth system scientist for NASA Space Apps Challenge 2026.
+Synthesize the statistical findings of a climate trend into a rigorous scientific narrative.
+
+Input parameters:
+- variable_id, location_name, direction, rate_per_decade, rate_unit, p_value, change_point_date, regime_shift_type.
+
+Output strictly valid JSON:
+{
+  "executive_summary": "Concise 1-2 sentence finding for general audiences.",
+  "mechanisms_and_drivers": "Physical atmospheric, oceanic, or land-surface processes explaining this observation (e.g. ITCZ shifts, Hadley cell, ENSO, albedo feedback).",
+  "scientific_uncertainty": "Transparent evaluation of observational limitations, station density, or reanalysis assumptions.",
+  "recommended_next_steps": ["Step 1", "Step 2"]
 }
 Do not include any commentary or code fences outside the JSON object.
 """
@@ -144,6 +164,109 @@ class AIService:
             target_coordinates=coords,
             hypothesis=hypothesis,
             model_used=f"{model_used} (deterministic fallback)",
+            is_fallback=True,
+        )
+
+    async def explain_trend(self, request: TrendExplanationRequest) -> TrendExplanationResponse:
+        """Synthesize calculated trends into physical Earth system narrative."""
+        resolved_model = self.gemini_client.resolve_model(request.model, task="thinking")
+
+        if self.gemini_client.is_configured():
+            try:
+                prompt = (
+                    f"Variable: {request.variable_id}\n"
+                    f"Location: {request.location_name}\n"
+                    f"Direction: {request.direction}\n"
+                    f"Rate: {request.rate_per_decade:+.2f} {request.rate_unit}\n"
+                    f"P-value: {request.p_value:.4f}\n"
+                    f"Change Point Date: {request.change_point_date or 'None'}\n"
+                    f"Regime Shift: {request.regime_shift_type or 'None'}\n"
+                )
+                raw_response = await self.gemini_client.generate_content(
+                    prompt=prompt,
+                    system_instruction=SYSTEM_EXPLAIN_INSTRUCTION,
+                    model=resolved_model,
+                )
+                parsed = self._extract_json(raw_response)
+                if parsed and "executive_summary" in parsed:
+                    return TrendExplanationResponse(
+                        variable_id=request.variable_id,
+                        location_name=request.location_name,
+                        executive_summary=parsed.get("executive_summary", ""),
+                        mechanisms_and_drivers=parsed.get("mechanisms_and_drivers", ""),
+                        scientific_uncertainty=parsed.get("scientific_uncertainty", ""),
+                        recommended_next_steps=parsed.get("recommended_next_steps", []),
+                        model_used=resolved_model,
+                        is_fallback=False,
+                    )
+            except Exception as exc:
+                logger.warning("Gemini live trend explanation failed, falling back: %s", exc)
+
+        return self._deterministic_explain_trend(request, model_used=resolved_model)
+
+    def _deterministic_explain_trend(self, request: TrendExplanationRequest, model_used: str) -> TrendExplanationResponse:
+        """Deterministic scientific synthesis when offline or API key is absent."""
+        summary = (
+            f"Over {request.location_name}, {request.variable_id} shows a {request.direction.replace('_', ' ')} "
+            f"with a rate of {request.rate_per_decade:+.2f} {request.rate_unit} (p = {request.p_value:.4f})."
+        )
+        if request.change_point_date:
+            summary += f" An abrupt structural regime shift ({request.regime_shift_type}) was detected in {request.change_point_date}."
+
+        drivers = (
+            f"Observed changes in {request.variable_id} over {request.location_name} are consistent with "
+            "coupled land-atmosphere moisture feedbacks and regional radiative forcing perturbations."
+        )
+        uncertainty = (
+            "Statistical significance demonstrates empirical monotonic departure but does not assert isolated causation. "
+            "Reanalysis grid-cell representation may introduce smoothing relative to in-situ observations."
+        )
+        steps = [
+            f"Cross-correlate {request.variable_id} with hydrological and temperature indicators",
+            "Perform regional comparison with an opposing teleconnection zone",
+            "Evaluate seasonal standardized anomalies (WMO Z-scores)",
+        ]
+
+        return TrendExplanationResponse(
+            variable_id=request.variable_id,
+            location_name=request.location_name,
+            executive_summary=summary,
+            mechanisms_and_drivers=drivers,
+            scientific_uncertainty=uncertainty,
+            recommended_next_steps=steps,
+            model_used=f"{model_used} (deterministic fallback)",
+            is_fallback=True,
+        )
+
+    async def generate_audio_brief(self, request: AudioBriefRequest) -> AudioBriefResponse:
+        """Generate spoken audio debrief using Gemini TTS with safe fallback."""
+        resolved_model = self.gemini_client.resolve_model(request.model, task="tts")
+
+        if self.gemini_client.is_configured():
+            try:
+                audio_b64 = await self.gemini_client.generate_audio_tts(
+                    text=request.text,
+                    voice_name=request.voice,
+                    model=resolved_model,
+                )
+                if audio_b64:
+                    return AudioBriefResponse(
+                        audio_base64=audio_b64,
+                        mime_type="audio/wav",
+                        voice_used=request.voice,
+                        model_used=resolved_model,
+                        is_fallback=False,
+                    )
+            except Exception as exc:
+                logger.warning("Gemini live TTS failed, falling back to silent container: %s", exc)
+
+        # 44-byte standard blank WAV container for seamless desktop audio/HTML5 playback
+        blank_wav_b64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+        return AudioBriefResponse(
+            audio_base64=blank_wav_b64,
+            mime_type="audio/wav",
+            voice_used=f"{request.voice} (offline fallback)",
+            model_used=f"{resolved_model} (deterministic stub)",
             is_fallback=True,
         )
 

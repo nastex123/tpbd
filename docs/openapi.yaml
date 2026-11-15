@@ -382,6 +382,52 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /api/v1/ai/explain-trend:
+    post:
+      tags:
+        - AI
+      summary: Deep scientific trend synthesis and physical driver explanation
+      description: Connects computed Mann-Kendall statistics, Sen's slope rates, and Pettitt structural breaks to planetary atmospheric and oceanic processes using Gemini extended thinking models.
+      operationId: explainTrend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrendExplanationRequest'
+      responses:
+        '200':
+          description: Scientific trend synthesis generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendExplanationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/ai/audio-brief:
+    post:
+      tags:
+        - AI
+      summary: NASA Mission Control spoken audio debrief (TTS)
+      description: Generates spoken speech audio (Base64-encoded WAV/MP3) for desktop audio playback via Gemini Flash TTS.
+      operationId: generateAudioBrief
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioBriefRequest'
+      responses:
+        '200':
+          description: Audio debrief generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioBriefResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/v1/integrations/appeears/tasks:
     post:
       tags:
@@ -1174,6 +1220,128 @@ components:
         model_used:
           type: string
           example: gemini-3.8-flash
+        is_fallback:
+          type: boolean
+          example: false
+
+    TrendExplanationRequest:
+      type: object
+      required:
+        - variable_id
+        - location_name
+        - direction
+        - rate_per_decade
+        - rate_unit
+        - p_value
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        location_name:
+          type: string
+          example: Amazon Basin
+        direction:
+          type: string
+          example: increasing_significant
+        rate_per_decade:
+          type: number
+          example: 0.35
+        rate_unit:
+          type: string
+          example: "°C/decade"
+        p_value:
+          type: number
+          example: 0.0021
+        change_point_date:
+          type: string
+          nullable: true
+          example: "2005-08"
+        regime_shift_type:
+          type: string
+          nullable: true
+          example: accelerating_increase
+        model:
+          type: string
+          default: auto
+          example: auto
+
+    TrendExplanationResponse:
+      type: object
+      required:
+        - variable_id
+        - location_name
+        - executive_summary
+        - mechanisms_and_drivers
+        - scientific_uncertainty
+        - recommended_next_steps
+        - model_used
+        - is_fallback
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        location_name:
+          type: string
+          example: Amazon Basin
+        executive_summary:
+          type: string
+          example: Surface air temperature over the Amazon Basin exhibits a statistically significant warming rate of +0.35 °C/decade.
+        mechanisms_and_drivers:
+          type: string
+          example: Land-atmosphere coupling and reduced evapotranspirative cooling amplify regional warming during the dry season.
+        scientific_uncertainty:
+          type: string
+          example: Station density is sparse in western Amazonia; satellite reanalysis assimilations introduce grid-cell uncertainty.
+        recommended_next_steps:
+          type: array
+          items:
+            type: string
+          example: ["Correlate with GWETROOT root-zone moisture", "Inspect MODIS NDVI vegetation index anomalies"]
+        model_used:
+          type: string
+          example: gemini-3.8-live-extended-thinking
+        is_fallback:
+          type: boolean
+          example: false
+
+    AudioBriefRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          example: "This is TPBD Mission Control with your Earth System debrief. Surface air temperatures in the Amazon Basin..."
+        voice:
+          type: string
+          default: Puck
+          example: Puck
+        model:
+          type: string
+          default: auto
+          example: auto
+
+    AudioBriefResponse:
+      type: object
+      required:
+        - audio_base64
+        - mime_type
+        - voice_used
+        - model_used
+        - is_fallback
+      properties:
+        audio_base64:
+          type: string
+          example: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+        mime_type:
+          type: string
+          example: audio/wav
+        voice_used:
+          type: string
+          example: Puck
+        model_used:
+          type: string
+          example: gemini-3.8-flash-tts
         is_fallback:
           type: boolean
           example: false
