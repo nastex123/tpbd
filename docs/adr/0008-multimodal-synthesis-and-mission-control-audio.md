@@ -1,4 +1,4 @@
-# ADR 0006: Multimodal Scientific Synthesis and Mission Control Audio Debrief (HU-28)
+# ADR 0008: Multimodal Scientific Synthesis and Mission Control Audio Debrief (HU-28)
 
 ## Status
 Accepted
