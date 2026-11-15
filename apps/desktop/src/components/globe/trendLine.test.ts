@@ -9,6 +9,7 @@ const trend: Trend = {
   rate_unit: '°C/decade',
   method: 'Sen slope',
   p_value: 0.01,
+  alpha: 0.05,
   confidence_interval_95: [5, 19],
   plain_language_verdict: 'Increasing',
   scientific_caveat: 'No causal inference',
