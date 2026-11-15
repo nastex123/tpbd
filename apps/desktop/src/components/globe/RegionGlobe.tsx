@@ -10,6 +10,7 @@ import { HistoryChart } from './HistoryChart';
 import { TemporalComparison } from './TemporalComparison';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
+import { nextObservationDate, observationDates } from './historyTimeline';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
@@ -39,18 +40,6 @@ const presentation = [
 
 function motionAllowed() {
   return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function monthlyDates(points: { date: string }[]) {
-  const dates = points.map(({ date }) => date).sort();
-  if (!dates.length) return [];
-  const toMonth = (date: string) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5)) - 1;
-  const first = toMonth(dates[0]);
-  const last = toMonth(dates[dates.length - 1]);
-  return Array.from({ length: last - first + 1 }, (_, offset) => {
-    const index = first + offset;
-    return `${Math.floor(index / 12)}-${String(index % 12 + 1).padStart(2, '0')}`;
-  });
 }
 
 function readRegions(payload: unknown): Region[] {
@@ -202,7 +191,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   ];
   const pointsA = reportA?.series?.points;
   const pointsB = reportB?.series?.points;
-  const dates = useMemo(() => monthlyDates([...(pointsA ?? []), ...(comparable ? pointsB ?? [] : [])]), [pointsA, pointsB, comparable]);
+  const dates = useMemo(() => observationDates([...(pointsA ?? []), ...(comparable ? pointsB ?? [] : [])]), [pointsA, pointsB, comparable]);
   const visibleDate = dates.includes(selectedDate) ? selectedDate : dates.at(-1) ?? '';
   const bounds = useMemo<readonly [number, number]>(() => {
     const values = [...(pointsA ?? []), ...(comparable ? pointsB ?? [] : [])].flatMap(({ value }) => value === null ? [] : [value]);
@@ -249,12 +238,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
 
   useEffect(() => {
     if (!playing || dates.length < 2) return;
-    const timer = window.setInterval(() => setSelectedDate((current) => {
-      const index = dates.indexOf(current);
-      return dates[(index + 1) % dates.length];
-    }), 500);
+    const timer = window.setInterval(() => setSelectedDate((current) => nextObservationDate(current, dates)), 500);
     return () => window.clearInterval(timer);
   }, [playing, dates]);
+
+  useEffect(() => {
+    if (dates.length < 2) setPlaying(false);
+  }, [dates.length]);
 
   useEffect(() => {
     if (ready && available && nightEnabled && !reduced && globe.current) {
@@ -714,7 +704,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             const series = report.series;
             const valid = series?.points.filter((point) => point.value !== null).length ?? 0;
             const independent = index === 1 && !comparable;
-            const chartDates = independent ? monthlyDates(series?.points ?? []) : dates;
+            const chartDates = independent ? observationDates(series?.points ?? []) : dates;
             const chartDate = independent
               ? chartDates.includes(selectedDateB) ? selectedDateB : chartDates.at(-1) ?? ''
               : visibleDate;

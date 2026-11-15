@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { DataPoint } from './globeData';
 import type { Trend } from './globeData';
 import { trendLine } from './trendLine';
+import { calendarMonthIndex } from './historyTimeline';
 
 export function HistoryChart({ points, dates, date, bounds, name, color, highlighted, trend, onHover, onDate }: {
   points: DataPoint[];
@@ -23,22 +24,28 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
     const { width, height } = canvas;
     const [low, high] = bounds;
     const values = new Map(points.map(({ date, value }) => [date, value]));
-    const x = (index: number) => 8 + index * (width - 16) / Math.max(1, dates.length - 1);
+    const firstMonth = calendarMonthIndex(dates[0] ?? '');
+    const lastMonth = calendarMonthIndex(dates.at(-1) ?? '');
+    const x = (date: string) => 8 + (calendarMonthIndex(date) - firstMonth) * (width - 16) / Math.max(1, lastMonth - firstMonth);
     const y = (value: number) => height - 8 - (value - low) * (height - 16) / (high - low || 1);
     context.clearRect(0, 0, width, height);
     context.strokeStyle = color;
     context.lineWidth = highlighted ? 4 : 2;
     context.beginPath();
     let connected = false;
-    dates.forEach((at, index) => {
+    let previousMonth = Number.NaN;
+    dates.forEach((at) => {
+      const month = calendarMonthIndex(at);
       const value = values.get(at);
-      if (value === undefined || value === null) {
+      if (value === undefined || value === null || month !== previousMonth + 1) {
         connected = false;
-        return;
       }
-      if (connected) context.lineTo(x(index), y(value));
-      else context.moveTo(x(index), y(value));
-      connected = true;
+      if (value !== undefined && value !== null) {
+        if (connected) context.lineTo(x(at), y(value));
+        else context.moveTo(x(at), y(value));
+        connected = true;
+      }
+      previousMonth = month;
     });
     context.stroke();
     const line = trendLine(points, trend);
@@ -51,8 +58,8 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
         context.lineWidth = 2;
         context.setLineDash([7, 4]);
         context.beginPath();
-        context.moveTo(x(first), y(line.start));
-        context.lineTo(x(last), y(line.end));
+        context.moveTo(x(line.startDate), y(line.start));
+        context.lineTo(x(line.endDate), y(line.end));
         context.stroke();
         context.restore();
       }
@@ -62,14 +69,14 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
       context.strokeStyle = '#a6c2d9';
       context.lineWidth = 1;
       context.beginPath();
-      context.moveTo(x(index), 0);
-      context.lineTo(x(index), height);
+      context.moveTo(x(date), 0);
+      context.lineTo(x(date), height);
       context.stroke();
       const value = values.get(date);
       if (value !== null && value !== undefined) {
         context.fillStyle = color;
         context.beginPath();
-        context.arc(x(index), y(value), 4, 0, Math.PI * 2);
+        context.arc(x(date), y(value), 4, 0, Math.PI * 2);
         context.fill();
       }
     }
