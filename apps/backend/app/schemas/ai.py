@@ -49,3 +49,48 @@ class DetectiveQueryResponse(BaseModel):
     hypothesis: str = Field(..., description="Scientific hypothesis and rationale for the investigation")
     model_used: str = Field(..., description="Model that generated the response")
     is_fallback: bool = Field(default=False, description="Whether deterministic offline fallback was used")
+
+
+class TrendExplanationRequest(BaseModel):
+    """Request payload for scientific trend synthesis and teleconnection explanation."""
+
+    variable_id: str = Field(..., description="Canonical variable identifier", json_schema_extra={"example": "T2M"})
+    location_name: str = Field(..., description="Location or region name", json_schema_extra={"example": "Amazon Basin"})
+    direction: str = Field(..., description="Trend direction classification", json_schema_extra={"example": "increasing_significant"})
+    rate_per_decade: float = Field(..., description="Rate of change in units per decade", json_schema_extra={"example": 0.35})
+    rate_unit: str = Field(..., description="Physical rate unit string", json_schema_extra={"example": "°C/decade"})
+    p_value: float = Field(..., description="Statistical significance p-value", json_schema_extra={"example": 0.0021})
+    change_point_date: str | None = Field(default=None, description="Structural break date if detected", json_schema_extra={"example": "2005-08"})
+    regime_shift_type: str | None = Field(default=None, description="Regime shift classification if detected", json_schema_extra={"example": "accelerating_increase"})
+    model: str = Field(default="auto", description="Target Gemini model or 'auto' for deep thinking model routing")
+
+
+class TrendExplanationResponse(BaseModel):
+    """Publication-grade scientific synthesis of Earth system trend."""
+
+    variable_id: str = Field(..., description="Canonical variable identifier")
+    location_name: str = Field(..., description="Location or region name")
+    executive_summary: str = Field(..., description="Concise high-level finding for general audiences")
+    mechanisms_and_drivers: str = Field(..., description="Physical Earth system atmospheric/oceanic processes driving the trend")
+    scientific_uncertainty: str = Field(..., description="Explicit discussion of uncertainty, observational limits, and caveats")
+    recommended_next_steps: list[str] = Field(..., description="Actionable investigative follow-ups for researchers")
+    model_used: str = Field(..., description="Model that generated the synthesis")
+    is_fallback: bool = Field(default=False, description="Whether deterministic offline fallback was used")
+
+
+class AudioBriefRequest(BaseModel):
+    """Request payload for Mission Control spoken audio debrief."""
+
+    text: str = Field(..., min_length=10, max_length=2000, description="Debrief text to synthesize into spoken speech")
+    voice: str = Field(default="Puck", description="Voice profile identifier")
+    model: str = Field(default="auto", description="Target Gemini TTS model or 'auto' for gemini-3.8-flash-tts")
+
+
+class AudioBriefResponse(BaseModel):
+    """Spoken audio debrief payload encoded in Base64 for instant HTML5 audio playback."""
+
+    audio_base64: str = Field(..., description="Base64-encoded audio bytes")
+    mime_type: str = Field(default="audio/wav", description="Audio container MIME type")
+    voice_used: str = Field(..., description="Voice name applied")
+    model_used: str = Field(..., description="TTS model applied")
+    is_fallback: bool = Field(default=False, description="Whether deterministic stub fallback was used")
