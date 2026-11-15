@@ -221,7 +221,7 @@ Cada historia hereda esta definición de terminado: criterios verificables, mane
 ### HU-16 — Explicación científica asistida [P1]
 - Resumir solo estadísticas y metadata recibidas; no inventar datos ni causalidad.
 - Incluir citas/procedencia del resultado y alternativa determinista si el servicio no responde.
-**Estado:** pendiente. HU-28 aporta el endpoint y el fallback determinista, pero su respuesta no incluye referencias/procedencia y el desktop aún no consume el endpoint.
+**Estado:** completada (PR #36). El desktop consume el endpoint, muestra resumen, contexto físico, incertidumbre y próximos pasos; añade respaldo determinista local y procedencia de fuente, variable, período, grilla, resolución y método.
 
 ### HU-17 — Comparador temporal [P1]
 - Contrastar dos rangos para el mismo lugar/variable con reglas explícitas de período y cobertura.
