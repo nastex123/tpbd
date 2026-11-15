@@ -1,5 +1,6 @@
 """Core application configuration."""
 from pathlib import Path
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,8 +20,11 @@ class Settings(BaseSettings):
     EARTHDATA_PASSWORD: str | None = None
     EARTHDATA_TOKEN: str | None = None
 
-    # Google Gemini AI Studio Credentials
-    GEMINI_API_KEY: str | None = None
+    # Google Gemini AI Studio Credentials (accepts GEMINI_API_KEY or GOOGLE_API_KEY)
+    GEMINI_API_KEY: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    )
 
     # SQLite Cache Path
     CACHE_DB_PATH: str = "data/cache/tpbd_cache.db"
@@ -34,7 +38,7 @@ class Settings(BaseSettings):
     ]
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "../../.env"),
+        env_file=(".env", "../.env", "../../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
