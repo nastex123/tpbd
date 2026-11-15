@@ -11,12 +11,18 @@ from app.repositories.region_repository import RegionRepository
 from app.repositories.cache_repository import CacheRepository
 from app.clients.power_client import PowerClient
 from app.clients.appeears_client import AppEEARSClient
+from app.core.config import settings
 
 
 @lru_cache
 def get_appeears_client() -> AppEEARSClient:
-    """Singleton instance of NASA AppEEARS client adapter."""
-    return AppEEARSClient(timeout=15.0)
+    """Singleton instance of NASA AppEEARS client adapter with auto-auth."""
+    return AppEEARSClient(
+        timeout=15.0,
+        token=settings.EARTHDATA_TOKEN,
+        username=settings.EARTHDATA_USERNAME,
+        auto_auth=True,
+    )
 
 
 @lru_cache

@@ -37,6 +37,21 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("Could not auto-seed cache on startup: %s", exc)
 
+    # Auto-authenticate AppEEARS client if EARTHDATA credentials/token are present
+    try:
+        from app.api.deps import get_appeears_client
+        appeears_client = get_appeears_client()
+        if not appeears_client.is_authenticated():
+            await appeears_client.auto_authenticate(
+                username=settings.EARTHDATA_USERNAME,
+                password=settings.EARTHDATA_PASSWORD,
+                token=settings.EARTHDATA_TOKEN,
+            )
+        if appeears_client.is_authenticated():
+            logger.info("AppEEARS client session ready (authenticated: True)")
+    except Exception as exc:
+        logger.warning("Could not auto-authenticate AppEEARS on startup: %s", exc)
+
     yield
     logger.info("Shutting down %s...", settings.PROJECT_NAME)
 
