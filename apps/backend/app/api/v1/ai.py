@@ -5,6 +5,10 @@ from app.schemas.ai import (
     ModelListResponse,
     DetectiveQueryRequest,
     DetectiveQueryResponse,
+    TrendExplanationRequest,
+    TrendExplanationResponse,
+    AudioBriefRequest,
+    AudioBriefResponse,
 )
 from app.services.ai_service import AIService
 from app.api.deps import get_ai_service
@@ -39,3 +43,33 @@ async def investigate_with_ai(
 ) -> DetectiveQueryResponse:
     """Map natural language questions to NASA variables, regions, and hypotheses."""
     return await ai_service.investigate(request)
+
+
+@router.post(
+    "/explain-trend",
+    response_model=TrendExplanationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Deep scientific trend synthesis and physical driver explanation",
+    description="Connects computed Mann-Kendall statistics, Sen's slope rates, and Pettitt structural breaks to planetary atmospheric and oceanic processes using Gemini extended thinking models.",
+)
+async def explain_trend(
+    request: TrendExplanationRequest,
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+) -> TrendExplanationResponse:
+    """Synthesize statistical findings into publication-grade scientific narrative."""
+    return await ai_service.explain_trend(request)
+
+
+@router.post(
+    "/audio-brief",
+    response_model=AudioBriefResponse,
+    status_code=status.HTTP_200_OK,
+    summary="NASA Mission Control spoken audio debrief (TTS)",
+    description="Generates spoken speech audio (Base64-encoded WAV) for instant desktop audio playback via Gemini Flash TTS.",
+)
+async def generate_audio_brief(
+    request: AudioBriefRequest,
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+) -> AudioBriefResponse:
+    """Generate audio speech debrief for Earth system findings."""
+    return await ai_service.generate_audio_brief(request)

@@ -75,3 +75,46 @@ async def test_ai_service_live_gemini_generation():
     assert res.target_coordinates.latitude == 14.5
     assert "Sahel" in res.hypothesis
     assert res.model_used == "gemini-3.8-flash"
+
+
+@pytest.mark.asyncio
+async def test_ai_service_explain_trend_deterministic():
+    """Verify deterministic fallback explanation for trend analysis."""
+    from app.schemas.ai import TrendExplanationRequest
+    client = GeminiClient(api_key=None)
+    service = AIService(gemini_client=client)
+
+    req = TrendExplanationRequest(
+        variable_id="T2M",
+        location_name="Amazon Basin",
+        direction="increasing_significant",
+        rate_per_decade=0.35,
+        rate_unit="°C/decade",
+        p_value=0.0012,
+        change_point_date="2005-08",
+        regime_shift_type="accelerating_increase",
+    )
+    res = await service.explain_trend(req)
+
+    assert res.is_fallback is True
+    assert res.variable_id == "T2M"
+    assert "Amazon Basin" in res.location_name
+    assert "increasing significant" in res.executive_summary
+    assert "2005-08" in res.executive_summary
+    assert len(res.recommended_next_steps) >= 2
+
+
+@pytest.mark.asyncio
+async def test_ai_service_audio_brief_fallback():
+    """Verify audio briefing fallback returns valid base64 audio container."""
+    from app.schemas.ai import AudioBriefRequest
+    client = GeminiClient(api_key=None)
+    service = AIService(gemini_client=client)
+
+    req = AudioBriefRequest(text="This is TPBD Mission Control audio debrief.")
+    res = await service.generate_audio_brief(req)
+
+    assert res.is_fallback is True
+    assert res.mime_type == "audio/wav"
+    assert res.audio_base64.startswith("UklGRi")
+    assert len(res.audio_base64) > 10
