@@ -52,6 +52,7 @@ export type Trend = {
   rate_unit: string;
   method: string;
   p_value: number | null;
+  alpha: number;
   confidence_interval_95: number[] | null;
   plain_language_verdict: string;
   scientific_caveat: string;
@@ -79,6 +80,7 @@ function isTrend(value: unknown): value is Trend {
     && ['increasing_significant', 'decreasing_significant', 'no_significant_trend', 'not_evaluable'].includes(trend.direction ?? '')
     && typeof trend.rate_unit === 'string' && typeof trend.method === 'string'
     && (trend.p_value === null || Number.isFinite(trend.p_value))
+    && typeof trend.alpha === 'number' && Number.isFinite(trend.alpha)
     && (trend.confidence_interval_95 === null || (Array.isArray(trend.confidence_interval_95)
       && trend.confidence_interval_95.length === 2 && trend.confidence_interval_95.every(Number.isFinite)))
     && typeof trend.plain_language_verdict === 'string' && typeof trend.scientific_caveat === 'string';
