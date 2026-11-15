@@ -73,6 +73,13 @@ export function HolographicInspectorModal({
   const [selectedDateB, setSelectedDateB] = useState('');
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Always reset to 'series' (Observations) on opening so the AI text never obstructs the modal
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab('series');
+    }
+  }, [place?.name, isOpen]);
+
   // Close on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -84,27 +91,33 @@ export function HolographicInspectorModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Viewport-aware screen positioning with safety margin
+  // Viewport-aware screen positioning strictly to the side of the point
   const modalStyle = useMemo(() => {
     if (!screenCoords) {
-      return { top: '80px', left: '24px' };
+      return { top: '80px', left: '24px', width: '510px' };
     }
-    const width = 560;
-    const height = 520;
-    const padding = 20;
+    const width = 510;
+    const height = 480;
+    const padding = 16;
     const maxLeft = Math.max(padding, window.innerWidth - width - padding);
     const maxTop = Math.max(76, window.innerHeight - height - padding);
 
-    // Prefer anchoring to the right of the point, or to the left if near right edge
-    let left = screenCoords.x + 36;
-    if (left > maxLeft) {
-      left = Math.max(padding, screenCoords.x - width - 36);
+    // Anchor to the right if point is on left 55% of screen, else to the left
+    let left: number;
+    if (screenCoords.x < window.innerWidth * 0.55) {
+      left = screenCoords.x + 36;
+    } else {
+      left = screenCoords.x - width - 36;
     }
-    const top = Math.min(maxTop, Math.max(76, screenCoords.y - 120));
+    left = Math.min(maxLeft, Math.max(padding, left));
+
+    let top = screenCoords.y - 120;
+    top = Math.min(maxTop, Math.max(76, top));
 
     return {
       top: `${Math.round(top)}px`,
       left: `${Math.round(left)}px`,
+      width: `${width}px`,
     };
   }, [screenCoords]);
 

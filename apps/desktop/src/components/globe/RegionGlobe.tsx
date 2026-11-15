@@ -8,7 +8,7 @@ import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { HistoryChart } from './HistoryChart';
 import { InvestigationReport } from './InvestigationReport';
-import { ScientificExplanation } from './ScientificExplanation';
+import { prefetchExplanation, ScientificExplanation } from './ScientificExplanation';
 import { DataDetectiveWorkbench } from '../detective/DataDetectiveWorkbench';
 import { HolographicInspectorModal } from '../detective/HolographicInspectorModal';
 import { FloatingCopilotTrigger } from '../copilot/FloatingCopilotTrigger';
@@ -64,6 +64,19 @@ const presentation = [
   'Review the trend estimate and its interpretation.',
   'Compare two study regions for the same variable.',
 ];
+
+/**
+ * Strips accents and maps diacritics to clean standard glyphs
+ * supported by three-globe's vector font, preventing '?' replacement characters.
+ */
+function sanitizeGlobeText(text: string): string {
+  if (!text) return '';
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ñ/g, 'n')
+    .replace(/Ñ/g, 'N');
+}
 
 const countryColors = [
   'rgba(54, 133, 159, 0.44)', 'rgba(71, 145, 132, 0.44)', 'rgba(85, 115, 171, 0.44)',
@@ -220,12 +233,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const worldMap = naturalEarth as WorldMap;
   const countryLabels = useMemo(() => countries.map((country) => ({
     key: `country:${country.properties.name}`,
-    name: country.properties.name,
+    name: sanitizeGlobeText(country.properties.name),
     lat: country.properties.lat,
     lng: country.properties.lng,
     country: true as const,
   })), [countries]);
   const labels = useMemo(() => [...markers, ...(zoomed ? countryLabels : [])], [markers, countryLabels, zoomed]);
+
   function updateLabelSpacing() {
     const world = globe.current;
     if (!world || !ready) return;
@@ -258,6 +272,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const issues = reportA?.series && reportB?.series ? comparisonIssues(reportA.series, reportB.series) : [];
   const comparable = issues.length === 0;
   const trendIssue = trendComparisonIssue(reportA?.trend, reportB?.trend);
+
+  // Background AI synthesis prefetch: caches Gemini 3 response once, preventing token waste on reopen
+  useEffect(() => {
+    if (selected && reportA?.series && reportA?.trend && reportA.trend.direction !== 'not_evaluable') {
+      void prefetchExplanation(selected.name, reportA.series, reportA.trend);
+    }
+  }, [selected?.name, reportA?.series, reportA?.trend]);
   const reports = [
     { key: keyA, place: selected, report: reportA, color: '#197caa' },
     { key: keyB, place: targetB, report: reportB, color: '#a04194' },
@@ -994,14 +1015,14 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               labelsData={hiddenLabels ? labels.filter(({ key }) => !hiddenLabels.split('|').includes(key)) : labels}
               labelText={(point) => {
                 const marker = point as (typeof markers[number] & { country?: true });
-                if (marker.country) return marker.name;
+                if (marker.country) return sanitizeGlobeText(marker.name);
                 const prefix = keyB && keyA !== keyB ? marker.key === keyA ? 'A · ' : marker.key === keyB ? 'B · ' : '' : '';
                 const trend = marker.key === keyA ? reportA?.trend : marker.key === keyB ? reportB?.trend : undefined;
                 const rate = trend?.rate_per_decade;
-                const brief = marker.name.split(' (')[0];
+                const brief = sanitizeGlobeText(marker.name.split(' (')[0]);
                 const sign = rate != null ? (rate > 0 ? '+' : rate < 0 ? '-' : '') : '';
-                return `${prefix}${zoomed ? marker.name : brief}${rate != null && trend
-                  ? ` · ${sign}${Math.abs(rate).toFixed(2)} ${trend.rate_unit}`
+                return `${prefix}${zoomed ? sanitizeGlobeText(marker.name) : brief}${rate != null && trend
+                  ? ` · ${sign}${Math.abs(rate).toFixed(2)} ${sanitizeGlobeText(trend.rate_unit)}`
                   : ''}`;
               }}
               labelColor={(point) => (point as { country?: true }).country ? '#d8f1f4' : '#fff'}

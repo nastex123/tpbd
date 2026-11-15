@@ -1,14 +1,12 @@
 /* Holographic Inspector Modal Styles (Hallmark & NASA Space Apps Compliant) */
 
-/* Focus Vignette: Dims outer perimeter to highlight the selected location */
+/* Focus Vignette: Subtle peripheral darkening to preserve crystal-clear globe visibility */
 .inspector-focus-vignette {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: radial-gradient(circle at center, rgba(3, 7, 18, 0.35) 25%, rgba(3, 7, 18, 0.78) 95%);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  animation: vignetteFadeIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  background: radial-gradient(circle at center, transparent 35%, rgba(3, 7, 18, 0.45) 85%);
+  animation: vignetteFadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes vignetteFadeIn {
@@ -16,29 +14,29 @@
   to { opacity: 1; }
 }
 
-/* Modal Window Container */
+/* Modal Window Container: Translucent futuristic HUD with glassmorphism */
 .holographic-inspector-modal {
   position: fixed;
-  width: 580px;
-  max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 100px);
-  background: rgba(6, 13, 26, 0.92);
-  border: 1px solid var(--terminal-border-bright, rgba(121, 220, 255, 0.28));
-  border-radius: var(--radius-hud, 4px);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 24px rgba(121, 220, 255, 0.14);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  width: 510px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 90px);
+  background: rgba(6, 14, 28, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 189, 248, 0.16);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 1001;
-  animation: inspectorModalOpen 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: inspectorModalOpen 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes inspectorModalOpen {
   from {
     opacity: 0;
-    transform: scale(0.94) translate3d(0, 10px, 0);
+    transform: scale(0.95) translate3d(0, 8px, 0);
   }
   to {
     opacity: 1;
@@ -51,9 +49,9 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 0.9rem 1.15rem;
-  background: rgba(12, 24, 41, 0.85);
-  border-bottom: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
+  padding: 0.8rem 1rem;
+  background: rgba(10, 22, 42, 0.6);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 .inspector-header-meta {
@@ -151,47 +149,57 @@
   background-color: rgba(121, 220, 255, 0.08);
 }
 
-/* Tab Strip (Zero Emojis, Clean SVG Icons) */
+/* Tab Strip (Zero Emojis, Clean SVG Icons, No Ugly Windows Scrollbar) */
 .inspector-tab-strip {
   display: flex;
-  background: var(--space-black, #030712);
-  border-bottom: 1px solid var(--terminal-border, rgba(121, 220, 255, 0.16));
-  padding: 0.25rem 0.5rem 0;
-  gap: 0.25rem;
+  background: rgba(4, 9, 20, 0.65);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
+  padding: 0.25rem 0.4rem 0;
+  gap: 0.2rem;
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.inspector-tab-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .inspector-tab-btn {
+  flex: 1 1 auto;
+  justify-content: center;
   background: transparent;
   border: 1px solid transparent;
   border-bottom: 2px solid transparent;
-  border-radius: var(--radius-hud, 4px) var(--radius-hud, 4px) 0 0;
-  color: var(--text-muted, #94a3b8);
-  padding: 0.5rem 0.75rem;
+  border-radius: 4px 4px 0 0;
+  color: #94a3b8;
+  padding: 0.45rem 0.5rem;
   font-family: var(--font-display, sans-serif);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
+  font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   white-space: nowrap;
   transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
 
 .inspector-tab-btn:hover {
-  color: var(--text-primary, #f0f6fc);
-  background-color: rgba(121, 220, 255, 0.04);
+  color: #f0f6fc;
+  background-color: rgba(56, 189, 248, 0.08);
 }
 
 .inspector-tab-btn.active {
-  color: var(--pale-blue-dot, #79dcff);
-  background-color: var(--sphere-navy, #060d1a);
-  border-color: var(--terminal-border, rgba(121, 220, 255, 0.16));
-  border-bottom-color: var(--pale-blue-dot, #79dcff);
+  color: #38bdf8;
+  background-color: rgba(6, 14, 28, 0.85);
+  border-color: rgba(56, 189, 248, 0.25);
+  border-bottom-color: #38bdf8;
+  font-weight: 600;
 }
 
 .inspector-tab-btn:focus-visible {
-  outline: 2px solid var(--pale-blue-dot, #79dcff);
+  outline: 2px solid #38bdf8;
   outline-offset: -2px;
 }
 
@@ -434,6 +442,68 @@
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+
+/* AI Synthesis Deck Styling: Compact, elegant, never obstructing */
+.deck-pane-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.deck-pane-ai .scientific-explanation {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  background: rgba(10, 22, 42, 0.45);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 6px;
+}
+
+.deck-pane-ai .scientific-explanation h4 {
+  font-size: 0.92rem;
+  color: #38bdf8;
+  margin: 0 0 0.45rem 0;
+}
+
+.deck-pane-ai .scientific-explanation h5 {
+  font-size: 0.8rem;
+  color: #d6c7b2;
+  margin: 0.65rem 0 0.25rem 0;
+  font-weight: 600;
+}
+
+.deck-pane-ai .scientific-explanation p {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+  margin: 0 0 0.45rem 0;
+}
+
+.deck-pane-ai .scientific-explanation ul {
+  padding-left: 1.15rem;
+  margin: 0.25rem 0 0.5rem 0;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+.deck-pane-ai .scientific-explanation details {
+  margin-top: 0.65rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.deck-pane-ai .scientific-explanation summary {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.deck-pane-ai .scientific-explanation .explanation-model {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.45rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
