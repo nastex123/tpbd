@@ -126,15 +126,18 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [variable, setVariable] = useState(variableOptions[0].id);
   const variables = useVariableAvailability();
   const variableRange = variables.find(({ id }) => id === variable) ?? variableOptions[0];
+  const [variableSearch, setVariableSearch] = useState('');
+  const [periodNotice, setPeriodNotice] = useState('');
   const [period, setPeriod] = useState({ start: 1990, end: 2025 });
   const [periodError, setPeriodError] = useState('');
   useEffect(() => {
-    setPeriod((current) => {
-      const start = Math.min(variableRange.end, Math.max(variableRange.start, current.start));
-      const end = Math.max(start, Math.min(variableRange.end, current.end));
-      return start === current.start && end === current.end ? current : { start, end };
-    });
-  }, [variableRange.start, variableRange.end]);
+    const start = Math.min(variableRange.end, Math.max(variableRange.start, period.start));
+    const end = Math.max(start, Math.min(variableRange.end, period.end));
+    if (start !== period.start || end !== period.end) {
+      setPeriodNotice(`Period adjusted to the available years ${variableRange.start}–${variableRange.end}.`);
+      setPeriod({ start, end });
+    }
+  }, [variableRange.start, variableRange.end, period.start, period.end]);
   const [selectedDate, setSelectedDate] = useState('');
   const [playing, setPlaying] = useState(false);
   const dataPanel = useRef<HTMLDivElement>(null);
@@ -553,17 +556,30 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             <button type="submit">Apply period</button>
             {periodError && <p role="alert">{periodError}</p>}
           </form>
+          <label>Find a variable <input type="search" value={variableSearch} onChange={(event) => setVariableSearch(event.target.value)} placeholder="Search name or ID" /></label>
           <label>Variable <select value={variable} onChange={(event) => {
             setPlaying(false);
             setSelectedDate('');
             const nextRange = variables.find(({ id }) => id === event.target.value);
+            if (nextRange) setPeriodNotice(period.start < nextRange.start || period.end > nextRange.end
+              ? `Period adjusted to the available years ${nextRange.start}–${nextRange.end}.` : '');
             if (nextRange) setPeriod((current) => {
               const start = Math.min(nextRange.end, Math.max(nextRange.start, current.start));
               return { start, end: Math.max(start, Math.min(nextRange.end, current.end)) };
             });
             setPeriodError('');
             setVariable(event.target.value);
-          }}>{variables.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}</select></label>
+          }}>{variables.filter(({ id, name }) => id === variable || `${id} ${name}`.toLowerCase().includes(variableSearch.trim().toLowerCase()))
+            .map(({ id, name }) => <option key={id} value={id}>{name} · {id}</option>)}</select></label>
+          {variableSearch && !variables.some(({ id, name }) => `${id} ${name}`.toLowerCase().includes(variableSearch.trim().toLowerCase())) && <p role="status">No matching variable.</p>}
+          <p role="status">{periodNotice}</p>
+          <section className="globe-report" aria-label="Variable information">
+            <strong>{variableRange.name} · {variableRange.id}</strong>
+            <p>{variableRange.description}</p>
+            <p>{variableRange.category} · {variableRange.unit} · Monthly · {variableRange.start}–{variableRange.end}</p>
+            <p>Source: {variableRange.source}. Community: {variableRange.community}. Grid: {variableRange.resolution}.</p>
+            <p>Precipitation is temporarily unavailable while its unit is verified. Soil wetness and transpiration require validation before they can be added.</p>
+          </section>
           <label>Compare with <select value={compare?.kind === 'region' ? compare.id : compare ? 'custom' : ''} onChange={(event) => {
             if (event.target.value === 'custom') return;
             setCompare(event.target.value ? { kind: 'region', id: event.target.value } : null);
