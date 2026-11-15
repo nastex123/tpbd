@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --color-orbital-cyan: #38bdf8;
+  --color-sensor-emerald: #10b981;
+  --color-space-dark: #060e1c;
+  --color-star-ivory: #d6c7b2;
+}
+
+/* Global scrollbar suppression to eliminate 17px native Windows bars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.25) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.4);
+}

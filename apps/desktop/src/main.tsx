@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';
+import './index.css';
 import { MissionControlHeader } from './components/layout/MissionControlHeader';
 import { RegionGlobe } from './components/globe/RegionGlobe';
 import type { LocationSelection } from './stores/navigationStore';

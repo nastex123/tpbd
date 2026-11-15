@@ -6,12 +6,11 @@ import { deleteInvestigation, INVESTIGATIONS_KEY, readInvestigations, saveInvest
 import { distanceKm, findCountryAt, gridOutline, initialView, type CountryCollection, type CountryFeature, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
-import { HistoryChart } from './HistoryChart';
 import { InvestigationReport } from './InvestigationReport';
-import { prefetchExplanation, ScientificExplanation } from './ScientificExplanation';
-import { DataDetectiveWorkbench } from '../detective/DataDetectiveWorkbench';
+import { prefetchExplanation } from './ScientificExplanation';
 import { HolographicInspectorModal } from '../detective/HolographicInspectorModal';
 import { FloatingCopilotTrigger } from '../copilot/FloatingCopilotTrigger';
+import { StudyRegionsDrawer, type Region } from '../navigation/StudyRegionsDrawer';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
 import { nextObservationDate, observationDates } from './historyTimeline';
@@ -19,8 +18,6 @@ import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
 import { computeArcAltitude, sphericalMidpoint } from './teleconnectionComparison';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
-
-type Region = { id: string; name: string; lat: number; lng: number; cell?: string };
 
 const offlineRegions: Region[] = [
   { id: 'amazon', name: 'Amazon Basin (Manaus)', lat: -3.1, lng: -60.0 },
@@ -139,7 +136,10 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const globe = useRef<GlobeMethods | undefined>(undefined);
   const viewport = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(supportsWebGL);
-  const [{ width, height }, setSize] = useState({ width: 0, height: 0 });
+  const [{ width, height }, setSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 800,
+    height: typeof window !== 'undefined' ? window.innerHeight : 600,
+  });
   const [reduced, setReduced] = useState(false);
   const [ready, setReady] = useState(false);
   const [regions, setRegions] = useState(offlineRegions);
@@ -192,8 +192,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [playing, setPlaying] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [screenCoords, setScreenCoords] = useState<{ x: number; y: number } | null>(null);
-  const [sidebarDocked, setSidebarDocked] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   function updateScreenPosition(lat: number, lng: number) {
     if (globe.current) {
@@ -203,7 +202,6 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       }
     }
   }
-  const dataPanel = useRef<HTMLDivElement>(null);
   const flightTimers = useRef<number[]>([]);
   const selectedId = location?.kind === 'region' ? location.id : null;
   const selected = useMemo(() => {
@@ -435,7 +433,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     const element = viewport.current;
     if (!element) return;
     const observer = new ResizeObserver(([{ contentRect }]) => {
-      setSize({ width: Math.floor(contentRect.width), height: Math.floor(contentRect.height) });
+      const w = Math.floor(contentRect.width) || window.innerWidth;
+      const h = Math.floor(contentRect.height) || window.innerHeight;
+      setSize({ width: w, height: h });
     });
     observer.observe(element);
     const onContextLost = () => setAvailable(false);
@@ -445,6 +445,22 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       element.removeEventListener('webglcontextlost', onContextLost, true);
     };
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (e.key === '[') {
+        e.preventDefault();
+        setIsDrawerOpen((prev) => !prev);
+      } else if (e.key === 'Escape' && isDrawerOpen) {
+        setIsDrawerOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen]);
 
   function cancelFlight() {
     flightTimers.current.forEach(window.clearTimeout);
@@ -478,7 +494,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     cameraTo({ ...point, altitude: 0.85 }, flight);
     updateScreenPosition(point.lat, point.lng);
     setIsInspectorOpen(true);
-    setIsSidebarCollapsed(true);
+    setIsDrawerOpen(false);
     if (flight) {
       window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 700);
       window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 1100);
@@ -548,7 +564,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         }
       }
     }
-    if (next > 0) dataPanel.current?.scrollIntoView({ block: 'nearest' });
+    if (next > 0) setIsInspectorOpen(true);
   }
 
   function loadTeleconnectionPreset(presetId: string) {
@@ -668,323 +684,92 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return () => window.clearInterval(interval);
   }, [selected?.lat, selected?.lng, isInspectorOpen]);
 
+  function handleSelectCoordinates(lat: number, lng: number) {
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setInputError('Enter a latitude from −90 to 90 and a longitude from −180 to 180. Use a decimal point.');
+      return;
+    }
+    setInputError('');
+    const country = findCountryAt(lat, lng, countries);
+    visit({ kind: 'coordinates', lat, lng, label: country }, { lat, lng });
+  }
+
+  function handleSelectSearchItem(place: Region | Place) {
+    setSearch('');
+    visit('id' in place ? { kind: 'region', id: place.id } : { kind: 'coordinates', lat: place.lat, lng: place.lng }, place);
+  }
+
+  function handleSelectHistory(item: LocationSelection) {
+    const place = item.kind === 'region' ? regions.find(({ id }) => id === item.id) : item;
+    if (place) visit(item, place);
+  }
+
+  function handleSaveInvestigation(name: string) {
+    if (!location) {
+      setSaveMessage('Choose a location before saving.');
+      return;
+    }
+    try {
+      const updated = saveInvestigation(window.localStorage, {
+        name, variable, location, comparison: compare, period,
+      }, crypto.randomUUID(), new Date().toISOString());
+      setInvestigations(updated);
+      setSaveMessage('Investigation saved on this device.');
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Could not save the investigation.');
+    }
+  }
+
+  function handleLoadInvestigation(item: Investigation) {
+    const supported = variables.find(({ id }) => id === item.variable);
+    const place = item.location.kind === 'region'
+      ? regions.find(({ id }) => id === (item.location as { id: string }).id)
+      : item.location;
+    const other = item.comparison?.kind === 'region'
+      ? regions.find(({ id }) => id === (item.comparison as { id: string }).id)
+      : item.comparison;
+    if (!supported || !place || (item.comparison && !other)
+      || item.period.start < supported.start || item.period.end > supported.end) {
+      setSaveMessage('This investigation uses a variable, location, or period that is currently unavailable.');
+      return;
+    }
+    setPlaying(false);
+    setStep(null);
+    setVariableSearch('');
+    setVariable(item.variable);
+    setPeriod(item.period);
+    setPeriodNotice('');
+    setSelectedDate('');
+    setCompare(item.comparison);
+    visit(item.location, place);
+    setSaveMessage(`Loaded “${item.name}”.`);
+  }
+
+  function handleDeleteInvestigation(id: string) {
+    try {
+      setInvestigations(deleteInvestigation(window.localStorage, id));
+      setSaveMessage('Investigation deleted.');
+    } catch {
+      setSaveMessage('Could not delete the saved investigation.');
+    }
+  }
+
   return (
-    <section className={`region-picker ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`} aria-labelledby="region-heading">
-      <div className="region-panel" tabIndex={0} role="region" aria-labelledby="region-heading" data-presentation={step !== null || undefined}>
-        <div className="region-panel-header-row">
-          {heading}
-          <button
-            type="button"
-            className="btn-collapse-sidebar"
-            onClick={() => setIsSidebarCollapsed(true)}
-            title="Retract sidebar to expand globe view"
-            aria-label="Retract sidebar"
-          >
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            <span>Retract</span>
-          </button>
-        </div>
-        <h2 id="region-heading">Study regions</h2>
-        <div className="globe-actions">
-          <button type="button" onClick={() => step === null ? showStep(0) : (setStep(null), setPlaying(false))}>
-            {step === null ? 'Presentation' : 'Exit presentation'}
-          </button>
-          {step !== null && <>
-            <p aria-live="polite">{presentation[step]}</p>
-            <button type="button" disabled={step === 0} onClick={() => showStep(step - 1)}>Previous step</button>
-            <button type="button" disabled={step === presentation.length - 1} onClick={() => showStep(step + 1)}>Next step</button>
-          </>}
-        </div>
-        <p>Choose a study region, click a point on the globe, or enter coordinates.</p>
-        <label className="globe-search">
-          Find a country or study region
-          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
-        </label>
-        {search.trim() && (searchItems.length ? <ul aria-label="Search results">
-          {searchItems.map((place) => <li key={`${place.name}:${place.lat}`}>
-            <button type="button" onClick={() => {
-              setSearch('');
-              visit('id' in place ? { kind: 'region', id: place.id } : { kind: 'coordinates', lat: place.lat, lng: place.lng }, place);
-            }}>{place.name}</button>
-          </li>)}
-        </ul> : <p role="status">No matching place.</p>)}
-        <ul>
-          {regions.map((region) => (
-            <li key={region.id}>
-              <button type="button" aria-pressed={selectedId === region.id}
-                data-highlighted={hovered === region.id || undefined}
-                onPointerEnter={() => setHovered(region.id)} onPointerLeave={() => setHovered(null)}
-                onClick={() => visit({ kind: 'region', id: region.id }, region)}>
-                {region.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <form key={JSON.stringify(selected)} onFocus={() => setEditing(true)} onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setEditing(false);
-        }} onSubmit={(event) => {
-          event.preventDefault();
-          const fields = new FormData(event.currentTarget);
-          const lat = parseCoordinate(String(fields.get('latitude')), 90);
-          const lng = parseCoordinate(String(fields.get('longitude')), 180);
-          if (lat === null || lng === null) {
-            setInputError('Enter a latitude from −90 to 90 and a longitude from −180 to 180. Use a decimal point.');
-            return;
-          }
-          const country = findCountryAt(lat, lng, countries);
-          visit({ kind: 'coordinates', lat, lng, label: country }, { lat, lng });
-        }}>
-          <label>Latitude <input name="latitude" inputMode="decimal" defaultValue={selected?.lat} /></label>
-          <label>Longitude <input name="longitude" inputMode="decimal" defaultValue={selected?.lng} /></label>
-          <button type="submit">Select coordinates</button>
-          {inputError && <p role="alert">{inputError}</p>}
-        </form>
-        <p role="status">{selected ? `Selected: ${selected.name}` : 'No region selected.'}</p>
-        {selected && (
-          <p>
-            Selected coordinates: {selected.lat}, {selected.lng}.<br />
-            {gridCell || selected.cell ? `Representative grid cell: ${gridCell || selected.cell}. Grid values represent an area.` : 'Grid cell and resolution depend on the data source.'}
-          </p>
-        )}
-        {available && <details className="exploration-tools" open={step === null ? undefined : false}>
-          <summary>Globe controls and layers</summary>
-          <div className="globe-actions">
-            <button type="button" onClick={() => cameraTo(initialView)}>Global view</button>
-            <button type="button" onClick={() => cameraTo({ lat: 89.9, lng: 0, altitude: 1.6 })}>North pole</button>
-            <button type="button" onClick={() => cameraTo({ lat: -89.9, lng: 0, altitude: 1.6 })}>South pole</button>
-            <button type="button" onClick={() => moveTour(tour === null ? 0 : tour - 1)}>Previous region</button>
-            <button type="button" onClick={() => {
-              if (tourPlaying) setTourPlaying(false);
-              else {
-                if (tour === null || tour + 1 >= regions.length) moveTour(0);
-                setTourPlaying(true);
-              }
-            }}>{tourPlaying ? 'Pause tour' : 'Play tour'}</button>
-            <button type="button" onClick={() => moveTour(tour === null ? 0 : tour + 1)}>Next region</button>
-          </div>
-          <label><input type="checkbox" checked={reduced} onChange={(event) => setReduced(event.target.checked)} /> Reduced graphics</label>
-          <label><input type="checkbox" checked={cloudsEnabled} disabled={reduced} onChange={(event) => setCloudsEnabled(event.target.checked)} /> Clouds</label>
-          <label><input type="checkbox" checked={reliefEnabled} disabled={reduced} onChange={(event) => setReliefEnabled(event.target.checked)} /> Surface relief</label>
-          <label><input type="checkbox" checked={nightEnabled} disabled={reduced} onChange={(event) => setNightEnabled(event.target.checked)} /> Day and night (UTC)</label>
-          <label><input type="checkbox" checked={boundaries} onChange={(event) => setBoundaries(event.target.checked)} /> Detailed coastlines when zoomed in</label>
-          <label><input type="checkbox" checked={graticules} onChange={(event) => setGraticules(event.target.checked)} /> Latitude and longitude grid</label>
-          <label><input type="checkbox" checked={idleRotation} disabled={reduced || !!location} onChange={(event) => setIdleRotation(event.target.checked)} /> Rotate before selecting a location</label>
-          <label><input type="checkbox" checked={measure} onChange={(event) => {
-            setMeasure(event.target.checked);
-            setMeasurePoints([]);
-          }} /> Measure distance</label>
-          {measure && <p role="status">{measurePoints.length === 2
-            ? `${Math.round(distanceKm(measurePoints[0], measurePoints[1])).toLocaleString()} km along the Earth's surface.`
-            : 'Choose two points on the globe.'}</p>}
-        </details>}
-        {history.length > 0 && <details className="exploration-tools">
-          <summary>Recently visited</summary>
-          <ul>{history.map((item) => {
-            const place = item.kind === 'region' ? regions.find(({ id }) => id === item.id) : item;
-            return place && <li key={locationKey(item)}><button type="button" onClick={() => visit(item, place)}>
-              {'name' in place ? place.name : `${place.lat}, ${place.lng}`}
-            </button></li>;
-          })}</ul>
-        </details>}
-        <details className="exploration-tools">
-          <summary>Saved investigations</summary>
-          <form onSubmit={(event) => {
-            event.preventDefault();
-            if (!location) {
-              setSaveMessage('Choose a location before saving.');
-              return;
-            }
-            const form = event.currentTarget;
-            const name = String(new FormData(form).get('investigationName') ?? '').trim();
-            try {
-              const updated = saveInvestigation(window.localStorage, {
-                name, variable, location, comparison: compare, period,
-              }, crypto.randomUUID(), new Date().toISOString());
-              setInvestigations(updated);
-              setSaveMessage('Investigation saved on this device.');
-              form.reset();
-            } catch (error) {
-              setSaveMessage(error instanceof Error ? error.message : 'Could not save the investigation.');
-            }
-          }}>
-            <label>Investigation name <input name="investigationName" maxLength={80} required /></label>
-            <button type="submit">Save current investigation</button>
-          </form>
-          <p role="status">{saveMessage}</p>
-          {investigations.length === 0 ? <p>No saved investigations.</p> : <ul>
-            {investigations.map((item) => <li key={item.id} className="globe-report">
-              <strong>{item.name}</strong>
-              <p>{item.variable} · {item.period.start}–{item.period.end}</p>
-              <p>{item.source.provider} · {item.source.reference}</p>
-              <div className="globe-actions">
-                <button type="button" onClick={() => {
-                  const supported = variables.find(({ id }) => id === item.variable);
-                  const place = item.location.kind === 'region'
-                    ? regions.find(({ id }) => id === (item.location as { id: string }).id)
-                    : item.location;
-                  const other = item.comparison?.kind === 'region'
-                    ? regions.find(({ id }) => id === (item.comparison as { id: string }).id)
-                    : item.comparison;
-                  if (!supported || !place || (item.comparison && !other)
-                    || item.period.start < supported.start || item.period.end > supported.end) {
-                    setSaveMessage('This investigation uses a variable, location, or period that is currently unavailable.');
-                    return;
-                  }
-                  setPlaying(false);
-                  setStep(null);
-                  setVariableSearch('');
-                  setVariable(item.variable);
-                  setPeriod(item.period);
-                  setPeriodNotice('');
-                  setSelectedDate('');
-                  setCompare(item.comparison);
-                  visit(item.location, place);
-                  setSaveMessage(`Loaded “${item.name}”.`);
-                }}>Load</button>
-                <button type="button" onClick={() => {
-                  try {
-                    setInvestigations(deleteInvestigation(window.localStorage, item.id));
-                    setSaveMessage(`Deleted “${item.name}”.`);
-                  } catch {
-                    setSaveMessage('Could not delete the saved investigation.');
-                  }
-                }}>Delete</button>
-              </div>
-            </li>)}
-          </ul>}
-        </details>
-        {selected && (
-          <div className="inspector-dock-banner">
-            <div className="inspector-dock-info">
-              <span className="dock-badge">ACTIVE TARGET</span>
-              <strong>{selected.name}</strong>
-            </div>
-            <div className="inspector-dock-actions">
-              <button
-                type="button"
-                className="btn-open-inspector"
-                onClick={() => {
-                  setIsInspectorOpen(true);
-                  updateScreenPosition(selected.lat, selected.lng);
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                </svg>
-                <span>Hologram HUD</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-mode-toggle ${sidebarDocked ? 'active' : ''}`}
-                onClick={() => setSidebarDocked(!sidebarDocked)}
-              >
-                {sidebarDocked ? 'Undock' : 'Dock Sidebar'}
-              </button>
-            </div>
-          </div>
-        )}
-        <div ref={dataPanel}>
-          {sidebarDocked ? (
-            <DataDetectiveWorkbench
-              location={location}
-              selectedPlace={selected ?? null}
-              targetB={targetB ?? null}
-              compare={compare}
-              onSetCompare={setCompare}
-              variable={variable}
-              onSetVariable={setVariable}
-              variableRange={variableRange}
-              variables={variables}
-              period={period}
-              onSetPeriod={setPeriod}
-              regions={regions}
-              teleconnectionPresets={teleconnectionPresets}
-              onLoadTeleconnectionPreset={loadTeleconnectionPreset}
-              reportA={reportA}
-              reportB={reportB}
-              dates={dates}
-              visibleDate={visibleDate}
-              onSetVisibleDate={setSelectedDate}
-              playing={playing}
-              onSetPlaying={setPlaying}
-              bounds={bounds}
-              hovered={hovered}
-              onHover={setHovered}
-              onGoToA={() => selected && cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}
-              onGoToB={() => targetB && cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}
-              onFrameBoth={() => selected && targetB && frameBothLocations(selected, targetB)}
-            />
-          ) : (
-            selected && (
-              <div className="inspector-floating-notice">
-                <div className="notice-header">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4M12 8h.01" />
-                  </svg>
-                  <span>Interactive 3D Hologram Deployed</span>
-                </div>
-                <p>
-                  Comprehensive analytics deck is anchored to <strong>{selected.name.split(' (')[0]}</strong> on the globe with 5 streamlined tabs.
-                </p>
-                {!isInspectorOpen && (
-                  <button
-                    type="button"
-                    className="btn-reopen-hud"
-                    onClick={() => {
-                      setIsInspectorOpen(true);
-                      updateScreenPosition(selected.lat, selected.lng);
-                    }}
-                  >
-                    Re-open Holographic Inspector
-                  </button>
-                )}
-              </div>
-            )
-          )}
-        </div>
-        {children}
-      </div>
-      {reportA?.series && selected && <InvestigationReport
-        variableName={variableRange.name}
-        variable={variable}
-        period={period}
-            comparisonIssues={reportB?.series && keyA !== keyB ? issues : undefined}
-            trendComparisonNote={reportB?.series && keyA !== keyB ? trendIssue : undefined}
-        locations={[
-          { name: selected.name, series: reportA.series, trend: reportA.trend },
-          ...(reportB?.series && targetB && keyA !== keyB
-            ? [{ name: targetB.name, series: reportB.series, trend: reportB.trend }]
-            : []),
-        ]}
-      />}
-      <div className="globe-viewport">
-        {isSidebarCollapsed && (
-          <button
-            type="button"
-            className="btn-expand-sidebar-floating"
-            onClick={() => setIsSidebarCollapsed(false)}
-            title="Expand study regions & variable catalog"
-            aria-label="Expand study regions & variable catalog"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-            <span>Study Regions & Catalog</span>
-          </button>
-        )}
-        <div className="globe-surface" ref={viewport} onPointerDown={() => {
+    <section className="relative w-full h-full overflow-hidden bg-slate-950 select-none" aria-labelledby="region-heading">
+      {/* Base Layer: Persistent Fullscreen 3D Globe Viewport */}
+      <div
+        className="absolute inset-0 w-full h-full z-0 overflow-hidden"
+        ref={viewport}
+        onPointerDown={() => {
           setIdleRotation(false);
           setTourPlaying(false);
           cancelFlight();
-        }} onWheel={() => {
+        }}
+        onWheel={() => {
           setIdleRotation(false);
           cancelFlight();
-        }}>
+        }}
+      >
         {available && width > 0 && height > 0 && (
           <GlobeBoundary onFailure={() => setAvailable(false)}>
             <Globe
@@ -1098,50 +883,161 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
             />
           </GlobeBoundary>
         )}
-        {!available && <p role="status">The 3D globe is unavailable. Select a region from the list.</p>}
-        {ready && available && <div className="globe-overlay">
-          <div className="globe-zoom" aria-label="Globe zoom">
-            <button type="button" aria-label="Zoom in" onClick={() => {
-              setIdleRotation(false);
-              cameraTo({ altitude: Math.max(0.32, (globe.current?.pointOfView().altitude ?? 2.4) / 1.4) });
-            }}>+</button>
-            <button type="button" aria-label="Zoom out" onClick={() => {
-              setIdleRotation(false);
-              cameraTo({ altitude: Math.min(5.4, (globe.current?.pointOfView().altitude ?? 2.4) * 1.4) });
-            }}>−</button>
-            <button type="button" onClick={() => cameraTo(initialView)}>Reset</button>
+        {!available && (
+          <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sky-200/80 bg-slate-950/80">
+            <p role="status">The 3D globe is unavailable. Select a region from the list.</p>
           </div>
-          {hovered && (() => {
-            const marker = markers.find(({ key }) => key === hovered);
-            return marker && <p className="globe-hover">{marker.name} · {marker.lat.toFixed(2)}°, {marker.lng.toFixed(2)}°</p>;
-          })()}
-        </div>}
-        </div>
-        <small>
+        )}
+        {ready && available && (
+          <div className="globe-overlay pointer-events-none">
+            <div className="globe-zoom pointer-events-auto" aria-label="Globe zoom">
+              <button type="button" aria-label="Zoom in" onClick={() => {
+                setIdleRotation(false);
+                cameraTo({ altitude: Math.max(0.32, (globe.current?.pointOfView().altitude ?? 2.4) / 1.4) });
+              }}>+</button>
+              <button type="button" aria-label="Zoom out" onClick={() => {
+                setIdleRotation(false);
+                cameraTo({ altitude: Math.min(5.4, (globe.current?.pointOfView().altitude ?? 2.4) * 1.4) });
+              }}>−</button>
+              <button type="button" onClick={() => cameraTo(initialView)}>Reset</button>
+            </div>
+            {hovered && (() => {
+              const marker = markers.find(({ key }) => key === hovered);
+              return marker && <p className="globe-hover pointer-events-auto">{marker.name} · {marker.lat.toFixed(2)}°, {marker.lng.toFixed(2)}°</p>;
+            })()}
+          </div>
+        )}
+        <div className="absolute bottom-2 left-4 z-10 pointer-events-none text-[10px] text-sky-300/40 select-none">
           {area && 'Gold: approximate study area. '}
           {cell && 'Green: representative grid cell. '}
           Earth: NASA Blue Marble, WebGL Earth and three-globe. Borders: Natural Earth.
-        </small>
+        </div>
       </div>
 
-      <FloatingCopilotTrigger
-        activeLocation={selected}
-        activeVariable={variable}
-        activeTrend={reportA?.trend}
-        onSelectLocation={(loc) => {
-          if (loc.kind === 'region') {
-            const r = regions.find((cand) => cand.id === loc.id);
-            if (r) visit(loc, r);
-          } else {
-            const country = loc.label || findCountryAt(loc.lat, loc.lng, countries);
-            visit({ ...loc, label: country }, { lat: loc.lat, lng: loc.lng });
+      {/* Floating Top-Left Pill to reopen Drawer */}
+      {!isDrawerOpen && (
+        <button
+          type="button"
+          className="btn-expand-sidebar-floating"
+          onClick={() => setIsDrawerOpen(true)}
+          title="Open study regions & variable catalog"
+          aria-label="Open study regions & variable catalog"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+          <span>Study Regions & Catalog</span>
+        </button>
+      )}
+
+      {/* Layer 2: Slide-Over Aerospace Drawer */}
+      <StudyRegionsDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        heading={heading}
+        regions={regions}
+        selectedId={selectedId}
+        hoveredId={hovered}
+        onHoverRegion={setHovered}
+        onSelectRegion={(reg) => visit({ kind: 'region', id: reg.id }, reg)}
+        search={search}
+        onSearchChange={setSearch}
+        searchItems={searchItems}
+        onSelectSearchItem={handleSelectSearchItem}
+        step={step}
+        onShowStep={showStep}
+        onExitStep={() => { setStep(null); setPlaying(false); }}
+        presentationSteps={presentation}
+        selected={selected}
+        gridCell={gridCell || selected?.cell}
+        onSelectCoordinates={handleSelectCoordinates}
+        inputError={inputError}
+        cameraTo={cameraTo}
+        initialView={initialView}
+        tour={tour}
+        tourPlaying={tourPlaying}
+        onMoveTour={moveTour}
+        onToggleTourPlaying={() => {
+          if (tourPlaying) setTourPlaying(false);
+          else {
+            if (tour === null || tour + 1 >= regions.length) moveTour(0);
+            setTourPlaying(true);
           }
         }}
-        onSelectVariable={setVariable}
-      />
+        reduced={reduced}
+        onToggleReduced={setReduced}
+        cloudsEnabled={cloudsEnabled}
+        onToggleClouds={setCloudsEnabled}
+        reliefEnabled={reliefEnabled}
+        onToggleRelief={setReliefEnabled}
+        nightEnabled={nightEnabled}
+        onToggleNight={setNightEnabled}
+        boundaries={boundaries}
+        onToggleBoundaries={setBoundaries}
+        graticules={graticules}
+        onToggleGraticules={setGraticules}
+        idleRotation={idleRotation}
+        onToggleIdleRotation={setIdleRotation}
+        measure={measure}
+        onToggleMeasure={(m) => {
+          setMeasure(m);
+          setMeasurePoints([]);
+        }}
+        measureDistanceKm={measurePoints.length === 2 ? distanceKm(measurePoints[0], measurePoints[1]) : null}
+        history={history}
+        onSelectHistory={handleSelectHistory}
+        investigations={investigations}
+        saveMessage={saveMessage}
+        onSaveInvestigation={handleSaveInvestigation}
+        onLoadInvestigation={handleLoadInvestigation}
+        onDeleteInvestigation={handleDeleteInvestigation}
+        location={location}
+      >
+        {children}
+      </StudyRegionsDrawer>
 
+      {/* Layer: Off-screen Investigation Report (Export / Print / Zero Layout Impact) */}
+      {reportA?.series && selected && (
+        <div className="hidden" aria-hidden="true">
+          <InvestigationReport
+            variableName={variableRange.name}
+            variable={variable}
+            period={period}
+            comparisonIssues={reportB?.series && keyA !== keyB ? issues : undefined}
+            trendComparisonNote={reportB?.series && keyA !== keyB ? trendIssue : undefined}
+            locations={[
+              { name: selected.name, series: reportA.series, trend: reportA.trend },
+              ...(reportB?.series && targetB && keyA !== keyB
+                ? [{ name: targetB.name, series: reportB.series, trend: reportB.trend }]
+                : []),
+            ]}
+          />
+        </div>
+      )}
+
+      {/* Active Target Banner when Bottom Telemetry Deck is closed */}
+      {selected && !isInspectorOpen && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2 rounded-lg bg-slate-950/90 backdrop-blur-md border border-sky-500/30 shadow-xl">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs text-slate-200 font-medium">{selected.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setIsInspectorOpen(true);
+              updateScreenPosition(selected.lat, selected.lng);
+            }}
+            className="px-2.5 py-1 text-xs font-semibold rounded bg-sky-600 hover:bg-sky-500 text-white transition-colors cursor-pointer"
+          >
+            Open Telemetry Deck
+          </button>
+        </div>
+      )}
+
+      {/* Layer 3: Bottom Telemetry Deck */}
       <HolographicInspectorModal
-        isOpen={isInspectorOpen && !sidebarDocked && !!selected}
+        isOpen={isInspectorOpen && !!selected}
         onClose={() => setIsInspectorOpen(false)}
         screenCoords={screenCoords}
         place={selected ?? null}
@@ -1168,6 +1064,23 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         onGoToA={() => selected && cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}
         onGoToB={() => targetB && cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}
         onFrameBoth={() => selected && targetB && frameBothLocations(selected, targetB)}
+      />
+
+      {/* Layer 4: Floating Copilot Trigger */}
+      <FloatingCopilotTrigger
+        activeLocation={selected}
+        activeVariable={variable}
+        activeTrend={reportA?.trend}
+        onSelectLocation={(loc) => {
+          if (loc.kind === 'region') {
+            const r = regions.find((cand) => cand.id === loc.id);
+            if (r) visit(loc, r);
+          } else {
+            const country = loc.label || findCountryAt(loc.lat, loc.lng, countries);
+            visit({ ...loc, label: country }, { lat: loc.lat, lng: loc.lng });
+          }
+        }}
+        onSelectVariable={setVariable}
       />
     </section>
   );
