@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     EARTHDATA_PASSWORD: str | None = None
     EARTHDATA_TOKEN: str | None = None
 
+    # Google Gemini AI Studio Credentials
+    GEMINI_API_KEY: str | None = None
+
     # SQLite Cache Path
     CACHE_DB_PATH: str = "data/cache/tpbd_cache.db"
 

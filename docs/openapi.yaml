@@ -344,6 +344,44 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /api/v1/ai/models:
+    get:
+      tags:
+        - AI
+      summary: List available Gemini AI models and capabilities
+      description: Returns the full catalog of Gemini models supported by the smart router, including capability tags and recommended scenarios.
+      operationId: listAIModels
+      responses:
+        '200':
+          description: Available AI models retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+
+  /api/v1/ai/investigate:
+    post:
+      tags:
+        - AI
+      summary: Natural language investigation copilot
+      description: Analyzes natural language questions and recommends relevant NASA variables, coordinates, and scientific hypotheses.
+      operationId: investigateWithAI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectiveQueryRequest'
+      responses:
+        '200':
+          description: Investigation plan formulated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectiveQueryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/v1/integrations/appeears/tasks:
     post:
       tags:
@@ -1048,6 +1086,97 @@ components:
         scientific_notes:
           type: string
           example: "Significant structural break detected at 2000-06 (p=0.0042). Trend accelerated from 0.05 °C/decade to 0.38 °C/decade."
+
+    ModelListResponse:
+      type: object
+      required:
+        - models
+        - default_model
+        - active_api_key_configured
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIModelInfo'
+        default_model:
+          type: string
+          example: gemini-3.8-flash
+        active_api_key_configured:
+          type: boolean
+          example: true
+
+    AIModelInfo:
+      type: object
+      required:
+        - model_id
+        - display_name
+        - capabilities
+        - recommended_use
+        - context_window
+      properties:
+        model_id:
+          type: string
+          example: gemini-3.8-flash
+        display_name:
+          type: string
+          example: Gemini 3.8 Flash
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [text, thinking, tts, vision, audio_in]
+        recommended_use:
+          type: string
+          example: Fast natural language query translation and hypothesis formulation
+        context_window:
+          type: integer
+          example: 1048576
+
+    DetectiveQueryRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          example: Where is drought worsening in South America?
+        model:
+          type: string
+          default: auto
+          example: auto
+
+    DetectiveQueryResponse:
+      type: object
+      required:
+        - query
+        - recommended_variables
+        - hypothesis
+        - model_used
+        - is_fallback
+      properties:
+        query:
+          type: string
+          example: Where is drought worsening in South America?
+        recommended_variables:
+          type: array
+          items:
+            type: string
+          example: [GWETROOT, PRECTOTCORR]
+        recommended_region_id:
+          type: string
+          nullable: true
+          example: amazon_basin
+        target_coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        hypothesis:
+          type: string
+          example: Amazon Basin root-zone soil moisture exhibits sustained negative departures correlated with dry-season rainfall deficits.
+        model_used:
+          type: string
+          example: gemini-3.8-flash
+        is_fallback:
+          type: boolean
+          example: false
 
     AppEEARSTaskRequest:
       type: object
