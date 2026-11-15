@@ -5,7 +5,11 @@ import { localApiFetch } from './localApi';
 
 export const variableOptions = [
   { id: 'T2M', name: 'Air temperature', start: 1981, end: 2025, unit: '°C', description: 'Monthly average air temperature at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'PRECTOTCORR', name: 'Precipitation', start: 1981, end: 2025, unit: 'mm/month', description: 'Bias-corrected monthly total precipitation combining satellite gauges and model reanalysis.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
   { id: 'RH2M', name: 'Relative humidity', start: 1981, end: 2025, unit: '%', description: 'Monthly average relative humidity of air at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'GWETROOT', name: 'Root-zone soil wetness', start: 1981, end: 2025, unit: 'fraction', description: 'Fraction of root-zone soil wetness (0 to 1) in the top 1 meter of soil.', category: 'Hydrology', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'EVPTRNS', name: 'Evapotranspiration flux', start: 1981, end: 2025, unit: 'W/m²', description: 'Total latent energy flux consumed by land evaporation and plant transpiration.', category: 'Hydrology', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'MOD13Q1_NDVI', name: 'MODIS Vegetation Index (NDVI)', start: 2000, end: 2025, unit: 'index', description: 'Satellite-derived green vegetation density and canopy photosynthetic activity.', category: 'Vegetation', source: 'Terra MODIS · AppEEARS', community: 'LP DAAC', resolution: '250m' },
 ];
 
 export function useVariableAvailability() {
@@ -18,17 +22,42 @@ export function useVariableAvailability() {
       if (!response.ok) return;
       const catalog: unknown = await response.json();
       if (!Array.isArray(catalog) || controller.signal.aborted) return;
-      setOptions(variableOptions.map((option) => {
-        const entry = catalog.find((item) => item?.variable_id === option.id);
-        const range = typeof entry?.temporal_range === 'string'
+      
+      const parsed = catalog.map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const entry = item as Record<string, unknown>;
+        const id = typeof entry.variable_id === 'string' ? entry.variable_id : '';
+        if (!id) return null;
+        const name = typeof entry.display_name === 'string' ? entry.display_name : id;
+        const unit = typeof entry.unit === 'string' ? entry.unit : '';
+        const description = typeof entry.description === 'string' ? entry.description : '';
+        const category = typeof entry.category === 'string' ? entry.category : 'Atmosphere';
+        const source = typeof entry.source_model_or_sensor === 'string'
+          ? entry.source_model_or_sensor
+          : (typeof entry.provider === 'string' ? entry.provider : 'NASA');
+        const community = typeof entry.data_community === 'string' ? entry.data_community : '';
+        const resolution = typeof entry.spatial_resolution === 'string' ? entry.spatial_resolution : '';
+        const range = typeof entry.temporal_range === 'string'
           ? /^(\d{4})-\d{2}\s+to\s+(\d{4})-\d{2}$/.exec(entry.temporal_range) : null;
-        if (!range || entry.provider !== 'NASA_POWER'
-          || typeof entry.data_community !== 'string' || !entry.data_community.startsWith('AG')
-          || typeof entry.spatial_resolution !== 'string') return option;
-        const start = Number(range[1]);
-        const end = Math.min(Number(range[2]), 2026);
-        return start >= 1981 && start <= end ? { ...option, start, end, resolution: entry.spatial_resolution, community: entry.data_community } : option;
-      }));
+        const start = range ? Number(range[1]) : 1981;
+        const end = range ? Math.min(Number(range[2]), 2026) : 2025;
+        return {
+          id,
+          name,
+          start: Math.max(1950, start),
+          end: Math.max(start, end),
+          unit,
+          description,
+          category,
+          source,
+          community,
+          resolution,
+        };
+      }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      if (parsed.length > 0 && !controller.signal.aborted) {
+        setOptions(parsed);
+      }
     }).catch(() => {});
     return () => controller.abort();
   }, []);

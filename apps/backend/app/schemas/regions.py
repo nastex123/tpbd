@@ -12,3 +12,11 @@ class Region(BaseModel):
     representative_cell: str = Field(..., description="Representative data grid cell")
     description: str = Field(..., description="Geographical and ecological context")
     scientific_context: str = Field(..., description="Scientific motivation for trend analysis")
+    teleconnection_pair: str | None = Field(
+        default=None,
+        description="Optional identifier of the paired teleconnection region (e.g. 'hadley_expansion', 'enso_asymmetry')",
+    )
+    biome_category: str | None = Field(
+        default=None,
+        description="Planetary biome classification (e.g. 'Tropical Rainforest', 'Polar Cryosphere')",
+    )

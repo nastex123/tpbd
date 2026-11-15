@@ -8,6 +8,7 @@ from app.services.trend_service import TrendService
 from app.services.anomaly_service import AnomalyService
 from app.services.changepoint_service import ChangePointService
 from app.services.ai_service import AIService
+from app.services.knowledge_service import KnowledgeService
 from app.clients.gemini_client import GeminiClient
 from app.repositories.region_repository import RegionRepository
 
@@ -67,6 +68,12 @@ def get_region_repository() -> RegionRepository:
 
 
 @lru_cache
+def get_knowledge_service() -> KnowledgeService:
+    """Singleton instance of KnowledgeService."""
+    return KnowledgeService()
+
+
+@lru_cache
 def get_gemini_client() -> GeminiClient:
     """Singleton instance of GeminiClient."""
     return GeminiClient(api_key=settings.GEMINI_API_KEY)
@@ -75,10 +82,12 @@ def get_gemini_client() -> GeminiClient:
 @lru_cache
 def get_ai_service(
     gemini_client: Annotated[GeminiClient, Depends(get_gemini_client)] = None,
+    knowledge_service: Annotated[KnowledgeService, Depends(get_knowledge_service)] = None,
 ) -> AIService:
-    """Singleton instance of AIService."""
+    """Singleton instance of AIService with knowledge grounding."""
     gc = gemini_client or get_gemini_client()
-    return AIService(gemini_client=gc)
+    ks = knowledge_service or get_knowledge_service()
+    return AIService(gemini_client=gc, knowledge_service=ks)
 
 
 @lru_cache
