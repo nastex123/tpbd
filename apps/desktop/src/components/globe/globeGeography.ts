@@ -2,6 +2,12 @@ export type GeoPoint = { lat: number; lng: number };
 export type Place = GeoPoint & { name: string };
 export type GeoPath = [number, number][];
 export type WorldMap = { paths: GeoPath[]; places: Place[] };
+export type CountryFeature = {
+  type: 'Feature';
+  properties: { name: string; nameEn: string; lat: number; lng: number; color: number };
+  geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
+};
+export type CountryCollection = { type: 'FeatureCollection'; features: CountryFeature[] };
 
 export const initialView = { lat: 18, lng: -25, altitude: 2.4 };
 
