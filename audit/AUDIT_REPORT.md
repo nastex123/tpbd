@@ -214,4 +214,4 @@ curl -X GET "http://127.0.0.1:8000/api/v1/series?variable_id=T2M&lat=150.0&lon=0
 
 1. **Retain the Asynchronous REST Adapter Pattern:** Do not introduce `earthaccess` into the runtime sidecar. The current combination of NASA POWER REST API and AppEEARS REST API provides complete coverage for the required planetary variables without downloading multi-gigabyte raster files.
 2. **Strict Contract Alignment Maintained:** All 22 backend endpoints are fully aligned with `docs/openapi.yaml`. Ensure that future pull requests continue to validate Pydantic schemas against `docs/openapi.yaml` prior to merging.
-3. **Audit Suite Preservation:** Retain `tests/agent_audit/` as a permanent pre-commit / CI verification tool to guarantee that future backend iterations maintain zero contract drift and zero unhandled exceptions.
+3. **Audit Suite Preservation:** Retain `apps/backend/tests/agent_audit/` as a permanent pre-commit / CI verification tool to guarantee that future backend iterations maintain zero contract drift and zero unhandled exceptions.
