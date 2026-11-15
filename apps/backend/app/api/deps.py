@@ -7,6 +7,8 @@ from app.services.series_service import SeriesService
 from app.services.trend_service import TrendService
 from app.services.anomaly_service import AnomalyService
 from app.services.changepoint_service import ChangePointService
+from app.services.ai_service import AIService
+from app.clients.gemini_client import GeminiClient
 from app.repositories.region_repository import RegionRepository
 
 from app.repositories.cache_repository import CacheRepository
@@ -56,11 +58,29 @@ def get_changepoint_service(
     return ChangePointService(cs)
 
 
-
 @lru_cache
 def get_region_repository() -> RegionRepository:
     """Singleton instance of RegionRepository."""
     return RegionRepository()
+
+
+@lru_cache
+def get_gemini_client() -> GeminiClient:
+    """Singleton instance of GeminiClient."""
+    return GeminiClient(api_key=settings.GEMINI_API_KEY)
+
+
+@lru_cache
+def get_ai_service(
+    gemini_client: Annotated[GeminiClient, Depends(get_gemini_client)] = None,
+    catalog_service: Annotated[CatalogService, Depends(get_catalog_service)] = None,
+    region_repo: Annotated[RegionRepository, Depends(get_region_repository)] = None,
+) -> AIService:
+    """Singleton instance of AIService."""
+    gc = gemini_client or get_gemini_client()
+    cs = catalog_service or get_catalog_service()
+    rr = region_repo or get_region_repository()
+    return AIService(gemini_client=gc, catalog_service=cs, region_repo=rr)
 
 
 @lru_cache
