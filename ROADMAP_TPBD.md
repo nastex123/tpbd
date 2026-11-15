@@ -2,7 +2,7 @@
 ## Roadmap técnico y de producto | v2.0 | NASA Space Apps Challenge 2026
 
 **Fecha:** 14 de noviembre de 2026  
-**Estado:** Backend 100% implementado, verificado y documentado (FastAPI, SQLite, NASA POWER, NASA AppEEARS, Seasonal Mann-Kendall, Sen's slope, Z-Score Anomalies, pre-sembrado offline y 46 pruebas automatizadas pasando). Desktop Frontend en desarrollo activo.  
+**Estado:** Backend 100% implementado, verificado y documentado (FastAPI, SQLite, NASA POWER, NASA AppEEARS, Seasonal Mann-Kendall, Sen's slope, Z-Score Anomalies, Pettitt Change-Point & Regime Shifts, Gemini AI Smart Model Router & Copilot, Scientific Explainer & Mission Control TTS Audio Debrief, pre-sembrado offline y 65 pruebas automatizadas pasando). Desktop Frontend en desarrollo activo.  
 **Reto:** [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)  
 **Equipo:** Brandon (aplicación y visualización), Daniel (datos y análisis).
 
