@@ -1,0 +1,186 @@
+/* Meteorological Radar & Variable HUD Legend Styles (Clean Anti-AI Slop) */
+
+.variable-radar-hud {
+  position: absolute;
+  bottom: 2.25rem;
+  left: 1.25rem;
+  z-index: 25;
+  width: 290px;
+  max-width: calc(100vw - 2.5rem);
+  background: rgba(6, 14, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px) saturate(180%);
+  user-select: none;
+  font-family: inherit;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
+  pointer-events: auto;
+}
+
+/* Adjust position when bottom telemetry deck is open and expanded */
+.variable-radar-hud.deck-open {
+  bottom: 245px;
+}
+
+.variable-radar-hud.is-collapsed {
+  width: auto;
+}
+
+/* Header Bar */
+.radar-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.radar-hud-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.radar-hud-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f1f5f9;
+}
+
+.radar-hud-sensor {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.radar-hud-toggle {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.radar-hud-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.radar-hud-toggle:active {
+  transform: scale(0.96);
+}
+
+/* Main Body Content */
+.radar-hud-body {
+  padding: 0.65rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* Live Observation Reading */
+.radar-hud-reading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.radar-hud-value-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.radar-hud-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.radar-hud-unit {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.radar-hud-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.radar-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Continuous & Stepped Reflectivity Bar */
+.radar-scale-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.radar-color-bar {
+  height: 8px;
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.radar-scale-step {
+  flex: 1;
+  height: 100%;
+  transition: opacity 150ms ease;
+}
+
+.radar-scale-ticks {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.radar-scale-tick {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.62rem;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+/* Collapsed Compact State */
+.radar-hud-collapsed-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.radar-hud-collapsed-pill:hover .radar-hud-title {
+  color: #38bdf8;
+}

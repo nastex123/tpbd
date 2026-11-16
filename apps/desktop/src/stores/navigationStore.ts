@@ -1,6 +1,6 @@
 export type LocationSelection =
   | { kind: 'region'; id: string }
-  | { kind: 'coordinates'; lat: number; lng: number };
+  | { kind: 'coordinates'; lat: number; lng: number; label?: string };
 
 export function parseCoordinate(input: string, limit: number): number | null {
   const value = input.trim();

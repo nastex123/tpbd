@@ -17,7 +17,7 @@ def response(payload: dict, status: int = 200) -> httpx.Response:
 def test_gemini_model_routing_uses_documented_identifiers():
     client = GeminiClient(api_key="test-key")
 
-    assert client.resolve_model("auto", task="query") == "gemini-3.8-flash"
+    assert client.resolve_model("auto", task="query") == "gemini-3.5-flash-lite"
     assert client.resolve_model("auto", task="thinking") == "gemini-3.8-flash"
     assert client.resolve_model("auto", task="tts") == "gemini-3.8-flash-tts"
     assert client.resolve_model("auto", task="vision") == "gemini-3-pro-image"

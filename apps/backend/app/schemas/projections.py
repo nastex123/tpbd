@@ -51,3 +51,18 @@ class ProjectionSeriesResponse(BaseModel):
     uncertainty_note: str = "The monthly point response does not provide an uncertainty interval; model and scenario are retained for interpretation."
     is_projection: bool = True
     caveat: str = "Conditional climate-model scenario, not an exact prediction or observation."
+
+
+class ProjectionSeriesRequest(BaseModel):
+    """Payload for POST /api/v1/projections/series."""
+
+    variable_id: str = Field(..., min_length=2, max_length=32, pattern=r"^[A-Za-z0-9_]+$")
+    lat: float | None = Field(None, ge=-59.875, le=89.875)
+    lon: float | None = Field(None, ge=-179.875, le=179.875)
+    latitude: float | None = Field(None, ge=-59.875, le=89.875)
+    longitude: float | None = Field(None, ge=-179.875, le=179.875)
+    start_year: int = Field(2015, ge=2015, le=2100)
+    end_year: int = Field(2100, ge=2015, le=2100)
+    scenario: SSPScenario
+    model: str = Field("ensemble", min_length=1, max_length=40, pattern=r"^[a-z0-9_]+$")
+

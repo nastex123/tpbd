@@ -17,10 +17,22 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
   onDate: (date: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDragging = useRef(false);
+
+  function handleScrub(clientX: number, target: HTMLElement) {
+    const frame = target.getBoundingClientRect();
+    const fraction = Math.min(1, Math.max(0, (clientX - frame.left) / frame.width));
+    const nextDate = dates[Math.round(fraction * (dates.length - 1))];
+    if (nextDate) onDate(nextDate);
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context) return;
+    if (!canvas) return;
+    canvas.width = canvas.parentElement?.clientWidth || 420;
+    canvas.height = canvas.parentElement?.clientHeight || 110;
+    const context = canvas.getContext('2d');
+    if (!context) return;
     const { width, height } = canvas;
     const [low, high] = bounds;
     const values = new Map(points.map(({ date, value }) => [date, value]));
@@ -85,16 +97,26 @@ export function HistoryChart({ points, dates, date, bounds, name, color, highlig
   return <canvas
     ref={canvasRef}
     width={420}
-    height={120}
+    height={110}
     role="img"
     aria-label={`Historical series for ${name}. Use the month slider to inspect values.`}
+    onPointerDown={(event) => {
+      isDragging.current = true;
+      onHover(true);
+      handleScrub(event.clientX, event.currentTarget);
+    }}
     onPointerMove={(event) => {
       onHover(true);
-      const frame = event.currentTarget.getBoundingClientRect();
-      const fraction = Math.min(1, Math.max(0, (event.clientX - frame.left) / frame.width));
-      const nextDate = dates[Math.round(fraction * (dates.length - 1))];
-      if (nextDate) onDate(nextDate);
+      if (isDragging.current || event.buttons === 1) {
+        handleScrub(event.clientX, event.currentTarget);
+      }
     }}
-    onPointerLeave={() => onHover(false)}
+    onPointerUp={() => {
+      isDragging.current = false;
+    }}
+    onPointerLeave={() => {
+      isDragging.current = false;
+      onHover(false);
+    }}
   />;
 }

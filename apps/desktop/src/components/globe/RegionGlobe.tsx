@@ -3,21 +3,23 @@ import Globe, { type GlobeMethods } from 'react-globe.gl';
 import { Mesh, MeshBasicMaterial, SphereGeometry, SRGBColorSpace, TextureLoader } from 'three';
 import { parseCoordinate, type LocationSelection } from '../../stores/navigationStore';
 import { deleteInvestigation, INVESTIGATIONS_KEY, readInvestigations, saveInvestigation, type Investigation } from '../../stores/investigations';
-import { distanceKm, gridOutline, initialView, type CountryCollection, type CountryFeature, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
+import { distanceKm, findCountryAt, gridOutline, initialView, type CountryCollection, type CountryFeature, type GeoPath, type GeoPoint, type Place, type WorldMap } from './globeGeography';
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
-import { HistoryChart } from './HistoryChart';
 import { InvestigationReport } from './InvestigationReport';
-import { ScientificExplanation } from './ScientificExplanation';
-import { TemporalComparison } from './TemporalComparison';
+import { prefetchExplanation } from './ScientificExplanation';
+import { HolographicInspectorModal } from '../detective/HolographicInspectorModal';
+import { FloatingCopilotTrigger } from '../copilot/FloatingCopilotTrigger';
+import { StudyRegionsDrawer, type Region } from '../navigation/StudyRegionsDrawer';
 import { localApiFetch } from './localApi';
 import { trendLine } from './trendLine';
 import { nextObservationDate, observationDates } from './historyTimeline';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
+import { computeArcAltitude, sphericalMidpoint } from './teleconnectionComparison';
+import { computeRadarRangeRings, getVariableProfile } from './variableVisualization';
+import { VariableRadarLegend } from './VariableRadarLegend';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
-
-type Region = { id: string; name: string; lat: number; lng: number; cell?: string };
 
 const offlineRegions: Region[] = [
   { id: 'amazon', name: 'Amazon Basin (Manaus)', lat: -3.1, lng: -60.0 },
@@ -62,11 +64,28 @@ const presentation = [
   'Compare two study regions for the same variable.',
 ];
 
+/**
+ * Strips accents and maps diacritics to clean standard glyphs
+ * supported by three-globe's vector font, preventing '?' replacement characters.
+ */
+function sanitizeGlobeText(text: string): string {
+  if (!text) return '';
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ñ/g, 'n')
+    .replace(/Ñ/g, 'N');
+}
+
 const countryColors = [
   'rgba(54, 133, 159, 0.44)', 'rgba(71, 145, 132, 0.44)', 'rgba(85, 115, 171, 0.44)',
   'rgba(151, 115, 76, 0.44)', 'rgba(113, 105, 163, 0.44)', 'rgba(61, 139, 119, 0.44)',
   'rgba(152, 105, 126, 0.44)', 'rgba(102, 133, 91, 0.44)',
 ];
+
+const emptyCountries: CountryFeature[] = [];
+const polygonSideColorStatic = () => 'rgba(16, 37, 52, 0.58)';
+const polygonStrokeColorStatic = () => '#c4e0e8';
 
 function motionAllowed() {
   return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -123,7 +142,10 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const globe = useRef<GlobeMethods | undefined>(undefined);
   const viewport = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(supportsWebGL);
-  const [{ width, height }, setSize] = useState({ width: 0, height: 0 });
+  const [{ width, height }, setSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 800,
+    height: typeof window !== 'undefined' ? window.innerHeight : 600,
+  });
   const [reduced, setReduced] = useState(false);
   const [ready, setReady] = useState(false);
   const [regions, setRegions] = useState(offlineRegions);
@@ -174,15 +196,38 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateB, setSelectedDateB] = useState('');
   const [playing, setPlaying] = useState(false);
-  const dataPanel = useRef<HTMLDivElement>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [screenCoords, setScreenCoords] = useState<{ x: number; y: number } | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  function updateScreenPosition(lat: number, lng: number) {
+    if (globe.current) {
+      const coords = globe.current.getScreenCoords(lat, lng, 0.05);
+      if (coords && Number.isFinite(coords.x) && Number.isFinite(coords.y)) {
+        setScreenCoords(coords);
+      }
+    }
+  }
   const flightTimers = useRef<number[]>([]);
   const selectedId = location?.kind === 'region' ? location.id : null;
-  const selected = useMemo(() => location?.kind === 'coordinates'
-    ? { ...location, id: null, name: 'Custom location', cell: undefined }
-    : regions.find(({ id }) => id === selectedId), [location, regions, selectedId]);
-  const targetB = useMemo(() => compare?.kind === 'coordinates'
-    ? { ...compare, id: null, name: 'Custom location B', cell: undefined }
-    : regions.find(({ id }) => id === compare?.id), [compare, regions]);
+  const selected = useMemo(() => {
+    if (!location) return undefined;
+    if (location.kind === 'region') return regions.find(({ id }) => id === selectedId);
+    const country = location.label || findCountryAt(location.lat, location.lng, countries);
+    const name = country
+      ? `${country} (${location.lat.toFixed(2)}°, ${location.lng.toFixed(2)}°)`
+      : `Coordinates (${location.lat.toFixed(2)}°, ${location.lng.toFixed(2)}°)`;
+    return { ...location, id: null, name, cell: undefined };
+  }, [location, regions, selectedId, countries]);
+  const targetB = useMemo(() => {
+    if (!compare) return undefined;
+    if (compare.kind === 'region') return regions.find(({ id }) => id === compare.id);
+    const country = compare.label || findCountryAt(compare.lat, compare.lng, countries);
+    const name = country
+      ? `${country} (${compare.lat.toFixed(2)}°, ${compare.lng.toFixed(2)}°)`
+      : `Coordinates (${compare.lat.toFixed(2)}°, ${compare.lng.toFixed(2)}°)`;
+    return { ...compare, id: null, name, cell: undefined };
+  }, [compare, regions, countries]);
   const keyA = locationKey(location);
   const keyB = locationKey(compare);
   const markers = useMemo(() => [
@@ -193,12 +238,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const worldMap = naturalEarth as WorldMap;
   const countryLabels = useMemo(() => countries.map((country) => ({
     key: `country:${country.properties.name}`,
-    name: country.properties.name,
+    name: sanitizeGlobeText(country.properties.name),
     lat: country.properties.lat,
     lng: country.properties.lng,
     country: true as const,
   })), [countries]);
   const labels = useMemo(() => [...markers, ...(zoomed ? countryLabels : [])], [markers, countryLabels, zoomed]);
+
   function updateLabelSpacing() {
     const world = globe.current;
     if (!world || !ready) return;
@@ -231,6 +277,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const issues = reportA?.series && reportB?.series ? comparisonIssues(reportA.series, reportB.series) : [];
   const comparable = issues.length === 0;
   const trendIssue = trendComparisonIssue(reportA?.trend, reportB?.trend);
+
+  // Background AI synthesis prefetch: caches Gemini 3 response once, preventing token waste on reopen
+  useEffect(() => {
+    if (selected && reportA?.series && reportA?.trend && reportA.trend.direction !== 'not_evaluable') {
+      void prefetchExplanation(selected.name, reportA.series, reportA.trend);
+    }
+  }, [selected?.name, reportA?.series, reportA?.trend]);
   const reports = [
     { key: keyA, place: selected, report: reportA, color: '#197caa' },
     { key: keyB, place: targetB, report: reportB, color: '#a04194' },
@@ -251,17 +304,31 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const gridResolution = reportA?.series?.spatial_resolution;
   const cell = useMemo(() => gridOutline(gridCell, gridResolution), [gridCell, gridResolution]);
   const area = selectedId ? studyAreas[selectedId] : null;
+
+  // Active scientific profile defining variable-specific color ramps and kinematics
+  const activeProfile = useMemo(() => getVariableProfile(variable), [variable]);
+
   const paths = useMemo(() => {
     const path = (points: GeoPath, color: string, altitude: number) => ({
       points: points.map(([lat, lng]) => ({ lat, lng, altitude })),
       color,
     });
-    return [
+    const result = [
       ...(zoomed && boundaries ? worldMap.paths.map((points) => path(points, '#b7ccd5', 0.012)) : []),
       ...(area ? [path(area, '#ffcd70', 0.018)] : []),
       ...(cell ? [path(cell, '#90f5b1', 0.022)] : []),
     ];
-  }, [zoomed, boundaries, worldMap, area, cell]);
+
+    // Geodesic Doppler weather radar range rings for precipitation
+    if (variable === 'PRECTOTCORR' && selected) {
+      result.push(...computeRadarRangeRings(selected.lat, selected.lng, [60, 160], 0.014));
+    }
+    if (variable === 'PRECTOTCORR' && targetB && keyA !== keyB) {
+      result.push(...computeRadarRangeRings(targetB.lat, targetB.lng, [60, 160], 0.014));
+    }
+
+    return result;
+  }, [zoomed, boundaries, worldMap, area, cell, variable, selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB]);
   const searchItems: (Region | Place)[] = search.trim() ? [...regions,
     ...countries.map(({ properties: { name, lat, lng } }) => ({ name, lat, lng }))]
     .filter(({ name }) => name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -283,9 +350,17 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  const visibleDateRef = useRef(visibleDate);
+  visibleDateRef.current = visibleDate;
+
   useEffect(() => {
     if (!playing || dates.length < 2) return;
-    const timer = window.setInterval(() => setSelectedDate((current) => nextObservationDate(current, dates)), 500);
+    const timer = window.setInterval(() => {
+      setSelectedDate((current) => {
+        const base = dates.includes(current) ? current : visibleDateRef.current;
+        return nextObservationDate(base, dates);
+      });
+    }, 450);
     return () => window.clearInterval(timer);
   }, [playing, dates]);
 
@@ -378,7 +453,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     const element = viewport.current;
     if (!element) return;
     const observer = new ResizeObserver(([{ contentRect }]) => {
-      setSize({ width: Math.floor(contentRect.width), height: Math.floor(contentRect.height) });
+      const w = Math.floor(contentRect.width) || window.innerWidth;
+      const h = Math.floor(contentRect.height) || window.innerHeight;
+      setSize({ width: w, height: h });
     });
     observer.observe(element);
     const onContextLost = () => setAvailable(false);
@@ -388,6 +465,22 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       element.removeEventListener('webglcontextlost', onContextLost, true);
     };
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (e.key === '[') {
+        e.preventDefault();
+        setIsDrawerOpen((prev) => !prev);
+      } else if (e.key === 'Escape' && isDrawerOpen) {
+        setIsDrawerOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen]);
 
   function cancelFlight() {
     flightTimers.current.forEach(window.clearTimeout);
@@ -419,6 +512,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     const key = locationKey(next);
     setHistory((previous) => [next, ...previous.filter((item) => locationKey(item) !== key)].slice(0, 8));
     cameraTo({ ...point, altitude: 0.85 }, flight);
+    updateScreenPosition(point.lat, point.lng);
+    setIsInspectorOpen(true);
+    setIsDrawerOpen(false);
+    if (flight) {
+      window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 700);
+      window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 1100);
+    }
   }
 
   function selectMarker(marker: object) {
@@ -454,6 +554,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return () => window.clearTimeout(timer);
   }, [tour, tourPlaying, regions]);
 
+  function frameBothLocations(a: GeoPoint, b: GeoPoint) {
+    const dist = distanceKm(a, b);
+    const mid = sphericalMidpoint(a, b);
+    const altitude = Math.min(3.4, Math.max(1.4, 0.9 + (dist / 10000) * 1.5));
+    cameraTo({ lat: mid.lat, lng: mid.lng, altitude }, true);
+  }
+
   function showStep(next: number) {
     setStep(next);
     setTourPlaying(false);
@@ -469,9 +576,15 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     }
     if (next === 3 && regions[1]) {
       const other = regions.find(({ id }) => id === (selectedId === 'sahel' ? 'amazon' : 'sahel'));
-      if (other) setCompare({ kind: 'region', id: other.id });
+      if (other) {
+        setCompare({ kind: 'region', id: other.id });
+        const anchor = regions.find(({ id }) => id === selectedId);
+        if (anchor) {
+          window.setTimeout(() => frameBothLocations(anchor, other), 450);
+        }
+      }
     }
-    if (next > 0) dataPanel.current?.scrollIntoView({ block: 'nearest' });
+    if (next > 0) setIsInspectorOpen(true);
   }
 
   function loadTeleconnectionPreset(presetId: string) {
@@ -489,6 +602,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     setPeriod({ start: 1990, end: 2025 });
     setPeriodNotice('');
     setSelectedDate('');
+    if (regA && regB) {
+      window.setTimeout(() => frameBothLocations(regA, regB), 450);
+    }
   }
 
   function markerColor(marker: typeof markers[number]) {
@@ -505,365 +621,211 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     return marker.key === keyB ? '#f0a4e5' : '#79dcff';
   }
 
-  const arc = measurePoints.length === 2 ? [{ start: measurePoints[0], end: measurePoints[1] }] : [];
+  interface GlobeArc {
+    start: { lat: number; lng: number };
+    end: { lat: number; lng: number };
+    color: string | string[];
+    altitude: number;
+    stroke: number;
+    dashLength?: number;
+    dashGap?: number;
+    dashAnimateTime?: number;
+  }
+
+  // Stable reference for the comparison arc so ThreeDigest does not thrash / flicker on re-renders
+  const lastArcRef = useRef<GlobeArc | null>(null);
+  const lastArcKey = useRef<string>('');
+
+  const allArcs = useMemo<GlobeArc[]>(() => {
+    const result: GlobeArc[] = [];
+    // 1. Manual distance measurement arc (amber, solid) - 100% preserved
+    if (measurePoints.length === 2) {
+      result.push({
+        start: measurePoints[0],
+        end: measurePoints[1],
+        color: '#ffcd70',
+        altitude: computeArcAltitude(measurePoints[0], measurePoints[1]),
+        stroke: 0.65,
+        dashLength: 1,
+        dashGap: 0,
+        dashAnimateTime: 0,
+      });
+    }
+    // 2. Planetary teleconnection / spatial comparison arc (luminous gradient tube, elevated above terrain, solid & crisp)
+    if (selected && targetB && keyA !== keyB) {
+      const currentKey = `${selected.lat.toFixed(4)},${selected.lng.toFixed(4)}->${targetB.lat.toFixed(4)},${targetB.lng.toFixed(4)}`;
+      const alt = computeArcAltitude(
+        { lat: selected.lat, lng: selected.lng },
+        { lat: targetB.lat, lng: targetB.lng }
+      );
+      if (lastArcKey.current === currentKey && lastArcRef.current) {
+        result.push(lastArcRef.current);
+      } else {
+        const newArc: GlobeArc = {
+          start: { lat: selected.lat, lng: selected.lng },
+          end: { lat: targetB.lat, lng: targetB.lng },
+          color: ['#38bdf8', '#818cf8', '#c084fc', '#f59e0b'],
+          altitude: alt,
+          stroke: 0.75,
+          dashLength: 1,
+          dashGap: 0,
+          dashAnimateTime: 0,
+        };
+        lastArcRef.current = newArc;
+        lastArcKey.current = currentKey;
+        result.push(newArc);
+      }
+    } else {
+      lastArcRef.current = null;
+      lastArcKey.current = '';
+    }
+    return result;
+  }, [measurePoints, selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB]);
+
+  const activeRings = useMemo(() => {
+    if (reduced || !motionAllowed()) return [];
+    interface RingItem {
+      lat: number;
+      lng: number;
+      color: (t: number) => string;
+      maxR: number;
+      propagationSpeed: number;
+      repeatPeriod: number;
+    }
+    const rings: RingItem[] = [];
+    if (selected) {
+      const valA = pointValue(reportA?.series?.points, visibleDate);
+      rings.push({
+        lat: selected.lat,
+        lng: selected.lng,
+        color: (t: number) => activeProfile.getRingColor(t, valA),
+        maxR: activeProfile.ringMaxRadius,
+        propagationSpeed: activeProfile.ringPropagationSpeed,
+        repeatPeriod: activeProfile.ringRepeatPeriod,
+      });
+    }
+    if (targetB && keyA !== keyB) {
+      const valB = pointValue(reportB?.series?.points, visibleDate);
+      rings.push({
+        lat: targetB.lat,
+        lng: targetB.lng,
+        color: (t: number) => activeProfile.getRingColor(t, valB),
+        maxR: activeProfile.ringMaxRadius,
+        propagationSpeed: activeProfile.ringPropagationSpeed,
+        repeatPeriod: activeProfile.ringRepeatPeriod,
+      });
+    }
+    return rings;
+  }, [
+    selected?.lat,
+    selected?.lng,
+    targetB?.lat,
+    targetB?.lng,
+    keyA,
+    keyB,
+    reduced,
+    activeProfile,
+    reportA?.series?.points,
+    reportB?.series?.points,
+    visibleDate,
+  ]);
+
+  // Continuously track 3D screen coordinate of active target during rotations / interactions
+  useEffect(() => {
+    if (!selected) return;
+    updateScreenPosition(selected.lat, selected.lng);
+    const interval = window.setInterval(() => {
+      updateScreenPosition(selected.lat, selected.lng);
+    }, 120);
+    return () => window.clearInterval(interval);
+  }, [selected?.lat, selected?.lng, isInspectorOpen]);
+
+  function handleSelectCoordinates(lat: number, lng: number) {
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setInputError('Enter a latitude from −90 to 90 and a longitude from −180 to 180. Use a decimal point.');
+      return;
+    }
+    setInputError('');
+    const country = findCountryAt(lat, lng, countries);
+    visit({ kind: 'coordinates', lat, lng, label: country }, { lat, lng });
+  }
+
+  function handleSelectSearchItem(place: Region | Place) {
+    setSearch('');
+    visit('id' in place ? { kind: 'region', id: place.id } : { kind: 'coordinates', lat: place.lat, lng: place.lng }, place);
+  }
+
+  function handleSelectHistory(item: LocationSelection) {
+    const place = item.kind === 'region' ? regions.find(({ id }) => id === item.id) : item;
+    if (place) visit(item, place);
+  }
+
+  function handleSaveInvestigation(name: string) {
+    if (!location) {
+      setSaveMessage('Choose a location before saving.');
+      return;
+    }
+    try {
+      const updated = saveInvestigation(window.localStorage, {
+        name, variable, location, comparison: compare, period,
+      }, crypto.randomUUID(), new Date().toISOString());
+      setInvestigations(updated);
+      setSaveMessage('Investigation saved on this device.');
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Could not save the investigation.');
+    }
+  }
+
+  function handleLoadInvestigation(item: Investigation) {
+    const supported = variables.find(({ id }) => id === item.variable);
+    const place = item.location.kind === 'region'
+      ? regions.find(({ id }) => id === (item.location as { id: string }).id)
+      : item.location;
+    const other = item.comparison?.kind === 'region'
+      ? regions.find(({ id }) => id === (item.comparison as { id: string }).id)
+      : item.comparison;
+    if (!supported || !place || (item.comparison && !other)
+      || item.period.start < supported.start || item.period.end > supported.end) {
+      setSaveMessage('This investigation uses a variable, location, or period that is currently unavailable.');
+      return;
+    }
+    setPlaying(false);
+    setStep(null);
+    setVariableSearch('');
+    setVariable(item.variable);
+    setPeriod(item.period);
+    setPeriodNotice('');
+    setSelectedDate('');
+    setCompare(item.comparison);
+    visit(item.location, place);
+    setSaveMessage(`Loaded “${item.name}”.`);
+  }
+
+  function handleDeleteInvestigation(id: string) {
+    try {
+      setInvestigations(deleteInvestigation(window.localStorage, id));
+      setSaveMessage('Investigation deleted.');
+    } catch {
+      setSaveMessage('Could not delete the saved investigation.');
+    }
+  }
 
   return (
-    <section className="region-picker" aria-labelledby="region-heading">
-      <div className="region-panel" tabIndex={0} role="region" aria-labelledby="region-heading" data-presentation={step !== null || undefined}>
-        {heading}
-        <h2 id="region-heading">Study regions</h2>
-        <div className="globe-actions">
-          <button type="button" onClick={() => step === null ? showStep(0) : (setStep(null), setPlaying(false))}>
-            {step === null ? 'Presentation' : 'Exit presentation'}
-          </button>
-          {step !== null && <>
-            <p aria-live="polite">{presentation[step]}</p>
-            <button type="button" disabled={step === 0} onClick={() => showStep(step - 1)}>Previous step</button>
-            <button type="button" disabled={step === presentation.length - 1} onClick={() => showStep(step + 1)}>Next step</button>
-          </>}
-        </div>
-        <p>Choose a study region, click a point on the globe, or enter coordinates.</p>
-        <label className="globe-search">
-          Find a country or study region
-          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
-        </label>
-        {search.trim() && (searchItems.length ? <ul aria-label="Search results">
-          {searchItems.map((place) => <li key={`${place.name}:${place.lat}`}>
-            <button type="button" onClick={() => {
-              setSearch('');
-              visit('id' in place ? { kind: 'region', id: place.id } : { kind: 'coordinates', lat: place.lat, lng: place.lng }, place);
-            }}>{place.name}</button>
-          </li>)}
-        </ul> : <p role="status">No matching place.</p>)}
-        <ul>
-          {regions.map((region) => (
-            <li key={region.id}>
-              <button type="button" aria-pressed={selectedId === region.id}
-                data-highlighted={hovered === region.id || undefined}
-                onPointerEnter={() => setHovered(region.id)} onPointerLeave={() => setHovered(null)}
-                onClick={() => visit({ kind: 'region', id: region.id }, region)}>
-                {region.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <form key={JSON.stringify(selected)} onFocus={() => setEditing(true)} onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setEditing(false);
-        }} onSubmit={(event) => {
-          event.preventDefault();
-          const fields = new FormData(event.currentTarget);
-          const lat = parseCoordinate(String(fields.get('latitude')), 90);
-          const lng = parseCoordinate(String(fields.get('longitude')), 180);
-          if (lat === null || lng === null) {
-            setInputError('Enter a latitude from −90 to 90 and a longitude from −180 to 180. Use a decimal point.');
-            return;
-          }
-          visit({ kind: 'coordinates', lat, lng }, { lat, lng });
-        }}>
-          <label>Latitude <input name="latitude" inputMode="decimal" defaultValue={selected?.lat} /></label>
-          <label>Longitude <input name="longitude" inputMode="decimal" defaultValue={selected?.lng} /></label>
-          <button type="submit">Select coordinates</button>
-          {inputError && <p role="alert">{inputError}</p>}
-        </form>
-        <p role="status">{selected ? `Selected: ${selected.name}` : 'No region selected.'}</p>
-        {selected && (
-          <p>
-            Selected coordinates: {selected.lat}, {selected.lng}.<br />
-            {gridCell || selected.cell ? `Representative grid cell: ${gridCell || selected.cell}. Grid values represent an area.` : 'Grid cell and resolution depend on the data source.'}
-          </p>
-        )}
-        {available && <details className="exploration-tools" open={step === null ? undefined : false}>
-          <summary>Globe controls and layers</summary>
-          <div className="globe-actions">
-            <button type="button" onClick={() => cameraTo(initialView)}>Global view</button>
-            <button type="button" onClick={() => cameraTo({ lat: 89.9, lng: 0, altitude: 1.6 })}>North pole</button>
-            <button type="button" onClick={() => cameraTo({ lat: -89.9, lng: 0, altitude: 1.6 })}>South pole</button>
-            <button type="button" onClick={() => moveTour(tour === null ? 0 : tour - 1)}>Previous region</button>
-            <button type="button" onClick={() => {
-              if (tourPlaying) setTourPlaying(false);
-              else {
-                if (tour === null || tour + 1 >= regions.length) moveTour(0);
-                setTourPlaying(true);
-              }
-            }}>{tourPlaying ? 'Pause tour' : 'Play tour'}</button>
-            <button type="button" onClick={() => moveTour(tour === null ? 0 : tour + 1)}>Next region</button>
-          </div>
-          <label><input type="checkbox" checked={reduced} onChange={(event) => setReduced(event.target.checked)} /> Reduced graphics</label>
-          <label><input type="checkbox" checked={cloudsEnabled} disabled={reduced} onChange={(event) => setCloudsEnabled(event.target.checked)} /> Clouds</label>
-          <label><input type="checkbox" checked={reliefEnabled} disabled={reduced} onChange={(event) => setReliefEnabled(event.target.checked)} /> Surface relief</label>
-          <label><input type="checkbox" checked={nightEnabled} disabled={reduced} onChange={(event) => setNightEnabled(event.target.checked)} /> Day and night (UTC)</label>
-          <label><input type="checkbox" checked={boundaries} onChange={(event) => setBoundaries(event.target.checked)} /> Detailed coastlines when zoomed in</label>
-          <label><input type="checkbox" checked={graticules} onChange={(event) => setGraticules(event.target.checked)} /> Latitude and longitude grid</label>
-          <label><input type="checkbox" checked={idleRotation} disabled={reduced || !!location} onChange={(event) => setIdleRotation(event.target.checked)} /> Rotate before selecting a location</label>
-          <label><input type="checkbox" checked={measure} onChange={(event) => {
-            setMeasure(event.target.checked);
-            setMeasurePoints([]);
-          }} /> Measure distance</label>
-          {measure && <p role="status">{arc.length
-            ? `${Math.round(distanceKm(arc[0].start, arc[0].end)).toLocaleString()} km along the Earth's surface.`
-            : 'Choose two points on the globe.'}</p>}
-        </details>}
-        {history.length > 0 && <details className="exploration-tools">
-          <summary>Recently visited</summary>
-          <ul>{history.map((item) => {
-            const place = item.kind === 'region' ? regions.find(({ id }) => id === item.id) : item;
-            return place && <li key={locationKey(item)}><button type="button" onClick={() => visit(item, place)}>
-              {'name' in place ? place.name : `${place.lat}, ${place.lng}`}
-            </button></li>;
-          })}</ul>
-        </details>}
-        <details className="exploration-tools">
-          <summary>Saved investigations</summary>
-          <form onSubmit={(event) => {
-            event.preventDefault();
-            if (!location) {
-              setSaveMessage('Choose a location before saving.');
-              return;
-            }
-            const form = event.currentTarget;
-            const name = String(new FormData(form).get('investigationName') ?? '').trim();
-            try {
-              const updated = saveInvestigation(window.localStorage, {
-                name, variable, location, comparison: compare, period,
-              }, crypto.randomUUID(), new Date().toISOString());
-              setInvestigations(updated);
-              setSaveMessage('Investigation saved on this device.');
-              form.reset();
-            } catch (error) {
-              setSaveMessage(error instanceof Error ? error.message : 'Could not save the investigation.');
-            }
-          }}>
-            <label>Investigation name <input name="investigationName" maxLength={80} required /></label>
-            <button type="submit">Save current investigation</button>
-          </form>
-          <p role="status">{saveMessage}</p>
-          {investigations.length === 0 ? <p>No saved investigations.</p> : <ul>
-            {investigations.map((item) => <li key={item.id} className="globe-report">
-              <strong>{item.name}</strong>
-              <p>{item.variable} · {item.period.start}–{item.period.end}</p>
-              <p>{item.source.provider} · {item.source.reference}</p>
-              <div className="globe-actions">
-                <button type="button" onClick={() => {
-                  const supported = variables.find(({ id }) => id === item.variable);
-                  const place = item.location.kind === 'region'
-                    ? regions.find(({ id }) => id === (item.location as { id: string }).id)
-                    : item.location;
-                  const other = item.comparison?.kind === 'region'
-                    ? regions.find(({ id }) => id === (item.comparison as { id: string }).id)
-                    : item.comparison;
-                  if (!supported || !place || (item.comparison && !other)
-                    || item.period.start < supported.start || item.period.end > supported.end) {
-                    setSaveMessage('This investigation uses a variable, location, or period that is currently unavailable.');
-                    return;
-                  }
-                  setPlaying(false);
-                  setStep(null);
-                  setVariableSearch('');
-                  setVariable(item.variable);
-                  setPeriod(item.period);
-                  setPeriodNotice('');
-                  setSelectedDate('');
-                  setCompare(item.comparison);
-                  visit(item.location, place);
-                  setSaveMessage(`Loaded “${item.name}”.`);
-                }}>Load</button>
-                <button type="button" onClick={() => {
-                  try {
-                    setInvestigations(deleteInvestigation(window.localStorage, item.id));
-                    setSaveMessage(`Deleted “${item.name}”.`);
-                  } catch {
-                    setSaveMessage('Could not delete the saved investigation.');
-                  }
-                }}>Delete</button>
-              </div>
-            </li>)}
-          </ul>}
-        </details>
-        <div ref={dataPanel} className="globe-data">
-          <h2>Historical data</h2>
-          <button className="report-print-trigger" type="button" disabled={!reportA?.series}
-            onClick={() => window.print()}>Print or save report as PDF</button>
-          <details>
-            <summary>Understanding the results</summary>
-            <p>A trend describes change over the selected period. A significant result indicates statistical evidence under the stated method and does not establish a cause.</p>
-            <p>A non-significant result means the evidence is insufficient to establish a trend. A result may also be non-evaluable when data or method requirements are not met.</p>
-          </details>
-          <form key={`${variable}:${variableRange.start}:${variableRange.end}:${period.start}:${period.end}`} onSubmit={(event) => {
-            event.preventDefault();
-            const values = new FormData(event.currentTarget);
-            const start = Number(values.get('startYear'));
-            const end = Number(values.get('endYear'));
-            if (!Number.isInteger(start) || !Number.isInteger(end) || start < variableRange.start || end > variableRange.end || start > end) {
-              setPeriodError(`Choose a valid period from ${variableRange.start} through ${variableRange.end}.`);
-              return;
-            }
-            setPeriodError('');
-            setPlaying(false);
-            setSelectedDate('');
-            setPeriod({ start, end });
-          }}>
-            <p>Available years for this variable: {variableRange.start}–{variableRange.end}.</p>
-            <label>Start year <input name="startYear" type="number" min={variableRange.start} max={variableRange.end} defaultValue={period.start} required /></label>
-            <label>End year <input name="endYear" type="number" min={variableRange.start} max={variableRange.end} defaultValue={period.end} required /></label>
-            <button type="submit">Apply period</button>
-            {periodError && <p role="alert">{periodError}</p>}
-          </form>
-          <label>Find a variable <input type="search" value={variableSearch} onChange={(event) => setVariableSearch(event.target.value)} placeholder="Search name or ID" /></label>
-          <label>Variable <select value={variable} onChange={(event) => {
-            setPlaying(false);
-            setSelectedDate('');
-            const nextRange = variables.find(({ id }) => id === event.target.value);
-            if (nextRange) setPeriodNotice(period.start < nextRange.start || period.end > nextRange.end
-              ? `Period adjusted to the available years ${nextRange.start}–${nextRange.end}.` : '');
-            if (nextRange) setPeriod((current) => {
-              const start = Math.min(nextRange.end, Math.max(nextRange.start, current.start));
-              return { start, end: Math.max(start, Math.min(nextRange.end, current.end)) };
-            });
-            setPeriodError('');
-            setVariable(event.target.value);
-          }}>{variables.filter(({ id, name }) => id === variable || `${id} ${name}`.toLowerCase().includes(variableSearch.trim().toLowerCase()))
-            .map(({ id, name }) => <option key={id} value={id}>{name} · {id}</option>)}</select></label>
-          {variableSearch && !variables.some(({ id, name }) => `${id} ${name}`.toLowerCase().includes(variableSearch.trim().toLowerCase())) && <p role="status">No matching variable.</p>}
-          <p role="status">{periodNotice}</p>
-          <section className="globe-report" aria-label="Variable information">
-            <strong>{variableRange.name} · {variableRange.id}</strong>
-            <p>{variableRange.description}</p>
-            <p>{variableRange.category} · {variableRange.unit} · Monthly · {variableRange.start}–{variableRange.end}</p>
-            <p>Source: {variableRange.source}. Community: {variableRange.community}. Grid: {variableRange.resolution}.</p>
-          </section>
-          <details className="exploration-tools" style={{ margin: '0.75rem 0' }}>
-            <summary>Planetary Teleconnections (Opposing Trends)</summary>
-            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#c5d3e8' }}>
-              Explore how single planetary climate processes drive opposing directional trends across paired biomes (NASA Space Apps Challenge 2026):
-            </p>
-            <div className="globe-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {teleconnectionPresets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => loadTeleconnectionPreset(preset.id)}
-                  style={{ textAlign: 'left', padding: '0.4rem 0.6rem' }}
-                >
-                  <strong>{preset.name}</strong> · <em>{preset.variable}</em>
-                  <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{preset.note}</div>
-                </button>
-              ))}
-            </div>
-          </details>
-          <label>Compare with <select value={compare?.kind === 'region' ? compare.id : compare ? 'custom' : ''} onChange={(event) => {
-            if (event.target.value === 'custom') return;
-            setCompare(event.target.value ? { kind: 'region', id: event.target.value } : null);
-          }}>
-            <option value="">No comparison</option>
-            {regions.map(({ id, name }) => <option key={id} value={id} disabled={keyA === id}>{name}</option>)}
-            {compare?.kind === 'coordinates' && <option value="custom">Pinned coordinates</option>}
-          </select></label>
-          {location?.kind === 'coordinates' && <button type="button" onClick={() => setCompare(location)}>Pin coordinates as B</button>}
-          {selected && targetB && keyA !== keyB && <div className="globe-actions">
-            <button type="button" onClick={() => cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}>Go to A</button>
-            <button type="button" onClick={() => cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}>Go to B</button>
-          </div>}
-          {!selected && <p>Select a location to load its history.</p>}
-          {keyA && keyA === keyB && <p>Choose a different location for A to compare with B.</p>}
-          {!comparable && <p role="status">The series cannot share a comparison: {issues.join('; ')}. Each series is shown independently.</p>}
-          {reportA?.series && reportB?.series && comparable && <p>
-            Both series use {reportA.series.variable_id}, {reportA.series.unit}, monthly frequency, {reportA.series.provider}, and {reportA.series.spatial_resolution} resolution for the same available period.
-            {' '}{trendIssue ?? `Sen slopes: A ${reportA.trend?.rate_per_decade} and B ${reportB.trend?.rate_per_decade} ${reportA.trend?.rate_unit}. Different estimates alone do not establish a statistically significant difference or a common cause.`}
-          </p>}
-          {dates.length > 0 && <>
-            <label>Month <output>{visibleDate}</output>
-              <input type="range" min={0} max={dates.length - 1} value={dates.indexOf(visibleDate)}
-                onChange={(event) => setSelectedDate(dates[Number(event.target.value)])} />
-            </label>
-            <button type="button" disabled={dates.length < 2}
-              onClick={() => setPlaying((value) => !value)}>{playing ? 'Pause history' : 'Play history'}</button>
-            <p className="globe-scale">
-              <span>{bounds[0].toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              <span aria-label="Low to high values" />
-              <span>{bounds[1].toLocaleString(undefined, { maximumFractionDigits: 2 })} {reportA?.series?.unit ?? reportB?.series?.unit}</span>
-            </p>
-          </>}
-          {reports.map(({ key, place, report, color }, index) => {
-            if (!place || !report || (index === 1 && key === keyA)) return null;
-            const series = report.series;
-            const valid = series?.points.filter((point) => point.value !== null).length ?? 0;
-            const independent = index === 1 && !comparable;
-            const chartDates = independent ? observationDates(series?.points ?? []) : dates;
-            const chartDate = independent
-              ? chartDates.includes(selectedDateB) ? selectedDateB : chartDates.at(-1) ?? ''
-              : visibleDate;
-            const chartValue = pointValue(series?.points, chartDate);
-            const chartBounds: readonly [number, number] = independent && series
-              ? (() => {
-                const values = series.points.flatMap(({ value: point }) => point === null ? [] : [point]);
-                const line = trendLine(series.points, report.trend);
-                if (line) values.push(line.start, line.end);
-                return values.length ? [Math.min(...values), Math.max(...values)] : [0, 1];
-              })() : bounds;
-            return <section key={key} className="globe-report" data-highlighted={hovered === key || undefined}>
-              <h3>{targetB ? `${index === 0 ? 'A' : 'B'} · ` : ''}{place.name}</h3>
-              {series ? <>
-                <p>{valid} of {series.points.length} months with data · {series.provider}</p>
-                <p>{variableRange.name} ({series.variable_id}) · {series.unit} · {series.is_cached ? 'Cached data' : series.provider.includes('offline') ? 'Offline snapshot' : 'Source data'}</p>
-                {series.query_coordinates && <p>Requested location: {series.query_coordinates.latitude}, {series.query_coordinates.longitude}</p>}
-                {series.representative_grid_cell && <p>Grid cell: {series.representative_grid_cell} · {series.spatial_resolution}</p>}
-                <p>{series.points.length ? `Available period: ${series.points[0].date} to ${series.points[series.points.length - 1].date}.` : 'No data is available for this period.'}</p>
-                {chartDate && <p>{place.name} · {variableRange.name} · {chartDate}: {chartValue === null ? 'No data' : `${chartValue} ${series.unit}`} · {series.provider}</p>}
-                {independent && chartDates.length > 0 && <label>Month for B <output>{chartDate}</output>
-                  <input type="range" min={0} max={chartDates.length - 1} value={chartDates.indexOf(chartDate)}
-                    onChange={(event) => setSelectedDateB(chartDates[Number(event.target.value)])} />
-                </label>}
-                {valid > 0 && <HistoryChart points={series.points} dates={chartDates} date={chartDate}
-                  bounds={chartBounds} name={place.name} color={color} highlighted={hovered === key} trend={report.trend}
-                  onHover={(active) => setHovered(active ? key : null)} onDate={(date) => {
-                    setPlaying(false);
-                    if (independent) setSelectedDateB(date);
-                    else setSelectedDate(date);
-                  }} />}
-                {trendLine(series.points, report.trend) && <p>Dashed line: Sen slope, anchored to the median residual of the displayed data.</p>}
-                <p>{report.trend?.plain_language_verdict ?? 'Trend analysis unavailable.'}</p>
-                {report.trend && <p>
-                  Method: {report.trend.method}. {report.trend.p_value !== null ? `p = ${report.trend.p_value}.` : 'p-value unavailable.'}
-                  {report.trend.confidence_interval_95 && ` 95% interval: ${report.trend.confidence_interval_95.join(' to ')} ${report.trend.rate_unit}.`}
-                  {' '}{report.trend.scientific_caveat}
-                </p>}
-                {index === 0 && <ScientificExplanation location={place.name} series={series} trend={report.trend} />}
-              </> : <p role="status">{report.message}</p>}
-            </section>;
-          })}
-          {location && selected && <TemporalComparison
-            key={`${keyA}:${variable}:${variableRange.start}:${variableRange.end}`}
-            location={location}
-            locationName={selected.name}
-            variable={variable}
-            variableName={variableRange.name}
-            available={{ start: variableRange.start, end: variableRange.end }}
-          />}
-        </div>
-        {children}
-      </div>
-      {reportA?.series && selected && <InvestigationReport
-        variableName={variableRange.name}
-        variable={variable}
-        period={period}
-            comparisonIssues={reportB?.series && keyA !== keyB ? issues : undefined}
-            trendComparisonNote={reportB?.series && keyA !== keyB ? trendIssue : undefined}
-        locations={[
-          { name: selected.name, series: reportA.series, trend: reportA.trend },
-          ...(reportB?.series && targetB && keyA !== keyB
-            ? [{ name: targetB.name, series: reportB.series, trend: reportB.trend }]
-            : []),
-        ]}
-      />}
-      <div className="globe-viewport">
-        <div className="globe-surface" ref={viewport} onPointerDown={() => {
+    <section className="relative w-full h-full overflow-hidden bg-slate-950 select-none" aria-labelledby="region-heading">
+      {/* Base Layer: Persistent Fullscreen 3D Globe Viewport */}
+      <div
+        className="absolute inset-0 w-full h-full z-0 overflow-hidden"
+        ref={viewport}
+        onPointerDown={() => {
           setIdleRotation(false);
           setTourPlaying(false);
           cancelFlight();
-        }} onWheel={() => {
+        }}
+        onWheel={() => {
           setIdleRotation(false);
           cancelFlight();
-        }}>
+        }}
+      >
         {available && width > 0 && height > 0 && (
           <GlobeBoundary onFailure={() => setAvailable(false)}>
             <Globe
@@ -888,30 +850,46 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               onZoom={({ altitude }) => {
                 setZoomed((current) => current ? altitude < 1.55 : altitude < 1.35);
                 updateLabelSpacing();
+                if (selected) {
+                  updateScreenPosition(selected.lat, selected.lng);
+                }
               }}
               onGlobeClick={({ lat, lng }) => {
                 const point = { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
+                const country = findCountryAt(point.lat, point.lng, countries);
                 if (measure) addMeasurement(point);
-                else visit({ kind: 'coordinates', ...point }, point, false);
+                else {
+                  updateScreenPosition(point.lat, point.lng);
+                  visit({ kind: 'coordinates', ...point, label: country }, point, false);
+                }
               }}
-              polygonsData={countries}
+              polygonsData={boundaries ? countries : emptyCountries}
               polygonCapColor={(feature) => countryColors[(feature as CountryFeature).properties.color % countryColors.length]}
-              polygonSideColor={() => 'rgba(16, 37, 52, 0.58)'}
-              polygonStrokeColor={() => '#c4e0e8'}
+              polygonSideColor={polygonSideColorStatic}
+              polygonStrokeColor={polygonStrokeColorStatic}
               polygonAltitude={0.0015}
               polygonLabel={(feature) => (feature as CountryFeature).properties.name}
-              onPolygonClick={(_, __, coords) => {
+              onPolygonClick={(feature, _, coords) => {
                 const point = { lat: Number(coords.lat.toFixed(5)), lng: Number(coords.lng.toFixed(5)) };
+                const country = (feature as CountryFeature)?.properties?.name || (feature as CountryFeature)?.properties?.nameEn;
                 if (measure) addMeasurement(point);
-                else visit({ kind: 'coordinates', ...point }, point, false);
+                else {
+                  updateScreenPosition(point.lat, point.lng);
+                  visit({ kind: 'coordinates', ...point, label: country }, point, false);
+                }
               }}
               pointsData={markers}
               pointColor={(point) => markerColor(point as typeof markers[number])}
               pointRadius={(point) => {
                 const { key } = point as typeof markers[number];
-                return key === hovered || key === keyA || key === keyB ? 1.25 : 0.7;
+                const base = key === hovered || key === keyA || key === keyB ? 1.3 : 0.75;
+                return (key === keyA || key === keyB) ? base * activeProfile.pointRadiusFactor : base;
               }}
-              pointAltitude={(point) => (point as typeof markers[number]).id === null ? 0.055 : 0.025}
+              pointAltitude={(point) => {
+                const isTarget = (point as typeof markers[number]).key === keyA || (point as typeof markers[number]).key === keyB;
+                if (isTarget) return activeProfile.pointAltitude;
+                return (point as typeof markers[number]).id === null ? 0.004 : 0.003;
+              }}
               pointLabel={(point) => {
                 const label = document.createElement('span');
                 label.textContent = markers.find((marker) => marker === point)?.name ?? '';
@@ -923,13 +901,14 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               labelsData={hiddenLabels ? labels.filter(({ key }) => !hiddenLabels.split('|').includes(key)) : labels}
               labelText={(point) => {
                 const marker = point as (typeof markers[number] & { country?: true });
-                if (marker.country) return marker.name;
+                if (marker.country) return sanitizeGlobeText(marker.name);
                 const prefix = keyB && keyA !== keyB ? marker.key === keyA ? 'A · ' : marker.key === keyB ? 'B · ' : '' : '';
                 const trend = marker.key === keyA ? reportA?.trend : marker.key === keyB ? reportB?.trend : undefined;
                 const rate = trend?.rate_per_decade;
-                const brief = marker.name.split(' (')[0];
-                return `${prefix}${zoomed ? marker.name : brief}${rate != null && trend
-                  ? ` · ${rate === 0 ? '→' : rate > 0 ? '↑' : '↓'} ${Math.abs(rate).toFixed(2)} ${trend.rate_unit}`
+                const brief = sanitizeGlobeText(marker.name.split(' (')[0]);
+                const sign = rate != null ? (rate > 0 ? '+' : rate < 0 ? '-' : '') : '';
+                return `${prefix}${zoomed ? sanitizeGlobeText(marker.name) : brief}${rate != null && trend
+                  ? ` · ${sign}${Math.abs(rate).toFixed(2)} ${sanitizeGlobeText(trend.rate_unit)}`
                   : ''}`;
               }}
               labelColor={(point) => (point as { country?: true }).country ? '#d8f1f4' : '#fff'}
@@ -946,46 +925,286 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               pathPointAlt="altitude"
               pathColor="color"
               pathTransitionDuration={0}
-              arcsData={arc}
-              arcStartLat={(entry) => (entry as typeof arc[number]).start.lat}
-              arcStartLng={(entry) => (entry as typeof arc[number]).start.lng}
-              arcEndLat={(entry) => (entry as typeof arc[number]).end.lat}
-              arcEndLng={(entry) => (entry as typeof arc[number]).end.lng}
-              arcAltitude={0.034}
-              arcColor={() => '#ffcd70'}
+              arcsData={allArcs}
+              arcStartLat={(entry: unknown) => (entry as GlobeArc).start.lat}
+              arcStartLng={(entry: unknown) => (entry as GlobeArc).start.lng}
+              arcEndLat={(entry: unknown) => (entry as GlobeArc).end.lat}
+              arcEndLng={(entry: unknown) => (entry as GlobeArc).end.lng}
+              arcAltitude={(entry: unknown) => (entry as GlobeArc).altitude}
+              arcColor={(entry: unknown) => (entry as GlobeArc).color}
+              arcStroke={(entry: unknown) => (entry as GlobeArc).stroke}
+              arcDashLength={(entry: unknown) => (entry as GlobeArc).dashLength ?? 1}
+              arcDashGap={(entry: unknown) => (entry as GlobeArc).dashGap ?? 0}
+              arcDashAnimateTime={(entry: unknown) => (entry as GlobeArc).dashAnimateTime ?? 0}
               arcsTransitionDuration={0}
-              ringsData={selected?.id === null && !reduced && motionAllowed() ? [selected] : []}
-              ringColor={() => '#90f5b1'}
-              ringMaxRadius={3.2}
-              ringRepeatPeriod={1250}
+              ringsData={activeRings}
+              ringColor={(d: unknown) => (d as { color?: string | ((t: number) => string) }).color || '#38bdf8'}
+              ringMaxRadius={(d: unknown) => (d as { maxR?: number })?.maxR ?? activeProfile.ringMaxRadius}
+              ringPropagationSpeed={(d: unknown) => (d as { propagationSpeed?: number })?.propagationSpeed ?? activeProfile.ringPropagationSpeed}
+              ringRepeatPeriod={(d: unknown) => (d as { repeatPeriod?: number })?.repeatPeriod ?? activeProfile.ringRepeatPeriod}
             />
           </GlobeBoundary>
         )}
-        {!available && <p role="status">The 3D globe is unavailable. Select a region from the list.</p>}
-        {ready && available && <div className="globe-overlay">
-          <div className="globe-zoom" aria-label="Globe zoom">
-            <button type="button" aria-label="Zoom in" onClick={() => {
-              setIdleRotation(false);
-              cameraTo({ altitude: Math.max(0.32, (globe.current?.pointOfView().altitude ?? 2.4) / 1.4) });
-            }}>+</button>
-            <button type="button" aria-label="Zoom out" onClick={() => {
-              setIdleRotation(false);
-              cameraTo({ altitude: Math.min(5.4, (globe.current?.pointOfView().altitude ?? 2.4) * 1.4) });
-            }}>−</button>
-            <button type="button" onClick={() => cameraTo(initialView)}>Reset</button>
+        {!available && (
+          <div className="absolute inset-0 flex items-center justify-center p-6 bg-slate-950/90 z-20">
+            <div
+              className="max-w-md w-full p-6 rounded-2xl bg-slate-900 border border-sky-400/40 shadow-2xl text-center flex flex-col items-center gap-4"
+              role="status"
+              aria-label="2D Accessible Mode Status"
+            >
+              <div className="w-14 h-14 rounded-full bg-sky-950/80 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-inner">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="28"
+                  height="28"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                  <path d="M2 12h20" />
+                </svg>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-sky-100 tracking-wide">
+                  2D Accessible Mode Active
+                </h3>
+                <p className="text-xs text-sky-200/80 leading-relaxed">
+                  WebGL hardware acceleration is offline or unsupported in this environment. All observational telemetry, empirical trend calculations, teleconnections, and climate projections remain fully accessible.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(true)}
+                className="btn-tactile px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs tracking-wider uppercase transition-colors shadow-lg border border-sky-400/30 cursor-pointer flex items-center gap-2"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+                <span>Browse Planetary Biomes</span>
+              </button>
+            </div>
           </div>
-          {hovered && (() => {
-            const marker = markers.find(({ key }) => key === hovered);
-            return marker && <p className="globe-hover">{marker.name} · {marker.lat.toFixed(2)}°, {marker.lng.toFixed(2)}°</p>;
-          })()}
-        </div>}
-        </div>
-        <small>
+        )}
+        {ready && available && (
+          <>
+            <div className="globe-overlay pointer-events-none">
+              <div className="globe-zoom pointer-events-auto" aria-label="Globe zoom">
+                <button type="button" className="btn-tactile" aria-label="Zoom in" onClick={() => {
+                  setIdleRotation(false);
+                  cameraTo({ altitude: Math.max(0.32, (globe.current?.pointOfView().altitude ?? 2.4) / 1.4) });
+                }}>+</button>
+                <button type="button" className="btn-tactile" aria-label="Zoom out" onClick={() => {
+                  setIdleRotation(false);
+                  cameraTo({ altitude: Math.min(5.4, (globe.current?.pointOfView().altitude ?? 2.4) * 1.4) });
+                }}>−</button>
+                <button type="button" className="btn-tactile" onClick={() => cameraTo(initialView)}>Reset</button>
+              </div>
+              {hovered && (() => {
+                const marker = markers.find(({ key }) => key === hovered);
+                return marker && <p className="globe-hover pointer-events-auto">{marker.name} · {marker.lat.toFixed(2)}°, {marker.lng.toFixed(2)}°</p>;
+              })()}
+            </div>
+
+            <VariableRadarLegend
+              variableId={variable}
+              currentValue={selected ? pointValue(reportA?.series?.points, visibleDate) : null}
+              unit={variableRange.unit}
+              date={visibleDate}
+              locationName={selected?.name}
+              isDeckOpen={isInspectorOpen}
+            />
+          </>
+        )}
+        <div className="absolute bottom-2 left-4 z-10 pointer-events-none text-[10px] text-sky-300/40 select-none">
           {area && 'Gold: approximate study area. '}
           {cell && 'Green: representative grid cell. '}
           Earth: NASA Blue Marble, WebGL Earth and three-globe. Borders: Natural Earth.
-        </small>
+        </div>
       </div>
+
+      {/* Floating Top-Left Pill to reopen Drawer */}
+      {!isDrawerOpen && (
+        <button
+          type="button"
+          className="btn-expand-sidebar-floating"
+          onClick={() => setIsDrawerOpen(true)}
+          title="Open study regions & variable catalog"
+          aria-label="Open study regions & variable catalog"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+          <span>Study Regions & Catalog</span>
+        </button>
+      )}
+
+      {/* Layer 2: Slide-Over Aerospace Drawer */}
+      <StudyRegionsDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        heading={heading}
+        regions={regions}
+        selectedId={selectedId}
+        hoveredId={hovered}
+        onHoverRegion={setHovered}
+        onSelectRegion={(reg) => visit({ kind: 'region', id: reg.id }, reg)}
+        search={search}
+        onSearchChange={setSearch}
+        searchItems={searchItems}
+        onSelectSearchItem={handleSelectSearchItem}
+        step={step}
+        onShowStep={showStep}
+        onExitStep={() => { setStep(null); setPlaying(false); }}
+        presentationSteps={presentation}
+        selected={selected}
+        gridCell={gridCell || selected?.cell}
+        onSelectCoordinates={handleSelectCoordinates}
+        inputError={inputError}
+        cameraTo={cameraTo}
+        initialView={initialView}
+        tour={tour}
+        tourPlaying={tourPlaying}
+        onMoveTour={moveTour}
+        onToggleTourPlaying={() => {
+          if (tourPlaying) setTourPlaying(false);
+          else {
+            if (tour === null || tour + 1 >= regions.length) moveTour(0);
+            setTourPlaying(true);
+          }
+        }}
+        reduced={reduced}
+        onToggleReduced={setReduced}
+        cloudsEnabled={cloudsEnabled}
+        onToggleClouds={setCloudsEnabled}
+        reliefEnabled={reliefEnabled}
+        onToggleRelief={setReliefEnabled}
+        nightEnabled={nightEnabled}
+        onToggleNight={setNightEnabled}
+        boundaries={boundaries}
+        onToggleBoundaries={setBoundaries}
+        graticules={graticules}
+        onToggleGraticules={setGraticules}
+        idleRotation={idleRotation}
+        onToggleIdleRotation={setIdleRotation}
+        measure={measure}
+        onToggleMeasure={(m) => {
+          setMeasure(m);
+          setMeasurePoints([]);
+        }}
+        measureDistanceKm={measurePoints.length === 2 ? distanceKm(measurePoints[0], measurePoints[1]) : null}
+        history={history}
+        onSelectHistory={handleSelectHistory}
+        investigations={investigations}
+        saveMessage={saveMessage}
+        onSaveInvestigation={handleSaveInvestigation}
+        onLoadInvestigation={handleLoadInvestigation}
+        onDeleteInvestigation={handleDeleteInvestigation}
+        location={location}
+      >
+        {children}
+      </StudyRegionsDrawer>
+
+      {/* Layer: Off-screen Investigation Report (Export / Print / Zero Layout Impact) */}
+      {reportA?.series && selected && (
+        <div className="hidden" aria-hidden="true">
+          <InvestigationReport
+            variableName={variableRange.name}
+            variable={variable}
+            period={period}
+            comparisonIssues={reportB?.series && keyA !== keyB ? issues : undefined}
+            trendComparisonNote={reportB?.series && keyA !== keyB ? trendIssue : undefined}
+            locations={[
+              { name: selected.name, series: reportA.series, trend: reportA.trend },
+              ...(reportB?.series && targetB && keyA !== keyB
+                ? [{ name: targetB.name, series: reportB.series, trend: reportB.trend }]
+                : []),
+            ]}
+          />
+        </div>
+      )}
+
+      {/* Active Target Banner when Bottom Telemetry Deck is closed */}
+      {selected && !isInspectorOpen && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2 rounded-lg bg-slate-950/90 backdrop-blur-md border border-sky-500/30 shadow-xl">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs text-slate-200 font-medium">{selected.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setIsInspectorOpen(true);
+              updateScreenPosition(selected.lat, selected.lng);
+            }}
+            className="px-2.5 py-1 text-xs font-semibold rounded bg-sky-600 hover:bg-sky-500 text-white transition-colors cursor-pointer"
+          >
+            Open Telemetry Deck
+          </button>
+        </div>
+      )}
+
+      {/* Layer 3: Bottom Telemetry Deck */}
+      <HolographicInspectorModal
+        isOpen={isInspectorOpen && !!selected}
+        onClose={() => setIsInspectorOpen(false)}
+        screenCoords={screenCoords}
+        place={selected ?? null}
+        location={location}
+        targetB={targetB ?? null}
+        compare={compare}
+        onSetCompare={setCompare}
+        variable={variable}
+        variableRange={variableRange}
+        availableVariables={variableOptions}
+        onSelectVariable={setVariable}
+        onSelectRegion={(id) => {
+          const reg = regions.find((r) => r.id === id);
+          if (reg) {
+            visit({ kind: 'region', id }, reg);
+          } else {
+            onSelect({ kind: 'region', id });
+          }
+        }}
+        period={period}
+        regions={regions}
+        teleconnectionPresets={teleconnectionPresets}
+        onLoadTeleconnectionPreset={loadTeleconnectionPreset}
+        reportA={reportA}
+        reportB={reportB}
+        dates={dates}
+        visibleDate={visibleDate}
+        onSetVisibleDate={setSelectedDate}
+        playing={playing}
+        onSetPlaying={setPlaying}
+        bounds={bounds}
+        onGoToA={() => selected && cameraTo({ lat: selected.lat, lng: selected.lng, altitude: 0.85 }, true)}
+        onGoToB={() => targetB && cameraTo({ lat: targetB.lat, lng: targetB.lng, altitude: 0.85 }, true)}
+        onFrameBoth={() => selected && targetB && frameBothLocations(selected, targetB)}
+      />
+
+      {/* Layer 4: Floating Copilot Trigger */}
+      <FloatingCopilotTrigger
+        activeLocation={selected}
+        activeVariable={variable}
+        activeTrend={reportA?.trend}
+        onSelectLocation={(loc) => {
+          if (loc.kind === 'region') {
+            const r = regions.find((cand) => cand.id === loc.id);
+            if (r) visit(loc, r);
+          } else {
+            const country = loc.label || findCountryAt(loc.lat, loc.lng, countries);
+            visit({ ...loc, label: country }, { lat: loc.lat, lng: loc.lng });
+          }
+        }}
+        onSelectVariable={setVariable}
+      />
     </section>
   );
 }

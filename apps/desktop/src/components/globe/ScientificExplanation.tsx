@@ -2,13 +2,67 @@ import { useEffect, useState } from 'react';
 import type { Series, Trend } from './globeData';
 import { localApiFetch } from './localApi';
 
-type Explanation = {
+export type Explanation = {
   executive_summary: string;
   mechanisms_and_drivers: string;
   scientific_uncertainty: string;
   recommended_next_steps: string[];
   model_used: string;
 };
+
+// Global persistent in-memory cache to prevent duplicate Gemini API calls and token waste
+export const explanationCache = new Map<string, Explanation>();
+const explanationInFlight = new Map<string, Promise<Explanation>>();
+
+export function getExplanationCacheKey(variableId: string, location: string, direction?: string, rate?: number | null, pVal?: number | null): string {
+  return `${variableId}:${location}:${direction ?? ''}:${rate ?? ''}:${pVal ?? ''}`;
+}
+
+/**
+ * Prefetches or retrieves from cache an AI explanation in the background.
+ * Guarantees zero duplicate network requests when opening/closing modals.
+ */
+export async function prefetchExplanation(location: string, series: Series, trend: Trend): Promise<Explanation | null> {
+  if (trend.direction === 'not_evaluable' || trend.rate_per_decade === null || trend.p_value === null) {
+    return null;
+  }
+  const cacheKey = getExplanationCacheKey(series.variable_id, location, trend.direction, trend.rate_per_decade, trend.p_value);
+  if (explanationCache.has(cacheKey)) {
+    return explanationCache.get(cacheKey)!;
+  }
+  if (explanationInFlight.has(cacheKey)) {
+    return explanationInFlight.get(cacheKey)!;
+  }
+
+  const payload = {
+    variable_id: series.variable_id,
+    location_name: location,
+    direction: trend.direction,
+    rate_per_decade: trend.rate_per_decade,
+    rate_unit: trend.rate_unit,
+    p_value: trend.p_value,
+  };
+
+  const promise = (async () => {
+    try {
+      const response = await localApiFetch('/api/v1/ai/explain-trend', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!response.ok) throw new Error('Explanation service unavailable');
+      const result: unknown = await response.json();
+      if (!isExplanation(result)) throw new Error('Invalid explanation response');
+      explanationCache.set(cacheKey, result);
+      return result;
+    } finally {
+      explanationInFlight.delete(cacheKey);
+    }
+  })();
+
+  explanationInFlight.set(cacheKey, promise);
+  return promise;
+}
 
 function isExplanation(value: unknown): value is Explanation {
   const item = value as Partial<Explanation> | null;
@@ -21,49 +75,58 @@ function isExplanation(value: unknown): value is Explanation {
 }
 
 export function ScientificExplanation({ location, series, trend }: { location: string; series: Series; trend?: Trend }) {
-  const [explanation, setExplanation] = useState<Explanation | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const isEvaluable = trend && trend.direction !== 'not_evaluable'
     && trend.rate_per_decade !== null && trend.p_value !== null;
+  const cacheKey = isEvaluable && trend
+    ? getExplanationCacheKey(series.variable_id, location, trend.direction, trend.rate_per_decade, trend.p_value)
+    : '';
+
+  const [explanation, setExplanation] = useState<Explanation | null>(() => {
+    return cacheKey && explanationCache.has(cacheKey) ? explanationCache.get(cacheKey)! : null;
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isEvaluable || !trend) {
+    if (!isEvaluable || !trend || !cacheKey) {
       setExplanation(null);
       setError(null);
       setLoading(false);
       return;
     }
-    const controller = new AbortController();
-    const payload = {
-      variable_id: series.variable_id,
-      location_name: location,
-      direction: trend.direction,
-      rate_per_decade: trend.rate_per_decade,
-      rate_unit: trend.rate_unit,
-      p_value: trend.p_value,
-    };
-    setExplanation(null);
-    setError(null);
+
+    // If already cached, restore immediately with zero network latency and zero tokens
+    if (explanationCache.has(cacheKey)) {
+      setExplanation(explanationCache.get(cacheKey)!);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
     setLoading(true);
-    void localApiFetch('/api/v1/ai/explain-trend', {
-      method: 'POST', body: JSON.stringify(payload),
-      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
-    }).then(async (response) => {
-      if (!response.ok) throw new Error('Explanation service unavailable');
-      const result: unknown = await response.json();
-      if (!isExplanation(result)) throw new Error('Invalid explanation response');
-      if (!controller.signal.aborted) setExplanation(result);
-    }).catch(() => {
-      if (!controller.signal.aborted) {
-        setExplanation(null);
-        setError('Scientific explanation is unavailable. The trend results above remain available.');
-      }
-    }).finally(() => {
-      if (!controller.signal.aborted) setLoading(false);
-    });
-    return () => controller.abort();
-  }, [isEvaluable, location, series.variable_id, trend?.direction, trend?.rate_per_decade, trend?.rate_unit, trend?.p_value, trend?.scientific_caveat]);
+    setError(null);
+
+    prefetchExplanation(location, series, trend)
+      .then((res) => {
+        if (active && res) {
+          setExplanation(res);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setExplanation(null);
+          setError('Scientific explanation is unavailable. The trend results above remain available.');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cacheKey, isEvaluable, location, series, trend]);
 
   if (!isEvaluable || !trend) return null;
   const first = series.points[0]?.date;
