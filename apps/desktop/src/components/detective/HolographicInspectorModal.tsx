@@ -7,6 +7,7 @@ import { ScientificExplanation } from '../globe/ScientificExplanation';
 import { TemporalComparison } from '../globe/TemporalComparison';
 import { TeleconnectionRadar } from './TeleconnectionRadar';
 import { CMIP6ProjectionsView } from './CMIP6ProjectionsView';
+import type { ProjectionMetrics } from './cmip6Projections';
 import type { RegionItem, TeleconnectionPreset, VariableItem } from './DataDetectiveWorkbench';
 import './holographic-inspector.css';
 
@@ -73,6 +74,7 @@ export function HolographicInspectorModal({
 }: HolographicInspectorModalProps) {
   const [activeTab, setActiveTab] = useState<InspectorTab>('series');
   const [isMinimized, setIsMinimized] = useState(false);
+  const [projectionMetrics, setProjectionMetrics] = useState<ProjectionMetrics | null>(null);
   const deckRef = useRef<HTMLDivElement>(null);
 
   // Reset to 'series' and expand deck whenever a new location is selected or opened
@@ -224,6 +226,45 @@ export function HolographicInspectorModal({
                 <span className="deck-trend-pending">Calculating statistical trend...</span>
               )}
             </div>
+
+            {activeTab === 'projections' && projectionMetrics && (
+              <div className="deck-projections-identity-metrics" role="region" aria-label="CMIP6 Projection Metrics">
+                <div className="identity-metric-card">
+                  <span className="identity-metric-tag">BASELINE (2015–2025)</span>
+                  <span className="identity-metric-val">
+                    {projectionMetrics.baselineMean !== null
+                      ? `${projectionMetrics.baselineMean.toFixed(2)} ${seriesA?.unit || variableRange.unit || ''}`
+                      : 'N/A'}
+                  </span>
+                </div>
+
+                <div className="identity-metric-card">
+                  <span className="identity-metric-tag">END-OF-CENTURY (2090–2100)</span>
+                  <span className="identity-metric-val highlight-amber">
+                    {projectionMetrics.endOfCenturyMean !== null
+                      ? `${projectionMetrics.endOfCenturyMean.toFixed(2)} ${seriesA?.unit || variableRange.unit || ''}`
+                      : 'N/A'}
+                  </span>
+                </div>
+
+                <div className="identity-metric-card">
+                  <span className="identity-metric-tag">NET DELTA (Δ)</span>
+                  <span
+                    className={`identity-metric-val ${
+                      projectionMetrics.delta !== null && projectionMetrics.delta > 0
+                        ? 'delta-positive'
+                        : projectionMetrics.delta !== null && projectionMetrics.delta < 0
+                          ? 'delta-negative'
+                          : ''
+                    }`}
+                  >
+                    {projectionMetrics.delta !== null
+                      ? `${projectionMetrics.delta > 0 ? '+' : ''}${projectionMetrics.delta.toFixed(2)} ${seriesA?.unit || variableRange.unit || ''}`
+                      : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="deck-quick-actions">
               {location?.kind === 'coordinates' && (
@@ -477,6 +518,7 @@ export function HolographicInspectorModal({
                 historicalPoints={seriesA?.points}
                 onSelectVariable={onSelectVariable}
                 onSelectRegion={onSelectRegion}
+                onMetricsChange={setProjectionMetrics}
               />
             )}
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   fetchProjectionScenarios,
   fetchProjectionModels,
@@ -13,6 +13,7 @@ import {
   calculateProjectionMetrics,
   MANDATORY_PROJECTION_CAVEAT,
   CMIP6_SUPPORTED_VARIABLES,
+  type ProjectionMetrics,
 } from './cmip6Projections.ts';
 
 export { CMIP6_SUPPORTED_VARIABLES };
@@ -25,6 +26,7 @@ export interface CMIP6ProjectionsViewProps {
   historicalPoints?: Array<{ date: string; value: number | null }>;
   onSelectVariable?: (variableId: string) => void;
   onSelectRegion?: (regionId: string) => void;
+  onMetricsChange?: (metrics: ProjectionMetrics | null) => void;
 }
 
 export function CMIP6ProjectionsView({
@@ -35,6 +37,7 @@ export function CMIP6ProjectionsView({
   historicalPoints,
   onSelectVariable,
   onSelectRegion,
+  onMetricsChange,
 }: CMIP6ProjectionsViewProps) {
   const [localVariableId, setLocalVariableId] = useState<string | null>(null);
 
@@ -162,6 +165,21 @@ export function CMIP6ProjectionsView({
   const metrics = useMemo(() => {
     return calculateProjectionMetrics(projection?.points, historicalPoints);
   }, [projection?.points, historicalPoints]);
+
+  const onMetricsChangeRef = useRef(onMetricsChange);
+  useEffect(() => {
+    onMetricsChangeRef.current = onMetricsChange;
+  }, [onMetricsChange]);
+
+  useEffect(() => {
+    onMetricsChange?.(metrics);
+  }, [metrics, onMetricsChange]);
+
+  useEffect(() => {
+    return () => {
+      onMetricsChangeRef.current?.(null);
+    };
+  }, []);
 
   const activeScenarioMeta = useMemo(() => {
     return getScenarioMetadata(scenario);
@@ -687,53 +705,6 @@ export function CMIP6ProjectionsView({
                   </div>
                 )}
               </div>
-
-            {/* Metric Readouts Panel: Baseline, End-of-Century, Net Change */}
-            <div className="projections-metrics-panel">
-              <div className="projection-metric-card">
-                <span className="metric-header-tag">BASELINE MEAN (2015–2025)</span>
-                <span className="metric-primary-value">
-                  {metrics.baselineMean !== null ? `${metrics.baselineMean.toFixed(2)} ${effectiveUnit}` : 'N/A'}
-                </span>
-                <span className="metric-context-note">
-                  {metrics.baselinePointsCount > 0
-                    ? `10-year reference window (${metrics.baselinePointsCount} observations)`
-                    : 'Reference window not available'}
-                </span>
-              </div>
-
-              <div className="projection-metric-card">
-                <span className="metric-header-tag">END-OF-CENTURY (2090–2100)</span>
-                <span className="metric-primary-value highlight-amber">
-                  {metrics.endOfCenturyMean !== null ? `${metrics.endOfCenturyMean.toFixed(2)} ${effectiveUnit}` : 'N/A'}
-                </span>
-                <span className="metric-context-note">
-                  {metrics.endOfCenturyPointsCount > 0
-                    ? `10-year CMIP6 projection (${metrics.endOfCenturyPointsCount} months)`
-                    : 'Forward window not loaded'}
-                </span>
-              </div>
-
-              <div className="projection-metric-card">
-                <span className="metric-header-tag">NET CHANGE (DELTA Δ)</span>
-                <span
-                  className={`metric-primary-value ${
-                    metrics.delta !== null && metrics.delta > 0
-                      ? 'delta-positive'
-                      : metrics.delta !== null && metrics.delta < 0
-                        ? 'delta-negative'
-                        : ''
-                  }`}
-                >
-                  {metrics.delta !== null
-                    ? `${metrics.delta > 0 ? '+' : ''}${metrics.delta.toFixed(2)} ${effectiveUnit}`
-                    : 'N/A'}
-                </span>
-                <span className="metric-context-note">
-                  {metrics.delta !== null ? 'End-of-century relative to baseline' : 'Insufficient data'}
-                </span>
-              </div>
-            </div>
           </>
         )}
           </>
