@@ -1,328 +1,323 @@
 # TPBD — Historias de Usuario y Backlog
-## Requisitos funcionales, criterios de aceptación y tareas técnicas
+## Data Detective | Requisitos funcionales y criterios de aceptación | v2.0
 
-**Versión:** 1.0  
 **Fecha:** 14 de noviembre de 2026  
-**Priorización:** P0 = MVP; P1 = mejora si hay tiempo; P2 = siguiente versión.  
-**Estimaciones:** horas-persona de trabajo, no duración secuencial. El evento dura 30 horas de reloj con tres personas.
+**Estado:** planificación revisada para NASA Space Apps Challenge 2026; el repositorio aún no incluye la aplicación.  
+**Prioridades:** P0 = MVP de 30 horas; P1 = mejora si el P0 está estable; P2 = posterior a la hackathon.  
+**Capacidad:** 60 horas-persona. P0: 56 horas-persona (28 por integrante), con 4 de margen.
 
-## Estructura y lenguaje
+## Objetivo y definición compartida
 
-- `CA`: criterio de aceptación verificable.
-- `Dado / Cuando / Entonces`: escenario de aceptación.
-- Las HU de P0 suman **78 horas-persona**; dejan aproximadamente **12 horas-persona** de reserva frente al máximo teórico de 90.
-- Cada HU hereda esta definición de terminado: tipado/validación, tratamiento de errores, integración, prueba reproducible y revisión por un compañero.
+TPBD ayuda a explorar variables NASA, elegir un lugar, ver una serie temporal y evaluar cuánto cambia y si la tendencia es estadísticamente significativa. La experiencia conserva Mission Control y posiciona el flujo como **Data Detective**.
 
----
+Cada historia hereda esta definición de terminado: criterios verificables, manejo de errores/faltantes, integración, procedencia de datos, método documentado y revisión de otra persona. Ninguna cifra del panel puede separarse de la serie y fuente que la produjeron.
 
-## Épica E1 — Plataforma y experiencia visual
+## Épica E1 — Aplicación, geografía y visualización
 
-### HU-00 — Sistema visual Mission Control [P0]
-**Como** investigador, **quiero** una interfaz coherente que muestre el globo, el timeline y el panel científico, **para** estudiar una región sin perder el contexto.
+### HU-00 — Sistema visual Data Detective [P0]
+**Como** estudiante o persona interesada en ciencias, **quiero** una interfaz clara para investigar variables, ubicaciones y tendencias, **para** entender la evidencia sin perder el contexto.
 
-- **Responsable:** Dylan. **Estimación:** 5 h. **Depende de:** ninguna.
-- **Tareas:** wireframe de pantalla principal, layout adaptable a escritorio, escala tipográfica, sistema de colores y alertas, diseño de tarjetas/gráficos, estados vacío/cargando/error; componentes reutilizables.
-- **CA-01:** En resolución de demo, globo, timeline y panel son visibles y accesibles sin superponerse.
-- **CA-02:** Cada variable tiene nombre, unidad y leyenda; no se comunica severidad solo por color.
-- **CA-03:** Hay estados explícitos para sin selección, cargando, error de red y datos no disponibles.
-- **CA-04:** Los controles son navegables con ratón y tienen foco visible para teclado.
-- **Prueba:** capturas en tamaño de ventana de presentación y ventana reducida; recorrido manual de estados.
+- **Responsable:** Brandon. **Estimación:** 2 h. **Depende de:** ninguna.
+- **Tareas:** una pantalla de investigación, jerarquía de serie/resultados, leyendas, unidades, glosario breve y estados de carga/error/no evaluable.
+- **CA-01:** la ubicación, variable, período, gráfico y resumen de tendencia se distinguen sin superposición en la resolución de demo.
+- **CA-02:** toda cifra incluye unidad; la severidad o significancia no se comunica solo por color.
+- **CA-03:** existe explicación textual para resultados significativos, no significativos y no evaluables.
+- **CA-04:** controles principales se pueden usar con ratón y muestran foco visible.
 
-### HU-01 — Inicio y estructura Tauri [P0]
-**Como** usuario, **quiero** abrir TPBD como aplicación de escritorio, **para** explorar información sin depender de una pestaña del navegador.
+### ~~HU-01 — Inicio y estructura Electron [P0]~~
 
-- **Responsable:** Brandon. **Estimación:** 5 h. **Depende de:** ninguna.
-- **Tareas:** monorepo básico, Tauri 2 + React TS + Vite, scripts de desarrollo, ventana y título, configuración inicial de seguridad, smoke test de WebGL y spike de sidecar FastAPI/PyInstaller.
-- **CA-01:** `npm run tauri dev` abre la app con navegación básica.
-- **CA-02:** El frontend compila sin errores de TypeScript y puede consumir el backend en desarrollo.
-- **CA-03:** Se registra decisión de empaquetado: sidecar validado o plan B documentado antes de H02.
-- **CA-04:** El repositorio contiene README de arranque y `.gitignore`, sin secretos.
-- **Prueba:** arranque limpio desde terminal en Windows del equipo de demo.
+**Estado:** completada. La ventana de Electron abre en Windows. La comprobación con la API real se retoma cuando HU-02 exponga `GET /health`.
+**Como** usuario, **quiero** abrir TPBD como aplicación de escritorio, **para** explorar el análisis sin depender de una pestaña web.
+
+- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** ninguna.
+- **Tareas:** Electron + React/TypeScript/Vite, scripts, ventana, seguridad inicial y prueba de WebGL y conexión con FastAPI.
+- **CA-01:** el comando de desarrollo abre la aplicación con navegación inicial.
+- **CA-02:** el frontend compila y puede llamar al backend local en desarrollo.
+- **CA-03:** se documenta el arranque independiente de FastAPI para desarrollo y demo.
+- **CA-04:** configuración inicial no contiene secretos.
 
 ### HU-05 — Globo planetario 3D [P0]
-**Como** investigador, **quiero** rotar y acercar un globo terráqueo, **para** localizar visualmente zonas de interés.
+**Como** investigador, **quiero** explorar un globo y ubicar puntos, **para** dar contexto espacial a una serie ambiental.
 
-- **Responsable:** Brandon. **Estimación:** 7 h. **Depende de:** HU-01.
-- **Tareas:** integrar `react-globe.gl`, cámara, textura liviana con atribución, cuatro puntos, interacción de selección, resaltado del punto seleccionado, perfil de calidad baja.
-- **CA-01:** El globo rota, admite zoom controlado y muestra 4 marcadores con etiquetas.
-- **CA-02:** Al seleccionar un marcador se emite `selectedRegionId` sin recargar la aplicación.
-- **CA-03:** No genera instancias nuevas de renderizador en cada cambio de fecha/escenario.
-- **CA-04:** Si falla WebGL, aparece selector alternativo de regiones utilizable.
-- **Prueba:** seleccionar los 4 puntos consecutivamente y mover cámara en el equipo de presentación.
+- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** HU-01.
+- **Tareas:** integrar react-globe.gl, cámara, cuatro lugares preparados, interacción y perfil de gráficos reducido.
+- **CA-01:** globo rota, admite zoom controlado y muestra los cuatro lugares con etiquetas.
+- **CA-02:** elegir un lugar actualiza el estado geográfico compartido.
+- **CA-03:** cambios de variable/fecha no crean renderizadores nuevos.
+- **CA-04:** si WebGL falla, el selector geográfico 2D sigue siendo utilizable.
 
-### HU-06 — Selección de regiones [P0]
-**Como** usuario, **quiero** elegir una de cuatro regiones precargadas, **para** consultar rápidamente su información.
+### HU-06 — Ubicaciones preparadas y coordenadas [P0]
+**Como** usuario, **quiero** elegir un lugar preparado o coordenadas geográficas, **para** investigar cualquier punto compatible con la fuente.
 
 - **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-02, HU-05.
-- **Tareas:** catálogo tipado de regiones, selector lateral y enlace bidireccional con marcadores del globo.
-- **CA-01:** Seleccionar desde lista o globo produce exactamente el mismo estado de región.
-- **CA-02:** El panel muestra nombre, coordenadas aproximadas y contexto de la ubicación.
-- **CA-03:** Al cambiar región se cancelan o ignoran respuestas tardías de la región anterior.
-- **Prueba:** hacer cambios rápidos A→B→C y confirmar que no quedan datos mezclados.
+- **Tareas:** lista de regiones, selección en globo, entrada/selección de latitud-longitud, validación y estado bidireccional.
+- **CA-01:** las coordenadas se validan dentro de latitud [-90, 90] y longitud [-180, 180].
+- **CA-02:** lista, globo y coordenadas actualizan el mismo estado geográfico.
+- **CA-03:** se muestra la coordenada solicitada y la celda/resolución de la fuente cuando esté disponible.
+- **CA-04:** al cambiar ubicación se cancelan o ignoran respuestas tardías previas.
+- **CA-05:** la interfaz no presenta la celda de grilla como medición puntual exacta.
 
-### HU-07 — Timeline 1990–2050 [P0]
-**Como** investigador, **quiero** desplazarme por el tiempo, **para** comparar el histórico y los escenarios futuros.
+### HU-07 — Selector temporal histórico [P0]
+**Como** investigador, **quiero** elegir período histórico, **para** observar cambios a lo largo del tiempo.
 
-- **Responsable:** Brandon. **Estimación:** 5 h. **Depende de:** HU-03, HU-11 (consumir mocks antes de integración).
-- **Tareas:** estado global año/mes/escenario, slider/timeline, etiquetas histórico/proyección, selección de valores, debounce o filtro local.
-- **CA-01:** Desde 1990 hasta el último mes histórico disponible se muestran datos históricos cuando existen.
-- **CA-02:** Desde 2027 hasta 2050 se muestran proyecciones identificadas con SSP y modelo; el intervalo entre fuentes no se rellena con valores inventados.
-- **CA-03:** El cambio de fecha actualiza tarjetas y gráficos sin peticiones por cada píxel del arrastre.
-- **CA-04:** Meses no disponibles aparecen como «Sin datos» y no como cero.
-- **Prueba:** recorrer 1990, 2010, 2025, 2035 y 2050 observando la fuente correcta.
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-03.
+- **Tareas:** selector de rango dentro del período disponible, etiquetas de cobertura y filtro/debounce.
+- **CA-01:** el selector muestra únicamente fechas consultables según el parámetro.
+- **CA-02:** faltantes permanecen como ausencias, nunca como cero.
+- **CA-03:** ajustar el rango no dispara una petición por píxel de arrastre.
+- **CA-04:** cambios de período refrescan gráfico, estadísticas y metadatos coherentemente.
 
-### HU-08 — Capas ambientales y leyendas [P0]
-**Como** investigador, **quiero** alternar indicadores ambientales, **para** examinar distintos aspectos de una región.
+### HU-08 — Catálogo y selector de variables [P0]
+**Como** usuario, **quiero** buscar una variable y entender qué mide, **para** escoger datos adecuados a mi pregunta.
 
-- **Responsable:** Dylan. **Estimación:** 5 h. **Depende de:** HU-00, HU-05, HU-03.
-- **Tareas:** conmutador `T2M`, `PRECTOTCORR`, `RH2M`, colores por indicador, leyenda con unidades y escala documentada, cambio de símbolo del marcador.
-- **CA-01:** Cada selección muestra nombre legible, valor, unidad y escala.
-- **CA-02:** Cambiar indicador no modifica región ni fecha seleccionadas.
-- **CA-03:** Se evita comparar visualmente intensidades con escalas incongruentes.
-- **CA-04:** Si falta el parámetro elegido se indica ausencia sin interpolar silenciosamente.
-- **Prueba:** recorrer tres indicadores para cuatro regiones y dos fechas.
+- **Responsable:** Brandon. **Estimación:** 2 h. **Depende de:** HU-00, HU-02.
+- **Tareas:** catálogo corto de variables validadas, categorías sencillas, definiciones, unidades, comunidad, disponibilidad y glosario.
+- **CA-01:** cada opción visible tiene identificador de fuente, nombre legible, unidad y definición.
+- **CA-02:** el catálogo consulta/respeta disponibilidad por comunidad, nivel temporal y fuente.
+- **CA-03:** parámetros no validados no aparecen como disponibles.
+- **CA-04:** GWETROOT y EVPTRNS solo se habilitan después de validar endpoint, cobertura, unidades y resolución; RZMC volumétrico se distingue de fracción de humedad.
+- **CA-05:** cambiar la variable conserva ubicación y rango temporal si son compatibles; en caso contrario explica la limitación.
 
-### HU-09 — Panel científico de series [P0]
-**Como** usuario, **quiero** consultar cifras, curvas históricas y fuentes, **para** entender los cambios ambientales.
+### HU-09 — Panel de series y visualización de tendencia [P0]
+**Como** usuario, **quiero** explorar la serie histórica con metadatos y una referencia de tendencia, **para** ver el comportamiento antes de interpretar el resultado estadístico.
 
-- **Responsable:** Dylan. **Estimación:** 5 h. **Depende de:** HU-00, HU-03.
-- **Tareas:** Recharts, gráfica mensual, tarjetas de resumen, tooltip de fecha, variable y unidad, fuente NASA, distinción visual observación/proyección.
-- **CA-01:** Cada punto del gráfico puede asociarse a un valor exacto de la respuesta API.
-- **CA-02:** Las series con `null` muestran discontinuidades; no trazan valores falsos.
-- **CA-03:** El tooltip distingue fecha, unidad, fuente y SSP cuando corresponda.
-- **CA-04:** El panel responde a la región, variable y fecha seleccionadas.
-- **Prueba:** contrastar 3 puntos de la gráfica con respuesta JSON normalizada.
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-00, HU-03.
+- **Tareas:** gráfica mensual, huecos, tooltip, unidades, fuente, período, coordenada/celda y superposición de pendiente cuando exista resultado válido.
+- **CA-01:** cada punto representa el valor exacto de la respuesta normalizada.
+- **CA-02:** los null producen discontinuidades y no líneas o valores falsos.
+- **CA-03:** tooltip y resumen distinguen variable, unidad, ubicación, fecha y procedencia.
+- **CA-04:** la línea de tendencia solo aparece para resultados evaluables y tiene leyenda.
+- **CA-05:** la UI no etiqueta la pendiente como predicción ni como causalidad.
 
-### HU-12 — Selector de escenarios [P0]
-**Como** investigador, **quiero** alternar escenarios de bajas, medias y altas emisiones, **para** comparar trayectorias futuras bajo hipótesis climáticas diferentes.
+### HU-13 — Flujo integrado Mission Control / Data Detective [P0]
+**Como** evaluador, **quiero** completar una investigación guiada, **para** entender cómo TPBD responde qué cambia, dónde, cuánto y con qué evidencia.
 
-- **Responsable:** Dylan. **Estimación:** 3 h. **Depende de:** HU-11.
-- **Tareas:** control de `ssp126`, `ssp245`, `ssp370`, leyenda explicativa, curvas simultáneas y resaltado de escenario activo.
-- **CA-01:** El usuario puede elegir los tres SSP y ver qué curva corresponde a cada uno.
-- **CA-02:** El selector únicamente afecta datos proyectados, no sobrescribe el histórico.
-- **CA-03:** Se muestra un aviso visible: «Escenarios climáticos, no predicciones exactas».
-- **Prueba:** comparar respuesta del endpoint y el escenario seleccionado.
+- **Responsable:** Brandon. **Estimación:** 2 h. **Depende de:** HU-06, HU-07, HU-08, HU-09, HU-18, HU-25.
+- **Tareas:** conectar selección, consulta, gráfico, análisis, comparación y explicaciones.
+- **CA-01:** desde inicio se elige una variable y ubicación sin refrescar la aplicación.
+- **CA-02:** el usuario llega al resultado estadístico con método, cobertura y procedencia visibles.
+- **CA-03:** comparación entre dos lugares mantiene parámetro/período compatibles.
+- **CA-04:** un error de consulta no bloquea el resto de la aplicación.
+- **CA-05:** el recorrido de demo puede completarse en menos de dos minutos.
 
-### HU-13 — Flujo integrado Mission Control [P0]
-**Como** evaluador, **quiero** completar un flujo guiado de investigación, **para** comprender el valor de TPBD en menos de dos minutos.
+## Épica E2 — Datos y análisis científico
 
-- **Responsable:** Brandon. **Estimación:** 4 h. **Depende de:** HU-06, HU-07, HU-09, HU-10, HU-11, HU-12.
-- **Tareas:** conectar navegación, selección, anomalía, timeline, escenarios; mensaje contextual y transiciones de estado.
-- **CA-01:** Desde pantalla inicial se puede seleccionar Amazonas, ver una anomalía, consultar variables y entrar a 2045.
-- **CA-02:** En cada paso se distingue claramente información histórica, resultado estadístico y proyección.
-- **CA-03:** Un error en un módulo no bloquea toda la aplicación.
-- **CA-04:** El flujo completo se demuestra sin refrescar la app.
-- **Prueba:** guion de demo de 120 segundos con acciones manuales y sin red.
+### ~~HU-02 — Contratos, API y metadatos de catálogo [P0]~~
+**Estado:** completada (PR #3). FastAPI en `apps/backend/`, esquemas Pydantic v2 derivados de OpenAPI 3.1, endpoints `/health`, `/api/v1/catalog/variables`, `/api/v1/catalog/products`, `/api/v1/regions`, y suite de pruebas pasando al 100%.
 
----
+**Como** frontend, **quiero** contratos estables para variables, ubicaciones, series y resultados, **para** integrar UI y backend sin supuestos improvisados.
 
-## Épica E2 — Datos, estadística y clima
+- **Responsable:** Daniel. **Estimación:** 5 h. **Depende de:** ninguna.
+- **Tareas:** FastAPI, Pydantic, CORS local, /health, catálogo, consulta de metadatos, validación y errores.
+- **CA-01:** /health retorna estado y versión.
+- **CA-02:** cada variable documenta unidad, comunidad, resolución, disponibilidad temporal y fuente cuando esos metadatos existan.
+- **CA-03:** coordenadas, parámetros y fechas inválidas devuelven errores 4xx descriptivos.
+- **CA-04:** se publica contrato API y ejemplos JSON.
+- **CA-05:** respuestas conservan procedencia y calidad.
 
-### HU-02 — Contratos y API base [P0]
-**Como** desarrollador de frontend, **quiero** endpoints estables y documentados, **para** implementar la interfaz sin depender de cambios improvisados del backend.
+### ~~HU-03 — Consulta de series históricas NASA [P0]~~
+**Estado:** completada. Cliente asíncrono para NASA POWER Monthly API, normalización de mes 13 y nulos (-999 -> null con quality: "missing"), integración con caché SQLite, fixtures auténticos y endpoint `GET /api/v1/series`.
 
-- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** ninguna.
-- **Tareas:** FastAPI, Pydantic, CORS local, validación de query, `/health`, `/api/regions`, esquemas de series y errores.
-- **CA-01:** `/health` retorna 200 y JSON con estado y versión.
-- **CA-02:** `/api/regions` retorna cuatro entradas con ID, nombre, latitud y longitud válidos.
-- **CA-03:** Parámetros inválidos (latitud fuera de rango, fechas inválidas, SSP desconocido) reciben error 4xx descriptivo.
-- **CA-04:** Se publica `docs/api-contract.md` y ejemplos JSON para frontend.
-- **Prueba:** pruebas FastAPI `TestClient` para rutas normales y validaciones.
+**Como** investigador, **quiero** consultar series históricas documentadas, **para** analizar valores reales de NASA y sus modelos.
 
-### HU-03 — Consulta de datos históricos NASA [P0]
-**Como** investigador, **quiero** consultar series mensuales históricas verificables, **para** analizar cómo variaron las condiciones ambientales.
+- **Responsable:** Daniel. **Estimación:** 6 h. **Depende de:** HU-02.
+- **Tareas:** cliente NASA POWER Monthly Point, validación de parámetros y respuesta, reintentos limitados, endpoint histórico y metadatos de origen.
+- **CA-01:** no se generan valores sintéticos para completar una serie.
+- **CA-02:** respuesta incluye fecha, unidad, fuente, coordenada/celda y campo quality.
+- **CA-03:** período disponible se registra por parámetro y no se asume el mismo inicio para todas las series.
+- **CA-04:** timeout, ausencia o error no tumban FastAPI; se sirve caché verificable o mensaje claro.
+- **CA-05:** una muestra se contrasta con la respuesta original del proveedor.
 
-- **Responsable:** Daniel. **Estimación:** 5 h. **Depende de:** HU-02.
-- **Tareas:** cliente HTTP NASA POWER Monthly Point, validación de respuesta, reintentos limitados, conversión de estructura `parameter/date`, captura de procedencia, endpoint `/api/history`.
-- **CA-01:** Para cada región P0 se obtienen las variables disponibles de la NASA, nunca valores sintetizados.
-- **CA-02:** Respuesta normalizada contiene fecha, unidad, fuente y campo `quality`.
-- **CA-03:** Una respuesta de error, ausencia o timeout no tumba FastAPI; se sirve caché verificable o mensaje de error.
-- **CA-04:** Se registra el período real de datos disponible; no prometer automáticamente 2026 completo.
-- **Prueba:** comparar una fecha y variable con JSON original descargado de NASA y testear respuesta incompleta.
+### ~~HU-04 — Normalización, faltantes y caché [P0]~~
+**Estado:** completada. Caché SQLite optimizado con fallback local, query offline=true, conversión de -999 a null/missing, manifiesto de procedencia de fixtures (manifest.json) y validación de compatibilidad dimensional entre series.
 
-### HU-04 — Normalización y caché [P0]
-**Como** usuario, **quiero** consultar rápido datos previamente descargados, **para** utilizar la aplicación aunque NASA tarde o falle.
+**Como** usuario, **quiero** consultar datos con rapidez y conocer su calidad, **para** explorar incluso con conectividad intermitente.
 
 - **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-03.
-- **Tareas:** caché SQLite/JSON para cuatro puntos, conversión de `-999`/faltantes a `null`, manejo de unidades, metadatos de actualización, fallback.
-- **CA-01:** La segunda consulta del mismo rango se responde desde caché.
-- **CA-02:** Los valores de ausencia no entran en promedios ni se muestran como números reales.
-- **CA-03:** Cada fixture conserva región, fecha de descarga, endpoint, variables y unidades.
-- **CA-04:** En modo sin red se entrega lo cacheado con aviso «datos guardados».
-- **Prueba:** consultar, cortar internet, repetir y confirmar origen cacheado.
+- **Tareas:** caché SQLite/JSON, normalización de ausencias y unidades, timestamp y procedencia.
+- **CA-01:** la segunda consulta equivalente puede servirse desde caché y lo indica.
+- **CA-02:** códigos como -999 se convierten a null antes de estadísticas.
+- **CA-03:** fixtures conservan variable, fuente, resolución, ubicación, período y fecha de descarga.
+- **CA-04:** modo sin red entrega solo datos guardados y los etiqueta.
+- **CA-05:** productos/resoluciones incompatibles no se fusionan silenciosamente.
 
-### HU-10 — Detector estacional de anomalías [P0]
-**Como** investigador, **quiero** detectar meses con calor anómalo y déficit relativo de precipitación, **para** identificar períodos que merecen atención.
+### ~~HU-25 — Tendencia histórica y significancia [P0]~~
+**Estado:** completada. Motor estadístico no paramétrico en `TrendService`: Seasonal Mann-Kendall con 12 estaciones, corrección de autocorrelación serial lag-1 (Hirsch-Slack / Hamed-Rao), pendiente de Sen escalada a unidades por década, intervalo de confianza al 95%, clasificación diferenciada de estados y endpoints `POST /api/v1/analytics/trends` y `POST /api/v1/analytics/compare`.
 
-- **Responsable:** Daniel. **Estimación:** 6 h. **Depende de:** HU-03, HU-04.
-- **Tareas:** baseline 1991–2020 por mes, media, desviación estándar, z-score de cada variable, umbrales compuestos, severidad, explicación estadística y endpoint `/api/anomalies`.
-- **CA-01:** Para un agosto se compara contra agostos de la baseline, no contra todos los meses.
-- **CA-02:** Se calculan `z_t2m` y `z_precipitation`, con la fórmula documentada `z=(x-μ)/σ`.
-- **CA-03:** Compuesta = `z_t2m >= 2` y `z_precipitation <= -1.5`; los umbrales se muestran en la metodología.
-- **CA-04:** Si `σ=0`, faltan muestras suficientes o faltan datos, se devuelve `not_evaluable` y motivo, nunca NaN/Infinity.
-- **CA-05:** La explicación no afirma que una anomalía causó incendios, pérdidas ni sequías confirmadas.
-- **Prueba:** tests unitarios con fixtures fabricados para normal, positiva, compuesta, cero desviación y datos faltantes; contraste posterior con datos NASA reales.
+**Como** investigador, **quiero** cuantificar una tendencia y evaluar su evidencia, **para** distinguir una señal sostenida de fluctuaciones temporales.
 
-### HU-11 — Escenarios NASA CMIP6 [P0]
-**Como** investigador, **quiero** consultar tres trayectorias de clima futuro publicadas, **para** explorar resultados bajo distintos escenarios de emisiones.
+- **Responsable:** Daniel. **Estimación:** 10 h. **Depende de:** HU-03, HU-04.
+- **Tareas:** diseñar metodología; método estacional para datos mensuales; diagnóstico y ajuste documentado de autocorrelación; pendiente de Sen; intervalo de confianza; p-valor y explicación.
+- **CA-01:** el resultado identifica serie, parámetro, ubicación, período, método, alfa y número/cobertura de muestras.
+- **CA-02:** la prueba mensual trata la estacionalidad explícitamente (por ejemplo, Mann–Kendall estacional o método equivalente documentado).
+- **CA-03:** se evalúa autocorrelación temporal; se aplica una corrección validada para el método o el resultado de significancia se marca exploratorio/no evaluable.
+- **CA-04:** pendiente robusta se expresa en unidad original por década, con intervalo de confianza cuando esté disponible.
+- **CA-05:** dirección usa estados diferenciados: tendencia significativa creciente/decreciente, sin evidencia suficiente de tendencia o no evaluable. No se equipara “no significativa” con “sin cambio”.
+- **CA-06:** p-valor, alfa, método y advertencia sobre múltiples comparaciones se muestran en resultado.
+- **CA-07:** longitud insuficiente, datos faltantes excesivos, varianza cero o supuestos no evaluables devuelven motivo legible, nunca NaN/Infinity ni una conclusión fabricada.
+- **CA-08:** fixtures cubren tendencia positiva y negativa, serie sin tendencia, estacionalidad, autocorrelación, empates, faltantes y longitud insuficiente.
+- **CA-09:** comparación con una herramienta estadística de referencia documentada antes de publicar el método.
+- **Nota:** Mann–Kendall estacional + Sen es una decisión propuesta por TPBD, no una exigencia literal de NASA. El método de autocorrelación y el intervalo deben seleccionarse y probarse en la implementación.
 
-- **Responsable:** Daniel. **Estimación:** 6 h. **Depende de:** HU-02, HU-04.
-- **Tareas:** cliente Projection API Monthly Point, escenario/modelo `ensemble`, parser `parameter -> scenario -> date`, validación de disponibilidad, endpoint `/api/projections`, caché, etiquetado de procedencia.
-- **CA-01:** Para una región validada se retorna al menos una serie 2027–2050 por los SSP disponibles.
-- **CA-02:** `ssp126`, `ssp245`, `ssp370` corresponden a datos reales de la API y conservan identificador de escenario/modelo.
-- **CA-03:** El año proyectado nunca se etiqueta como observación medida.
-- **CA-04:** Datos faltantes y escenarios no disponibles se indican expresamente; no se interpolan valores sin método registrado.
-- **CA-05:** La descripción advierte sobre resolución espacial, incertidumbre y carácter condicional de los escenarios.
-- **Prueba:** cotejar respuesta normalizada de un mes 2045 con el JSON original de proyecciones y prueba de 422/timeout.
+### HU-18 — Comparador regional [P0]
+**Como** usuario, **quiero** comparar la tendencia de una variable en dos lugares, **para** explorar cambios de dirección o magnitud entre regiones.
 
----
+- **Responsable:** Brandon. **Estimación:** 3 h. **Depende de:** HU-06, HU-07, HU-08, HU-09, HU-25.
+- **Tareas:** segunda ubicación, comparación de metadatos, dos series/resultados y diseño de diferencias.
+- **CA-01:** ambas series usan el mismo parámetro y unidades compatibles.
+- **CA-02:** período, frecuencia temporal, fuente y resolución se muestran y sus diferencias se explican.
+- **CA-03:** cada ubicación conserva pendiente, intervalo, método y p-valor propios.
+- **CA-04:** si períodos o productos no son comparables, se impide el veredicto conjunto y se informa por qué.
+- **CA-05:** diferencias entre tendencias se describen sin atribuir una causa común ni implicar causalidad.
 
-## Épica E3 — Demostración y calidad
+## Épica E3 — Demo, integración y calidad
 
-### HU-14 — Modo demo sin internet [P0]
-**Como** presentador, **quiero** ejecutar casos de estudio precargados, **para** demostrar TPBD sin depender de la conectividad del evento.
+### ~~HU-14 — Modo demo sin internet [P0]~~
+**Estado:** completada. Pre-sembrado automático de fixtures auténticos de NASA POWER para las regiones curadas (Amazonas, La Guajira, Sahel, Australia) en la base de datos SQLite durante el lifespan de FastAPI, reporte dinámico en `/health` (`offline_demo_ready: true`), query `offline=true` verificado sin red y comparaciones estadísticas reproducibles de forma autónoma.
 
-- **Responsable:** Dylan. **Estimación:** 3 h. **Depende de:** HU-04, HU-11, HU-13.
-- **Tareas:** preparar cuatro presets reproducibles, verificar fixtures, avisos de fuente, guion de acciones y estado offline.
-- **CA-01:** Los cuatro presets muestran historial y proyecciones verificadas desde disco.
-- **CA-02:** La app informa cuándo usa caché y cuándo falta algún indicador.
-- **CA-03:** El escenario principal de demo se ejecuta con internet desactivado.
-- **CA-04:** Existen capturas/video y datos de respaldo si se avería el dispositivo.
-- **Prueba:** cerrar la app, desconectar internet, abrirla y completar flujo de 2 minutos.
+**Como** presentador, **quiero** ejecutar una investigación precargada de dos ubicaciones, **para** demostrar la aplicación sin depender de la red.
+
+- **Responsable:** Daniel. **Estimación:** 1 h. **Depende de:** HU-04, HU-13, HU-25.
+- **CA-01:** el caso preparado conserva fuente, fecha, parámetro, período y método.
+- **CA-02:** la UI los marca como datos guardados/demo.
+- **CA-03:** el resultado estadístico se reproduce a partir del fixture.
+- **CA-04:** si fixture o método no son evaluables, la demo no muestra un veredicto de significancia.
 
 ### HU-15 — Integración, QA y entrega [P0]
-**Como** equipo, **queremos** una aplicación estable y presentable, **para** entregar una demostración reproducible al jurado.
+**Como** equipo, **quiero** una aplicación estable y una investigación reproducible, **para** entregar una demo defendible.
 
-- **Responsables:** Daniel (2 h), Brandon (3 h), Dylan (3 h). **Estimación total:** 8 h. **Depende de:** todas las P0.
-- **Tareas:** smoke tests, validación cruzada de series, prueba de WebGL/bajo rendimiento, arranque de FastAPI sidecar, revisión de permisos Tauri, documentación, congelación de versión y ensayo.
-- **CA-01:** No hay errores críticos que impidan completar el recorrido principal.
-- **CA-02:** La app puede abrirse con el procedimiento de instalación/arranque documentado en el PC de demo.
-- **CA-03:** Si se entrega instalador autónomo, Python arranca como sidecar y no requiere instalación separada; si no se logra, el límite se documenta y existe un lanzador de demo probado.
-- **CA-04:** Hay README con fuentes, metodología, limitaciones y pasos de ejecución.
-- **CA-05:** La demo funciona tres veces seguidas y una vez sin internet.
-- **Prueba:** checklist firmada por los tres integrantes antes de la entrega.
+- **Responsable:** Brandon y Daniel. **Estimación:** 4 h. **Depende de:** todas las demás historias P0. Brandon y Daniel dedican 2 h cada uno.
+- **Tareas:** integración, contraste de respuestas, fallos de red, WebGL, fixtures, documentación y ensayo.
+- **CA-01:** se realiza un recorrido de variable → lugar → serie → tendencia → comparación.
+- **CA-02:** se revisan datos de origen, unidades, faltantes, procedencia y cálculo.
+- **CA-03:** se ensaya con una serie con tendencia, otra no significativa y otra no evaluable.
+- **CA-04:** la aplicación ofrece fallback si WebGL o la red no están disponibles.
+- **CA-05:** README, contrato, metodología, límites y fuentes quedan actualizados.
 
----
+## Épica E4 — Mejoras posteriores
 
-## Épica E4 — Mejoras condicionales
+### ~~HU-10 — Detector estacional de anomalías [P1]~~
+**Estado:** completada. Motor estadístico de climatología mensual estandarizada (WMO 1991–2020 normal baseline) con cálculo de Z-scores estacionales $z = (x - \mu_m) / \sigma_m$, categorización de severidad (`normal`, `moderate_anomaly`, `severe_anomaly`, `extreme_anomaly`, `not_evaluable`), mitigación de división por cero cuando $\sigma_m = 0$, advertencia científica sobre no imputación de causalidad y endpoint `POST /api/v1/analytics/anomalies`.
 
-### HU-16 — Diagnóstico explicativo con IA [P1, 5 h]
-**Como** investigador, **quiero** un resumen entendible de una anomalía, **para** interpretar los indicadores sin analizar manualmente todas las cifras.
-- **Responsables propuestos:** Daniel API (3 h), Dylan UI (2 h). **Depende de:** HU-10, HU-13.
-- **Tareas:** servicio LLM opcional, prompt con valores exactos y referencia temporal, respuesta estructurada (hallazgo, evidencia, limitaciones), botón de generar, timeout y texto determinista alternativo.
-- **CA-01:** El informe cita región, coordenadas, mes, z-scores, variables y baseline recibidos, sin alterar cifras.
-- **CA-02:** No atribuye causalidad ni inventa eventos externos; si no hay evidencia, lo declara.
-- **CA-03:** Sin API key o red, la UI presenta explicación estadística local.
-- **CA-04:** No exponer claves en frontend, commits o instalador distribuido; usar proxy seguro o credencial aportada por usuario solo en demo controlada.
+**Como** usuario, **quiero** identificar meses inusuales respecto a meses comparables, **para** explorar eventos que merecen análisis.
 
-### HU-17 — Comparador temporal [P1, 4 h]
-**Como** usuario, **quiero** escoger dos meses/años de una misma región, **para** observar diferencias cuantitativas.
-- **Responsable propuesto:** Dylan. **Depende de:** HU-09.
-- **CA-01:** Permite elegir fechas válidas y la misma variable.
-- **CA-02:** Muestra diferencia absoluta y, cuando tenga sentido, relativa con unidad y fórmula.
-- **CA-03:** No calcula diferencias si faltan valores o las series no son comparables.
+- Mantener como análisis complementario; no sustituye el análisis de tendencia.
+- Baseline 1991–2020 cuando esté completa y disponible; z=(x−μ)/σ por mes calendario.
+- Umbrales compuestos solo visibles y configurables; σ=0/muestras insuficientes/faltantes producen no evaluable.
+- No inferir incendios, sequía confirmada ni causalidad a partir de Z-scores.
 
-### HU-18 — Comparador de regiones [P1, 5 h]
-**Como** investigador, **quiero** comparar dos regiones, **para** contrastar su comportamiento con escalas equivalentes.
-- **Responsable propuesto:** Brandon/Dylan. **Depende de:** HU-09, HU-06.
-- **CA-01:** Se escogen regiones A/B e indicador común.
-- **CA-02:** Los gráficos usan período, unidad y escala coherentes.
-- **CA-03:** No se concluye automáticamente que las diferencias tengan una causa determinada.
+### HU-11 — Escenarios NASA CMIP6 [P2]
+**Estado:** API backend implementada en la rama `feature/cmip6-projections-api`; la interfaz para explorar las series proyectadas sigue pendiente.
+**Como** usuario, **quiero** explorar escenarios futuros publicados, **para** complementar el análisis histórico en una fase posterior.
 
-### HU-19 — Informes PDF [P2, 6 h]
-**Como** investigador, **quiero** exportar un resumen en PDF, **para** compartir los resultados.
-- **Responsables propuestos:** Daniel/Dylan. **Depende de:** HU-09, HU-10, HU-11.
-- **CA-01:** PDF incluye región, fechas, métricas, gráficos, fuentes, metodología y limitaciones.
-- **CA-02:** Los datos y las proyecciones mantienen sus etiquetas y unidades.
-- **CA-03:** Exportación funciona sin conexión cuando toda la evidencia está cacheada.
+- Integrar solo parámetros y escenarios disponibles y etiquetarlos como proyecciones de modelos.
+- Conservar modelo, escenario, unidad, resolución, incertidumbre y fuente.
+- No presentar proyecciones como observaciones o predicciones exactas.
 
-### HU-20 — Investigaciones guardadas [P2, 4 h]
-**Como** usuario, **quiero** guardar mis regiones, escenarios y observaciones, **para** retomar la investigación.
-- **Responsable propuesto:** Brandon. **Depende de:** HU-13.
-- **CA-01:** Guarda/restaura región, variable, rango y escenario sin corromper datos.
-- **CA-02:** Permite ver y borrar entradas guardadas.
-- **CA-03:** La persistencia es local y documentada.
+### HU-12 — Selector SSP [P2]
+**Estado:** endpoint de catálogo SSP implementado en la rama `feature/cmip6-projections-api`; falta conectar el selector del escritorio.
+- Selector para los escenarios realmente disponibles (ssp126, ssp245, ssp370).
+- Afecta únicamente a datos proyectados; el histórico permanece separado.
+- Mostrar “escenarios condicionales, no predicciones exactas”.
 
-### HU-21 — Radar global y puntos de inflexión [P2, 8 h]
-**Como** investigador, **quiero** ver una vista espacial de múltiples anomalías y cambios de tendencia, **para** priorizar regiones para investigar.
-- **Responsable propuesto:** Daniel/Brandon. **Depende de:** HU-10, HU-05.
-- **CA-01:** Todo punto representado tiene datos geográficos y período conocido; no se infieren áreas globales desde cuatro puntos.
-- **CA-02:** Los puntos de cambio usan un método estadístico especificado y muestran incertidumbre.
-- **CA-03:** El mapa diferencia cobertura muestreada de áreas sin datos.
+### HU-16 — Explicación científica asistida [P1]
+- Resumir solo estadísticas y metadata recibidas; no inventar datos ni causalidad.
+- Incluir citas/procedencia del resultado y alternativa determinista si el servicio no responde.
+**Estado:** completada (PR #36). El desktop consume el endpoint, muestra resumen, contexto físico, incertidumbre y próximos pasos; añade respaldo determinista local y procedencia de fuente, variable, período, grilla, resolución y método.
 
-### HU-22 — Reproducción histórica animada [P1, 3 h]
-**Como** investigador, **quiero** reproducir los años de forma automática, **para** observar la evolución temporal.
-- **Responsable propuesto:** Brandon. **Depende de:** HU-07.
-- **CA-01:** Botones reproducir/pausar y velocidad tienen efecto real y no bloquean la interfaz.
-- **CA-02:** La animación utiliza datos cargados previamente y puede detenerse sin perder fecha.
+### HU-17 — Comparador temporal [P1]
+- Contrastar dos rangos para el mismo lugar/variable con reglas explícitas de período y cobertura.
+**Estado:** completada (PR #29).
 
-### HU-23 — Simulador paramétrico de intervención [P2, investigación adicional]
-**Como** investigador, **quiero** experimentar con hipótesis de intervención, **para** comprender sensibilidades hipotéticas.
-- **Responsable propuesto:** Equipo de datos/IA. **Depende de:** definir un modelo causal calibrado y fuentes externas suficientes.
-- **CA-01:** Cada slider identifica qué variable altera, el modelo utilizado y sus supuestos.
-- **CA-02:** No se mapea arbitrariamente «-20 % de deforestación» a «-X °C» como si NASA POWER lo estimara.
-- **CA-03:** Los resultados se rotulan como escenarios hipotéticos, no predicciones verificadas.
+### HU-19 — Informes PDF [P2]
+- Exportar series, método, resultados, fuentes y limitaciones en un informe trazable.
+**Estado:** completada (PR #32).
 
-### HU-24 — Índice exploratorio de estrés ambiental [P2, 5 h]
-**Como** investigador, **quiero** un indicador compuesto y explicable, **para** identificar meses con señales concurrentes de calor y falta de agua atmosférica.
-- **Responsable propuesto:** Daniel. **Depende de:** HU-10, HU-09.
-- **Tareas:** normalización estacional, selección de variables, regla de puntuación visible, representación y prueba de sensibilidad.
-- **CA-01:** Se muestran fórmula, umbrales, baseline, variables y pesos del índice.
-- **CA-02:** El indicador se rotula «índice exploratorio», no como una métrica oficial de NASA ni diagnóstico de sequía validado.
-- **CA-03:** Si falta un componente esencial, se indica «no evaluable» en vez de producir una puntuación aparentemente exacta.
-- **CA-04:** Los valores pueden rastrearse a sus series climáticas y período de referencia.
+### HU-20 — Investigaciones guardadas [P2]
+- Guardar consultas, variables, ubicaciones, rangos y referencias sin secretos.
+**Estado:** completada (PR #25).
 
----
+### HU-21 — Radar global de tendencias [P2]
+- Explorar tendencias en una malla solo después de validar costo estadístico, pruebas múltiples y resolución.
+
+### HU-22 — Reproducción histórica animada [P1]
+- Recorrer períodos disponibles con controles de reproducción; no inventar fechas faltantes.
+**Estado:** completada (PR #31).
+
+### HU-23 — Simulador de intervención [P2]
+- Investigación posterior; no modificar valores observados ni prometer causalidad sin modelo validado.
+
+### HU-24 — Índice de estrés ambiental [P2]
+- Requiere metodología publicada, variables compatibles y trazabilidad; no crear un índice ad hoc para el MVP.
+
+### ~~HU-26 — Detección no paramétrica de puntos de cambio y quiebres de régimen [P1]~~
+**Estado:** completada. Motor no paramétrico basado en la prueba de rangos de Pettitt (1979) para detectar quiebres estructurales en series temporales climáticas, cálculo de significancia estadística aproximada ($p$-valor), estimación de pendientes de Sen segmentadas pre-quiebre y post-quiebre, clasificación de régimen (`accelerating_increase`, `reversal_to_cooling`, etc.) y endpoint `POST /api/v1/analytics/changepoints`.
+
+**Como** analista climático, **quiero** identificar puntos de quiebre o cambios de régimen en la serie histórica, **para** entender cuándo y cómo se aceleró o revirtió una tendencia ambiental.
+
+- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-25.
+- **CA-01:** la prueba de Pettitt calcula estadísticos $U_t$ y localiza el punto crítico $t^*$.
+- **CA-02:** calcula pendientes de Sen diferenciadas antes y después del quiebre.
+- **CA-03:** clasifica la dirección del régimen (`accelerating_increase`, etc.).
+- **CA-04:** series cortas (< 24 meses) o varianza cero devuelven `not_evaluable`.
+
+### ~~HU-27 — Copiloto IA de investigación y enrutador dinámico Gemini [P1]~~
+**Estado:** completada. Enrutador inteligente con soporte para el catálogo completo de modelos Gemini (Gemini 3.8 Flash, Gemini 3.8 Live, Gemini 3.8 Live Extended Thinking, Gemini 3.8 Flash TTS, Gemini 3.6 Flash, Gemini 3.5 Flash-Lite, etc.), endpoint `GET /api/v1/ai/models`, mapeo de preguntas en lenguaje natural a variables NASA y coordenadas geográficas (`POST /api/v1/ai/investigate`), y modo determinista seguro sin API key.
+
+- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-02, HU-06.
+
+### ~~HU-28 — Explicador científico y síntesis de voz Mission Control TTS [P1]~~
+**Estado:** completada. Generador de explicaciones científicas de tendencias ancladas a datos estadísticos reales con modelos de pensamiento extendido (`gemini-3.8-live-extended-thinking`), y síntesis de voz NASA Mission Control (`gemini-3.8-flash-tts`) entregando audio Base64 para reproducción en frontend (`POST /api/v1/ai/explain-trend`, `POST /api/v1/ai/audio-brief`), con fallback determinista de 44-byte standard WAV.
+
+- **Responsable:** Daniel. **Estimación:** 4 h. **Depende de:** HU-27, HU-25, HU-10.
 
 ## Matriz de planificación P0
 
-| HU | Nombre | Owner | Horas | Dependencias |
+| HU | Nombre | Responsable | Horas | Dependencias |
 |---|---|---|---:|---|
-| HU-00 | Sistema visual | Dylan | 5 | — |
-| HU-01 | Base Tauri/React | Brandon | 5 | — |
-| HU-02 | API y contrato | Daniel | 4 | — |
-| HU-03 | Histórico NASA | Daniel | 5 | HU-02 |
-| HU-04 | Normalización/caché | Daniel | 4 | HU-03 |
-| HU-05 | Globo 3D | Brandon | 7 | HU-01 |
-| HU-06 | Regiones | Brandon | 3 | HU-02, HU-05 |
-| HU-07 | Timeline | Brandon | 5 | HU-03, HU-11 (mocks) |
-| HU-08 | Capas | Dylan | 5 | HU-00, HU-05, HU-03 |
-| HU-09 | Gráficas | Dylan | 5 | HU-00, HU-03 |
-| HU-10 | Anomalías | Daniel | 6 | HU-03, HU-04 |
-| HU-11 | CMIP6 | Daniel | 6 | HU-02, HU-04 |
-| HU-12 | Selector SSP | Dylan | 3 | HU-11 (mocks) |
-| HU-13 | Mission Control | Brandon | 4 | HU-06, HU-07, HU-09, HU-10, HU-11, HU-12 |
-| HU-14 | Demo offline | Dylan | 3 | HU-04, HU-11, HU-13 |
-| HU-15 | QA/release | Equipo | 8 | Todas las P0 |
-| **Total** | | | **78** | |
+| ~~HU-00~~ | ~~Sistema visual Data Detective~~ | Brandon | 2 | Completada (PR #17) |
+| ~~HU-01~~ | ~~Base Electron~~ | Brandon | 4 | Completada |
+| ~~HU-02~~ | ~~API y catálogo~~ | Daniel | 5 | Completada |
+| ~~HU-03~~ | ~~Series históricas~~ | Daniel | 6 | Completada |
+| ~~HU-04~~ | ~~Calidad y caché~~ | Daniel | 4 | Completada |
+| HU-05 | Globo 3D | Brandon | 4 | PR #6 integrada; revisión de CA-01, CA-02 y CA-04 pendiente |
+| HU-06 | Lugares y coordenadas | Brandon | 3 | PR #13 integrada; CA-03 bloqueado por metadatos de resolución divergentes |
+| ~~HU-07~~ | ~~Selector histórico~~ | Brandon | 3 | Completada (PR #18) |
+| ~~HU-08~~ | ~~Selector de variables~~ | Brandon | 2 | Completada (PR #19) |
+| ~~HU-09~~ | ~~Series y tendencia visual~~ | Brandon | 3 | Completada (PR #20) |
+| ~~HU-25~~ | ~~Tendencia y significancia~~ | Daniel | 10 | Completada |
+| ~~HU-18~~ | ~~Comparador regional~~ | Brandon | 3 | Completada (PR #21) |
+| ~~HU-17~~ | ~~Comparador temporal~~ | Brandon | — | Completada (PR #29) |
+| ~~HU-13~~ | ~~Flujo Data Detective~~ | Brandon | 2 | Completada (PR #22); demo integrada pendiente de revisión |
+| ~~HU-14~~ | ~~Demo offline~~ | Daniel | 1 | Completada |
 
-## Orden recomendado de tickets (GitHub Projects o tablero Kanban)
+| ~~HU-15~~ | ~~Integración y QA~~ | Brandon y Daniel | 4 | Completada (PR #30); demo cronometrada pendiente de revisión |
+| **Total** | | | **56** | |
 
-1. Abrir tickets de HU-00, HU-01 y HU-02 como trabajo paralelo inicial.
-2. Congelar contratos y fixtures. Marcar G0 antes de avanzar.
-3. Crear rama principal protegida y ramas `feat/HU-XX-nombre` con PR pequeños.
-4. Durante H02–H12: HU-03/04/05/06/08/09; abrir HU-07 con mocks.
-5. Durante H12–H18: HU-10/11/12, integrar gráfica histórica/proyección.
-6. Durante H18–H23: HU-13/14.
-7. Durante H23–H30: HU-15 y demo, sin agregar features.
+## Orden recomendado de implementación
 
-**Estados Kanban:** Backlog → Ready → In Progress → Review → QA → Done → Blocked (solo cuando haya impedimento real).
+1. Validar dataset, cobertura, comunidades, método y variables candidatas (Gate G0).
+2. Avanzar HU-00 y HU-02 en paralelo y acordar contratos y fixtures. La base Electron de HU-01 ya está completada.
+3. HU-03/04 y HU-05/06: vertical slice de datos y geografía.
+4. HU-07/08/09: período, catálogo y series.
+5. HU-25: método estadístico reproducible; bloquear el veredicto hasta cerrar validación.
+6. HU-18/13: comparación y flujo de investigación.
+7. HU-14/15: demo offline, QA y documentación; no agregar funciones al final.
 
-**Etiqueta recomendada:** `priority:P0`, `type:frontend|backend|data|qa`, `owner:<nombre>`, `epic:E1..E4`.
+**Kanban:** Backlog → Ready → In Progress → Review → QA → Done → Blocked. Etiquetas sugeridas: priority:P0, type:frontend/backend/data/stats/qa, owner:nombre, epic:E1..E4.
 
-## Casos de prueba integrales
+## Casos de aceptación integrales
 
-1. Seleccionar la región Amazonas, temperatura, agosto 2019: el UI coincide con JSON histórico o indica que no existe.
-2. Consultar anomalías: el cálculo usa exactamente el mes calendario y baseline 1991–2020.
-3. Ir a 2045 y alternar SSP: la gráfica distingue resultados de escenarios; nunca aparece como «dato medido».
-4. Seleccionar una región y cambiar rápidamente de año: no deben quedar valores de la región anterior.
-5. Cambiar a precipitación: unidad, escala, leyenda y tooltip cambian correctamente.
-6. Simular `-999` y fallo NASA: nunca se dibuja un extremo falso o `NaN`.
-7. Desconectar internet, reiniciar y hacer recorrido de los cuatro presets.
-8. Probar WebGL inhabilitado: se mantiene selección y panel.
-9. Ejecutar la aplicación tres veces y comprobar que no quedan procesos backend duplicados.
-10. Ensayar pitch de máximo 120 segundos con un único caso y un escenario alternativo.
+1. Temperatura mensual en lugar A: el gráfico concuerda con los datos originales, metadatos y faltantes.
+2. Serie con tendencia creciente: pendiente/unidad/década, método y evidencia se reproducen.
+3. Serie estacional autocorrelacionada: se aplica la corrección documentada o no se declara significancia.
+4. Serie corta o incompleta: se muestra no evaluable y su motivo.
+5. Comparar dos puntos: variable, unidades, fuente, período y resolución se verifican antes de mostrar diferencias.
+6. Cambiar rápido ubicación/variable no mezcla respuestas tardías.
+7. Sin red: demo precargada conserva procedencia y resultado reproducible.
+8. Sin WebGL: flujo 2D sigue accesible.
+9. No se afirma que correlaciones o tendencias prueben causalidad.
 
-## Nota final de producto
+## Nota de producto
 
-No prometer detección de incendios, estado de arrecifes o pérdida de hielo sin sensores/datasets específicos. Una anomalía estadística en temperatura + precipitación permite señalar un patrón inusual, no demostrar su causa. El valor del proyecto está en hacer entendible, reproducible y explorable una evidencia climática auténtica.
+TPBD es una herramienta exploratoria educativa, no un sistema de alerta temprana. “Significativo” describe evidencia estadística bajo un método y unos supuestos; no demuestra la causa, la importancia práctica ni el efecto futuro.

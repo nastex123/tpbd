@@ -1,0 +1,185 @@
+import { useEffect, useState } from 'react';
+import type { LocationSelection } from '../../stores/navigationStore';
+import temperatureSnapshot from './demo-temperature.json';
+import { localApiFetch } from './localApi';
+
+export const variableOptions = [
+  { id: 'T2M', name: 'Air temperature', start: 1981, end: 2025, unit: '°C', description: 'Monthly average air temperature at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'PRECTOTCORR', name: 'Precipitation', start: 1981, end: 2025, unit: 'mm/month', description: 'Bias-corrected monthly total precipitation combining satellite gauges and model reanalysis.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'RH2M', name: 'Relative humidity', start: 1981, end: 2025, unit: '%', description: 'Monthly average relative humidity of air at two meters above the surface.', category: 'Atmosphere', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'GWETROOT', name: 'Root-zone soil wetness', start: 1981, end: 2025, unit: 'fraction', description: 'Fraction of root-zone soil wetness (0 to 1) in the top 1 meter of soil.', category: 'Hydrology', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'EVPTRNS', name: 'Evapotranspiration flux', start: 1981, end: 2025, unit: 'W/m²', description: 'Total latent energy flux consumed by land evaporation and plant transpiration.', category: 'Hydrology', source: 'NASA POWER · MERRA-2', community: 'AG (Agroclimatology)', resolution: '0.5° × 0.625°' },
+  { id: 'MOD13Q1_NDVI', name: 'MODIS Vegetation Index (NDVI)', start: 2000, end: 2025, unit: 'index', description: 'Satellite-derived green vegetation density and canopy photosynthetic activity.', category: 'Vegetation', source: 'Terra MODIS · AppEEARS', community: 'LP DAAC', resolution: '250m' },
+];
+
+export function useVariableAvailability() {
+  const [options, setOptions] = useState(variableOptions);
+  useEffect(() => {
+    const controller = new AbortController();
+    void localApiFetch('/api/v1/catalog/variables', {
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(4000)]),
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const catalog: unknown = await response.json();
+      if (!Array.isArray(catalog) || controller.signal.aborted) return;
+      
+      const parsed = catalog.map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const entry = item as Record<string, unknown>;
+        const id = typeof entry.variable_id === 'string' ? entry.variable_id : '';
+        if (!id) return null;
+        const name = typeof entry.display_name === 'string' ? entry.display_name : id;
+        const unit = typeof entry.unit === 'string' ? entry.unit : '';
+        const description = typeof entry.description === 'string' ? entry.description : '';
+        const category = typeof entry.category === 'string' ? entry.category : 'Atmosphere';
+        const source = typeof entry.source_model_or_sensor === 'string'
+          ? entry.source_model_or_sensor
+          : (typeof entry.provider === 'string' ? entry.provider : 'NASA');
+        const community = typeof entry.data_community === 'string' ? entry.data_community : '';
+        const resolution = typeof entry.spatial_resolution === 'string' ? entry.spatial_resolution : '';
+        const range = typeof entry.temporal_range === 'string'
+          ? /^(\d{4})-\d{2}\s+to\s+(\d{4})-\d{2}$/.exec(entry.temporal_range) : null;
+        const start = range ? Number(range[1]) : 1981;
+        const end = range ? Math.min(Number(range[2]), 2026) : 2025;
+        return {
+          id,
+          name,
+          start: Math.max(1950, start),
+          end: Math.max(start, end),
+          unit,
+          description,
+          category,
+          source,
+          community,
+          resolution,
+        };
+      }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      if (parsed.length > 0 && !controller.signal.aborted) {
+        setOptions(parsed);
+      }
+    }).catch(() => {});
+    return () => controller.abort();
+  }, []);
+  return options;
+}
+
+export type DataPoint = { date: string; value: number | null; quality: string };
+export type Series = {
+  variable_id: string;
+  unit: string;
+  provider: string;
+  representative_grid_cell: string;
+  spatial_resolution: string;
+  points: DataPoint[];
+  query_coordinates?: { latitude: number; longitude: number };
+  is_cached?: boolean;
+};
+export type Trend = {
+  direction: 'increasing_significant' | 'decreasing_significant' | 'no_significant_trend' | 'not_evaluable';
+  rate_per_decade: number | null;
+  rate_unit: string;
+  method: string;
+  p_value: number | null;
+  alpha: number;
+  confidence_interval_95: number[] | null;
+  plain_language_verdict: string;
+  scientific_caveat: string;
+};
+type Report = { key: string; series?: Series; trend?: Trend; message?: string };
+
+export function locationKey(location: LocationSelection | null) {
+  if (!location) return '';
+  return location.kind === 'region' ? location.id : `${location.lat},${location.lng}`;
+}
+
+function isSeries(value: unknown): value is Series {
+  const series = value as Partial<Series> | null;
+  return !!series && typeof series.variable_id === 'string' && typeof series.unit === 'string'
+    && typeof series.provider === 'string' && Array.isArray(series.points) && series.points.every(
+      (point) => point && /^\d{4}-(0[1-9]|1[0-2])$/.test(point.date)
+        && (point.value === null || Number.isFinite(point.value))
+        && ['observed', 'measured', 'reanalysis', 'valid', 'missing'].includes(point.quality),
+    );
+}
+
+function isTrend(value: unknown): value is Trend {
+  const trend = value as Partial<Trend> | null;
+  return !!trend && (trend.rate_per_decade === null || Number.isFinite(trend.rate_per_decade))
+    && ['increasing_significant', 'decreasing_significant', 'no_significant_trend', 'not_evaluable'].includes(trend.direction ?? '')
+    && typeof trend.rate_unit === 'string' && typeof trend.method === 'string'
+    && (trend.p_value === null || Number.isFinite(trend.p_value))
+    && typeof trend.alpha === 'number' && Number.isFinite(trend.alpha)
+    && (trend.confidence_interval_95 === null || (Array.isArray(trend.confidence_interval_95)
+      && trend.confidence_interval_95.length === 2 && trend.confidence_interval_95.every(Number.isFinite)))
+    && typeof trend.plain_language_verdict === 'string' && typeof trend.scientific_caveat === 'string';
+}
+
+export function useLocationReport(location: LocationSelection | null, variable: string, presentation: boolean, startYear: number, endYear: number) {
+  const id = locationKey(location);
+  const key = id ? `${variable}:${id}:${startYear}:${endYear}` : '';
+  const [report, setReport] = useState<Report>();
+  const snapshot = variable === 'T2M' ? (temperatureSnapshot as Partial<Record<string, Series & { source: string; retrieved_at: string }>>)[id] : undefined;
+  const archive = snapshot && { ...snapshot, points: snapshot.points.filter(({ date }) => Number(date.slice(0, 4)) >= startYear && Number(date.slice(0, 4)) <= endYear) };
+  useEffect(() => {
+    if (!key) return;
+    const controller = new AbortController();
+    const signal = () => AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]);
+    const query = new URLSearchParams({ variable_id: variable, start_year: String(startYear), end_year: String(endYear) });
+    if (id.includes(',')) {
+      const [lat, lng] = id.split(',');
+      query.set('lat', lat);
+      query.set('lon', lng);
+    } else {
+      query.set('region_id', id);
+    }
+
+    async function load() {
+      let series: Series | undefined = archive;
+      try {
+        if (!presentation || !archive) {
+          try {
+            const response = await localApiFetch(`/api/v1/series?${query}`, { signal: signal() });
+            if (!response.ok) throw new Error('Series unavailable');
+            const payload: unknown = await response.json();
+            if (!isSeries(payload) || payload.variable_id !== variable) throw new Error('Invalid series');
+            series = { ...payload, points: payload.points
+              .filter(({ date }) => Number(date.slice(0, 4)) >= startYear && Number(date.slice(0, 4)) <= endYear)
+              .map((point) => point.quality === 'missing' ? { ...point, value: null } : point)
+              .sort((a, b) => a.date.localeCompare(b.date)) };
+          } catch (error) {
+            if (!archive) throw error;
+          }
+        }
+        if (controller.signal.aborted) return;
+        if (!series) throw new Error('Series unavailable');
+        setReport({ key, series });
+        if (!series.points.some(({ value }) => value !== null)) return;
+
+        const trendResponse = await localApiFetch('/api/v1/analytics/trends', {
+          method: 'POST',
+          body: JSON.stringify({ variable_id: variable, points: series.points }),
+          signal: signal(),
+        });
+        if (!trendResponse.ok) return;
+        const trend: unknown = await trendResponse.json();
+        if (isTrend(trend) && !controller.signal.aborted) setReport({ key, series, trend });
+      } catch {
+        if (!controller.signal.aborted) setReport((current) => current?.key === key && current.series
+          ? current : { key, message: 'Historical data could not be loaded. Check the local API.' });
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [snapshot, id, key, presentation, variable, startYear, endYear]);
+
+  if (!key) return undefined;
+  if (archive && report?.key !== key) {
+    return { key, series: archive };
+  }
+  return report?.key === key ? report : { key, message: 'Loading historical data…' };
+}
+
+export function pointValue(points: DataPoint[] | undefined, date: string): number | null {
+  return points?.find((point) => point.date === date)?.value ?? null;
+}

@@ -1,0 +1,1702 @@
+openapi: 3.1.0
+info:
+  title: TPBD Earth System Trend Detective API
+  description: |
+    Local API backend for **TPBD — The Pale Blue Dot**, designed for the **2026 NASA Space Apps Challenge (Be An Earth System Trend Detective!)**.
+    
+    This service connects the desktop frontend (Electron/React) with Earth Science data pipelines:
+    1. **NASA POWER API (Synchronous):** Instant retrieval of meteorological and MERRA-2 hydrological reanalysis series across any global coordinate.
+    2. **NASA AppEEARS API (Asynchronous / Batch):** Satellite product catalog browsing (MODIS, VIIRS, SMAP) and point-sample extraction task management with Earthdata Login authentication.
+    3. **NOAA NCEI Access Data Service (Synchronous):** Ground station weather observations, historical climate normals, and global marine datasets.
+    4. **Scientific Statistical Engine:** Seasonal Mann-Kendall trend detection, Sen's slope rate-of-change estimation (units/decade), lag-1 autocorrelation diagnostics, and 95% confidence intervals.
+    5. **Dual-Region Trend Comparison:** Contrasting opposite trends in remote regions driven by interconnected planetary processes.
+  version: 2.1.0
+  contact:
+    name: TPBD Team (Daniel, Brandon, Dylan)
+    url: https://github.com/dani-docs/tpbd
+  license:
+    name: Open Access for NASA Space Apps Challenge
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local FastAPI Desktop Sidecar
+
+tags:
+  - name: Health
+    description: Service health, versioning, and cache availability
+  - name: Catalog
+    description: Earth science variables and NASA satellite product discovery
+  - name: Geography
+    description: Pre-configured study regions and spatial validation
+  - name: Series
+    description: Historical Earth science time series acquisition and normalization
+  - name: Analytics
+    description: Seasonal Mann-Kendall trend analysis, Sen's slope, and regional comparisons
+  - name: Integrations
+    description: NASA AppEEARS asynchronous task submission and status monitoring
+  - name: Projections
+    description: NASA POWER CMIP6 scenario projections, model availability, and projected series
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check and service status
+      description: Returns operational status, API version, and the regions actually present in the local cache.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is operational
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/catalog/variables:
+    get:
+      tags:
+        - Catalog
+      summary: List curated Earth science variables
+      description: Returns all curated variables available for trend investigation, including meteorological, hydrological, and satellite parameters.
+      operationId: listVariables
+      parameters:
+        - name: category
+          in: query
+          required: false
+          description: Filter variables by Earth system category
+          schema:
+            $ref: '#/components/schemas/VariableCategory'
+        - name: provider
+          in: query
+          required: false
+          description: Filter by primary upstream data provider
+          schema:
+            $ref: '#/components/schemas/DataSourceProvider'
+      responses:
+        '200':
+          description: List of supported Earth science variables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Variable'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/catalog/variables/{variable_id}:
+    get:
+      tags:
+        - Catalog
+      summary: Get variable metadata details
+      description: Returns detailed scientific documentation, measurement units, data community, baseline availability, and physical definitions for a specific variable.
+      operationId: getVariableById
+      parameters:
+        - name: variable_id
+          in: path
+          required: true
+          description: The canonical variable identifier (e.g. T2M, PRECTOTCORR, GWETROOT, MOD13Q1_NDVI)
+          schema:
+            type: string
+            example: T2M
+      responses:
+        '200':
+          description: Variable metadata found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Variable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/catalog/products:
+    get:
+      tags:
+        - Catalog
+      summary: List NASA AppEEARS satellite products
+      description: Returns currently available products from the live NASA AppEEARS catalog. Layer names are provided by the product detail endpoint.
+      operationId: listSatelliteProducts
+      parameters:
+        - name: platform
+          in: query
+          required: false
+          description: Filter by satellite platform (e.g. MODIS, SMAP, VIIRS)
+          schema:
+            type: string
+            example: Combined MODIS
+      responses:
+        '200':
+          description: Satellite product catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatelliteProduct'
+
+  /api/v1/catalog/products/{product_id}:
+    get:
+      tags:
+        - Catalog
+      summary: Get current AppEEARS product metadata and layers
+      description: Reads product metadata and available layer names directly from NASA AppEEARS.
+      operationId: getSatelliteProduct
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          description: AppEEARS ProductAndVersion identifier.
+          schema:
+            type: string
+            example: MOD13Q1.061
+      responses:
+        '200':
+          description: Product metadata and currently available layers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatelliteProduct'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/regions:
+    get:
+      tags:
+        - Geography
+      summary: List pre-configured study regions
+      description: Returns the curated baseline regions (Amazonia, La Guajira, Sahel, Southeast Australia) with bounding coordinates, representative grid cells, and scientific interest descriptions.
+      operationId: listRegions
+      responses:
+        '200':
+          description: List of pre-configured regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Region'
+
+  /api/v1/series:
+    get:
+      tags:
+        - Series
+      summary: Retrieve historical monthly time series
+      description: |
+        Fetches historical monthly data for a requested variable at either a pre-configured region ID or explicit latitude/longitude coordinates.
+        
+        - Missing values (e.g. NASA `-999`) are normalized strictly to `null`.
+        - Returns provenance, native spatial resolution, and local cache status.
+      operationId: getTimeSeries
+      parameters:
+        - name: variable_id
+          in: query
+          required: true
+          description: Canonical variable identifier (e.g., T2M, PRECTOTCORR, GWETROOT)
+          schema:
+            type: string
+            example: T2M
+        - name: region_id
+          in: query
+          required: false
+          description: Pre-configured study region identifier
+          schema:
+            type: string
+            example: amazon
+        - name: lat
+          in: query
+          required: false
+          description: Geographic latitude (-90 to 90)
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+            example: -3.1
+        - name: lon
+          in: query
+          required: false
+          description: Geographic longitude (-180 to 180)
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+            example: -60.0
+        - name: start_year
+          in: query
+          required: false
+          description: Starting calendar year (minimum 1981, default 1990)
+          schema:
+            type: integer
+            minimum: 1981
+            default: 1990
+            example: 1990
+        - name: end_year
+          in: query
+          required: false
+          description: Ending calendar year (default 2025)
+          schema:
+            type: integer
+            maximum: 2026
+            default: 2025
+            example: 2025
+        - name: station_id
+          in: query
+          required: false
+          description: Optional ground station or marine buoy identifier for NOAA NCEI datasets (e.g. USC00457180, AUCE)
+          schema:
+            type: string
+            example: USC00457180
+      responses:
+        '200':
+          description: Historical time series successfully acquired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSeriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/analytics/trends:
+    post:
+      tags:
+        - Analytics
+      summary: Perform Seasonal Mann-Kendall trend analysis
+      description: |
+        Executes robust non-parametric statistical trend analysis over a historical time series:
+        - **Seasonality:** Handles monthly cycles via Seasonal Mann-Kendall.
+        - **Autocorrelation:** Evaluates lag-1 serial dependency; applies Hamed-Rao or Yue-Wang variance correction if serial correlation is detected.
+        - **Rate of Change:** Computes Sen's slope in physical units per decade with 95% confidence intervals.
+        - **Significance:** Assesses p-value at nominal alpha (default 0.05).
+      operationId: analyzeTrend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrendAnalysisRequest'
+      responses:
+        '200':
+          description: Statistical trend analysis computed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendAnalysisResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/analytics/compare:
+    post:
+      tags:
+        - Analytics
+      summary: Compare trends across two geographical regions
+      description: |
+        Compares trend direction and rate of change between two regions for the same variable and temporal window.
+        Specifically designed to investigate planetary mechanisms where a single driver triggers opposite trends (e.g. tropical wetting vs. subtropical drying).
+      operationId: compareRegionalTrends
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionalComparisonRequest'
+      responses:
+        '200':
+          description: Regional comparison completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionalComparisonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/analytics/anomalies:
+    post:
+      tags:
+        - Analytics
+      summary: Detect seasonal standardized Z-score anomalies
+      description: |
+        Calculates standardized monthly climatological anomalies relative to a 30-year WMO baseline (default 1991–2020):
+        - Partitions series into 12 calendar months.
+        - Computes baseline mean and standard deviation per calendar month.
+        - Calculates standardized departure Z = (X - mean) / std.
+        - Categorizes severity (normal, moderate, severe, extreme, not_evaluable).
+      operationId: detectAnomalies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnomalyDetectionRequest'
+      responses:
+        '200':
+          description: Standardized anomalies calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnomalyDetectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/analytics/changepoints:
+    post:
+      tags:
+        - Analytics
+      summary: Detect structural breaks and regime shifts using Pettitt's test
+      description: |
+        Executes non-parametric Pettitt's rank test to detect critical change-points in Earth science time series:
+        - Evaluates rank-based Mann-Whitney statistics U_t.
+        - Identifies the maximum absolute statistic K_T and corresponding change-point date.
+        - Computes approximate p-value for the structural break.
+        - Calculates segmented pre-break vs. post-break Sen's slopes and classifies the regime shift.
+      operationId: detectChangePoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePointRequest'
+      responses:
+        '200':
+          description: Change-point detection completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePointResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/ai/models:
+    get:
+      tags:
+        - AI
+      summary: List available Gemini AI models and capabilities
+      description: Returns models reported by Google's Gemini API that support content generation. The catalog is empty when no API key is configured.
+      operationId: listAIModels
+      responses:
+        '200':
+          description: Available AI models retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+
+  /api/v1/ai/investigate:
+    post:
+      tags:
+        - AI
+      summary: Natural language investigation copilot
+      description: Analyzes natural language questions and recommends relevant NASA variables, coordinates, and scientific hypotheses.
+      operationId: investigateWithAI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectiveQueryRequest'
+      responses:
+        '200':
+          description: Investigation plan formulated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectiveQueryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/ai/explain-trend:
+    post:
+      tags:
+        - AI
+      summary: Deep scientific trend synthesis and physical driver explanation
+      description: Sends computed trend statistics to Gemini for a scientific explanation. Provider errors are returned without substituting generated fallback text.
+      operationId: explainTrend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrendExplanationRequest'
+      responses:
+        '200':
+          description: Scientific trend synthesis generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendExplanationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/ai/audio-brief:
+    post:
+      tags:
+        - AI
+      summary: NASA Mission Control spoken audio debrief (TTS)
+      description: Generates speech through Gemini TTS and returns the provider's Base64 audio data and MIME type.
+      operationId: generateAudioBrief
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioBriefRequest'
+      responses:
+        '200':
+          description: Audio debrief generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioBriefResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/integrations/appeears/tasks:
+    post:
+      tags:
+        - Integrations
+      summary: Submit asynchronous extraction task to NASA AppEEARS
+      description: Submits a point-sample data extraction request to the NASA AppEEARS API using user-provided or environment NASA Earthdata Login credentials.
+      operationId: submitAppEEARSTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppEEARSTaskRequest'
+      responses:
+        '202':
+          description: Task accepted and queued in AppEEARS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSTaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/integrations/appeears/tasks/{task_id}:
+    get:
+      tags:
+        - Integrations
+      summary: Check status of NASA AppEEARS task
+      description: Retrieves the processing status (`pending`, `processing`, `done`, `error`) and downloadable bundle details for a submitted AppEEARS task.
+      operationId: getAppEEARSTaskStatus
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          description: Unique AppEEARS task identifier UUID
+          schema:
+            type: string
+            format: uuid
+            example: 0974a514-13fd-4bf0-b8c9-65e6e5d6b06a
+      responses:
+        '200':
+          description: Task status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSTaskStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/integrations/appeears/auth/login:
+    post:
+      tags:
+        - Integrations
+      summary: Authenticate against NASA AppEEARS
+      description: Exchanges NASA Earthdata Login credentials (HTTP Basic Auth) for a 48-hour AppEEARS session Bearer token.
+      operationId: loginAppEEARS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppEEARSLoginRequest'
+      responses:
+        '200':
+          description: Successfully authenticated with AppEEARS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSLoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/integrations/appeears/auth/status:
+    get:
+      tags:
+        - Integrations
+      summary: Get AppEEARS authentication status
+      description: Checks whether the engine currently holds an active, unexpired AppEEARS session token.
+      operationId: getAppEEARSAuthStatus
+      responses:
+        '200':
+          description: Authentication status returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSAuthStatus'
+
+  /api/v1/projections/scenarios:
+    get:
+      tags: [Projections]
+      summary: List supported SSP pathways
+      description: Returns the NASA POWER CMIP6 pathways supported by this service. Scenarios are conditional model projections, not exact predictions.
+      operationId: listProjectionScenarios
+      responses:
+        '200':
+          description: Supported pathways
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionScenariosResponse'
+
+  /api/v1/projections/models:
+    get:
+      tags: [Projections]
+      summary: List currently available monthly CMIP6 models
+      description: Proxies NASA POWER's monthly model catalog; availability can change upstream.
+      operationId: listProjectionModels
+      responses:
+        '200':
+          description: Monthly models available upstream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionModelsResponse'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/projections/series:
+    get:
+      tags: [Projections]
+      summary: Retrieve a monthly CMIP6 projection series
+      description: Returns a single NASA POWER/NEX-GDDP-CMIP6 model and SSP pathway for 2015–2100, with actual upstream units, source metadata, missing values, and nearest-grid coordinates. Projection records remain separate from historical observations.
+      operationId: getProjectionSeries
+      parameters:
+        - name: variable_id
+          in: query
+          required: true
+          schema: { type: string, example: T2M }
+        - name: latitude
+          in: query
+          required: true
+          schema: { type: number, minimum: -59.875, maximum: 89.875 }
+        - name: longitude
+          in: query
+          required: true
+          schema: { type: number, minimum: -179.875, maximum: 179.875 }
+        - name: start_year
+          in: query
+          schema: { type: integer, minimum: 2015, maximum: 2100, default: 2015 }
+        - name: end_year
+          in: query
+          schema: { type: integer, minimum: 2015, maximum: 2100, default: 2100 }
+        - name: scenario
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/SSPScenario' }
+        - name: model
+          in: query
+          schema: { type: string, default: ensemble, example: cesm2 }
+      responses:
+        '200':
+          description: Projected monthly values and provenance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionSeriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/BadGateway'
+
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+        - offline_demo_ready
+        - cached_regions
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: 2.0.0
+        offline_demo_ready:
+          type: boolean
+          example: true
+          description: True if all curated preset datasets are cached locally and available without network
+        cached_regions:
+          type: array
+          items:
+            type: string
+          example: ["amazon", "guajira", "sahel", "australia_se"]
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-11-14T16:00:00Z"
+
+    SSPScenario:
+      type: string
+      enum: [ssp126, ssp245, ssp370]
+    ProjectionScenariosResponse:
+      type: object
+      required: [scenarios]
+      properties:
+        scenarios:
+          type: array
+          items:
+            type: object
+            required: [scenario, name, description, caveat]
+            properties:
+              scenario: { $ref: '#/components/schemas/SSPScenario' }
+              name: { type: string }
+              description: { type: string }
+              caveat: { type: string }
+    ProjectionModelsResponse:
+      type: object
+      required: [temporal, models, source]
+      properties:
+        temporal: { type: string, example: monthly }
+        models: { type: array, items: { type: string } }
+        source: { type: string, example: NASA POWER Projection API }
+    ProjectionDataPoint:
+      type: object
+      required: [date, value, quality]
+      properties:
+        date: { type: string, format: "YYYY-MM" }
+        value: { type: number, nullable: true }
+        quality: { type: string, enum: [projected, missing] }
+    ProjectionSeriesResponse:
+      type: object
+      required: [variable_id, scenario, model, unit, temporal_resolution, spatial_resolution, requested_coordinates, grid_coordinates, source, source_url, period, points, is_projection, caveat]
+      properties:
+        variable_id: { type: string }
+        scenario: { $ref: '#/components/schemas/SSPScenario' }
+        model: { type: string }
+        unit: { type: string }
+        temporal_resolution: { type: string, example: monthly }
+        spatial_resolution: { type: string, example: "0.25° x 0.25°" }
+        requested_coordinates: { type: object, additionalProperties: { type: number } }
+        grid_coordinates: { type: object, additionalProperties: { type: number } }
+        source: { type: string }
+        source_url: { type: string, format: uri }
+        period: { type: object, additionalProperties: { type: string } }
+        points: { type: array, items: { $ref: '#/components/schemas/ProjectionDataPoint' } }
+        uncertainty: { type: [number, "null"], description: NASA POWER monthly point response does not include an uncertainty interval. }
+        uncertainty_note: { type: string }
+        is_projection: { type: boolean, const: true }
+        caveat: { type: string }
+
+    VariableCategory:
+      type: string
+      enum:
+        - atmosphere
+        - hydrology
+        - land_surface
+        - vegetation
+        - ocean_and_marine
+      example: atmosphere
+
+    DataSourceProvider:
+      type: string
+      enum:
+        - NASA_POWER
+        - NASA_APPEEARS
+        - NOAA_NCEI
+      example: NASA_POWER
+
+    Variable:
+      type: object
+      required:
+        - variable_id
+        - display_name
+        - unit
+        - category
+        - provider
+        - description
+        - spatial_resolution
+        - temporal_range
+        - source_model_or_sensor
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        display_name:
+          type: string
+          example: Surface Air Temperature (2m)
+        unit:
+          type: string
+          example: "°C"
+        category:
+          $ref: '#/components/schemas/VariableCategory'
+        provider:
+          $ref: '#/components/schemas/DataSourceProvider'
+        description:
+          type: string
+          example: Monthly average air temperature measured at 2 meters above Earth's surface.
+        spatial_resolution:
+          type: string
+          example: 0.5° x 0.625°
+        temporal_range:
+          type: string
+          example: 1981-01 to 2025-12
+        source_model_or_sensor:
+          type: string
+          example: MERRA-2 / GEOS-5.12.4
+        data_community:
+          type: string
+          example: AG (Agroclimatology)
+
+    SatelliteProduct:
+      type: object
+      required:
+        - product_id
+        - platform
+        - description
+        - resolution
+        - temporal_granularity
+      properties:
+        product_id:
+          type: string
+          example: MOD13Q1.061
+        platform:
+          type: string
+          example: Terra MODIS
+        description:
+          type: string
+          example: Vegetation Indices 16-Day L3 Global 250m
+        resolution:
+          type: string
+          example: 250m
+        temporal_granularity:
+          type: string
+          example: 16 day
+        available_layers:
+          type: array
+          nullable: true
+          description: Null in list responses; live available layers are populated in product detail responses.
+          items:
+            type: string
+          example: ["_250m_16_days_NDVI", "_250m_16_days_EVI"]
+
+    Region:
+      type: object
+      required:
+        - region_id
+        - name
+        - center_coordinates
+        - representative_cell
+        - description
+        - scientific_context
+      properties:
+        region_id:
+          type: string
+          example: amazon
+        name:
+          type: string
+          example: Amazon Basin (Manaus)
+        center_coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        representative_cell:
+          type: string
+          example: -3.125, -60.000 (0.5° grid)
+        description:
+          type: string
+          example: Central Amazon tropical rainforest biome vulnerable to hydrological stress.
+        scientific_context:
+          type: string
+          example: Useful for contrasting rainforest drying against other equatorial zones.
+
+    Coordinates:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+          example: -3.1
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+          example: -60.0
+
+    DataPoint:
+      type: object
+      required:
+        - date
+        - value
+        - quality
+      properties:
+        date:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          example: "2020-08"
+        value:
+          type: number
+          nullable: true
+          example: 28.45
+        quality:
+          type: string
+          enum: [measured, reanalysis, valid, missing]
+          example: reanalysis
+
+    TimeSeriesResponse:
+      type: object
+      required:
+        - variable_id
+        - unit
+        - provider
+        - location_name
+        - query_coordinates
+        - representative_grid_cell
+        - spatial_resolution
+        - temporal_range
+        - sample_count
+        - valid_count
+        - missing_count
+        - is_cached
+        - points
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        unit:
+          type: string
+          example: "°C"
+        provider:
+          $ref: '#/components/schemas/DataSourceProvider'
+        location_name:
+          type: string
+          example: Manaus, Amazon Basin
+        query_coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        representative_grid_cell:
+          type: string
+          example: "Lat: -3.00, Lon: -60.00"
+        spatial_resolution:
+          type: string
+          example: 0.5° x 0.625°
+        temporal_range:
+          type: string
+          example: "1990-01 to 2025-12"
+        sample_count:
+          type: integer
+          example: 432
+        valid_count:
+          type: integer
+          example: 430
+        missing_count:
+          type: integer
+          example: 2
+        is_cached:
+          type: boolean
+          example: true
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    TrendDirection:
+      type: string
+      enum:
+        - increasing_significant
+        - decreasing_significant
+        - no_significant_trend
+        - not_evaluable
+      example: increasing_significant
+
+    TrendAnalysisRequest:
+      type: object
+      required:
+        - variable_id
+        - points
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        alpha:
+          type: number
+          default: 0.05
+          example: 0.05
+          description: Significance threshold (default 95% confidence)
+        method:
+          type: string
+          enum: [seasonal_mann_kendall, original_mann_kendall]
+          default: seasonal_mann_kendall
+          example: seasonal_mann_kendall
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    AutocorrelationDiagnostic:
+      type: object
+      required:
+        - lag1_autocorrelation
+        - is_autocorrelated
+        - correction_applied
+      properties:
+        lag1_autocorrelation:
+          type: number
+          example: 0.284
+        is_autocorrelated:
+          type: boolean
+          example: true
+        correction_applied:
+          type: string
+          example: "Hamed-Rao Variance Correction"
+
+    TrendAnalysisResponse:
+      type: object
+      required:
+        - variable_id
+        - direction
+        - method
+        - rate_per_decade
+        - rate_unit
+        - confidence_interval_95
+        - p_value
+        - z_statistic
+        - alpha
+        - sample_count
+        - valid_count
+        - autocorrelation
+        - plain_language_verdict
+        - scientific_caveat
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        direction:
+          $ref: '#/components/schemas/TrendDirection'
+        method:
+          type: string
+          example: Seasonal Mann-Kendall with Sen's Slope
+        rate_per_decade:
+          type: number
+          nullable: true
+          example: 0.34
+          description: Robust Sen's slope expressed in variable units per decade
+        rate_unit:
+          type: string
+          example: "°C/decade"
+        confidence_interval_95:
+          type: array
+          items:
+            type: number
+          example: [0.18, 0.49]
+          description: Lower and upper bounds of the 95% confidence interval for rate_per_decade
+        p_value:
+          type: number
+          nullable: true
+          example: 0.0014
+        z_statistic:
+          type: number
+          nullable: true
+          example: 3.19
+        alpha:
+          type: number
+          example: 0.05
+        sample_count:
+          type: integer
+          example: 432
+        valid_count:
+          type: integer
+          example: 430
+        autocorrelation:
+          $ref: '#/components/schemas/AutocorrelationDiagnostic'
+        plain_language_verdict:
+          type: string
+          example: "Statistically significant warming trend (+0.34 °C/decade, p < 0.01)."
+        scientific_caveat:
+          type: string
+          example: "Statistical significance indicates strong historical evidence of persistent change, but does not prove direct causality."
+
+    RegionalComparisonRequest:
+      type: object
+      required:
+        - variable_id
+        - region_a
+        - region_b
+      properties:
+        variable_id:
+          type: string
+          example: PRECTOTCORR
+        region_a:
+          type: object
+          required: [location_name, points]
+          properties:
+            location_name:
+              type: string
+              example: Amazon Basin
+            points:
+              type: array
+              items:
+                $ref: '#/components/schemas/DataPoint'
+        region_b:
+          type: object
+          required: [location_name, points]
+          properties:
+            location_name:
+              type: string
+              example: Sahel (Niger)
+            points:
+              type: array
+              items:
+                $ref: '#/components/schemas/DataPoint'
+
+    RegionalComparisonResponse:
+      type: object
+      required:
+        - variable_id
+        - are_comparable
+        - trend_region_a
+        - trend_region_b
+        - comparative_summary
+        - drivers_explanation
+      properties:
+        variable_id:
+          type: string
+          example: PRECTOTCORR
+        are_comparable:
+          type: boolean
+          example: true
+        trend_region_a:
+          $ref: '#/components/schemas/TrendAnalysisResponse'
+        trend_region_b:
+          $ref: '#/components/schemas/TrendAnalysisResponse'
+        comparative_summary:
+          type: string
+          example: "Opposite Precipitation Trends: Region A shows drying (-14.2 mm/decade, p=0.03), while Region B shows modest recovery (+6.1 mm/decade, p=0.08)."
+        drivers_explanation:
+          type: string
+          example: "Differential shifts in the Intertropical Convergence Zone (ITCZ) can induce simultaneous rainfall deficits in equatorial South America while modulating monsoon influx in the Sahel."
+
+    AnomalySeverity:
+      type: string
+      enum:
+        - normal
+        - moderate_anomaly
+        - severe_anomaly
+        - extreme_anomaly
+        - not_evaluable
+      example: severe_anomaly
+
+    MonthlyClimatology:
+      type: object
+      required:
+        - month
+        - baseline_mean
+        - baseline_std
+        - sample_count
+      properties:
+        month:
+          type: integer
+          example: 7
+        baseline_mean:
+          type: number
+          example: 26.4
+        baseline_std:
+          type: number
+          example: 0.85
+        sample_count:
+          type: integer
+          example: 30
+
+    AnomalyDataPoint:
+      type: object
+      required:
+        - date
+        - value
+        - anomaly_z
+        - severity
+      properties:
+        date:
+          type: string
+          example: "2023-07"
+        value:
+          type: number
+          nullable: true
+          example: 28.9
+        anomaly_z:
+          type: number
+          nullable: true
+          example: 2.94
+        severity:
+          $ref: '#/components/schemas/AnomalySeverity'
+
+    AnomalyDetectionRequest:
+      type: object
+      required:
+        - variable_id
+        - points
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        baseline_start_year:
+          type: integer
+          default: 1991
+          example: 1991
+        baseline_end_year:
+          type: integer
+          default: 2020
+          example: 2020
+        threshold:
+          type: number
+          default: 2.0
+          example: 2.0
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    AnomalyDetectionResponse:
+      type: object
+      required:
+        - variable_id
+        - baseline_range
+        - monthly_climatology
+        - anomalies
+        - severe_anomaly_count
+        - method
+        - scientific_caveat
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        baseline_range:
+          type: string
+          example: "1991 to 2020"
+        monthly_climatology:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlyClimatology'
+        anomalies:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnomalyDataPoint'
+        severe_anomaly_count:
+          type: integer
+          example: 4
+        method:
+          type: string
+          example: "Standardized Monthly Climatology Z-Score (1991-2020 Baseline)"
+        scientific_caveat:
+          type: string
+          example: "Z-score anomalies quantify statistical departures from the reference climatology, but do not prove physical disaster impact without in-situ validation."
+
+    ChangePointRequest:
+      type: object
+      required:
+        - variable_id
+        - points
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        alpha:
+          type: number
+          default: 0.05
+          example: 0.05
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    ChangePointResponse:
+      type: object
+      required:
+        - variable_id
+        - has_significant_break
+        - change_point_date
+        - change_point_index
+        - statistic_k
+        - p_value
+        - alpha
+        - regime_shift_type
+        - pre_break_slope
+        - post_break_slope
+        - unit_per_decade
+        - method
+        - scientific_notes
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        has_significant_break:
+          type: boolean
+          example: true
+        change_point_date:
+          type: string
+          nullable: true
+          example: "2000-06"
+        change_point_index:
+          type: integer
+          nullable: true
+          example: 24
+        statistic_k:
+          type: number
+          nullable: true
+          example: 184.0
+        p_value:
+          type: number
+          nullable: true
+          example: 0.0042
+        alpha:
+          type: number
+          example: 0.05
+        regime_shift_type:
+          type: string
+          enum: [accelerating_increase, decelerating_increase, reversal_to_cooling, reversal_to_warming, abrupt_step_increase, no_significant_break, not_evaluable]
+          example: accelerating_increase
+        pre_break_slope:
+          type: number
+          nullable: true
+          example: 0.05
+        post_break_slope:
+          type: number
+          nullable: true
+          example: 0.38
+        unit_per_decade:
+          type: string
+          example: "°C/decade"
+        method:
+          type: string
+          example: "Pettitt's Non-Parametric Rank Test (1979) with Segmented Sen's Slopes"
+        scientific_notes:
+          type: string
+          example: "Significant structural break detected at 2000-06 (p=0.0042). Trend accelerated from 0.05 °C/decade to 0.38 °C/decade."
+
+    ModelListResponse:
+      type: object
+      required:
+        - models
+        - default_model
+        - active_api_key_configured
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIModelInfo'
+        default_model:
+          type: string
+          example: gemini-3.8-flash
+        active_api_key_configured:
+          type: boolean
+          example: true
+
+    AIModelInfo:
+      type: object
+      required:
+        - model_id
+        - display_name
+        - capabilities
+        - recommended_use
+      properties:
+        model_id:
+          type: string
+          example: gemini-3.8-flash
+        display_name:
+          type: string
+          example: Gemini 3.8 Flash
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [text, thinking, tts, vision, audio_in]
+        recommended_use:
+          type: string
+          example: Fast natural language query translation and hypothesis formulation
+        context_window:
+          type: integer
+          nullable: true
+          example: 1048576
+
+    DetectiveQueryRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          example: Where is drought worsening in South America?
+        model:
+          type: string
+          default: auto
+          example: auto
+
+    DetectiveQueryResponse:
+      type: object
+      required:
+        - query
+        - recommended_variables
+        - hypothesis
+        - model_used
+      properties:
+        query:
+          type: string
+          example: Where is drought worsening in South America?
+        recommended_variables:
+          type: array
+          items:
+            type: string
+          example: [GWETROOT, PRECTOTCORR]
+        recommended_region_id:
+          type: string
+          nullable: true
+          example: amazon_basin
+        target_coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        hypothesis:
+          type: string
+          example: Amazon Basin root-zone soil moisture exhibits sustained negative departures correlated with dry-season rainfall deficits.
+        model_used:
+          type: string
+          example: gemini-3.8-flash
+
+    TrendExplanationRequest:
+      type: object
+      required:
+        - variable_id
+        - location_name
+        - direction
+        - rate_per_decade
+        - rate_unit
+        - p_value
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        location_name:
+          type: string
+          example: Amazon Basin
+        direction:
+          type: string
+          example: increasing_significant
+        rate_per_decade:
+          type: number
+          example: 0.35
+        rate_unit:
+          type: string
+          example: "°C/decade"
+        p_value:
+          type: number
+          example: 0.0021
+        change_point_date:
+          type: string
+          nullable: true
+          example: "2005-08"
+        regime_shift_type:
+          type: string
+          nullable: true
+          example: accelerating_increase
+        model:
+          type: string
+          default: auto
+          example: auto
+
+    TrendExplanationResponse:
+      type: object
+      required:
+        - variable_id
+        - location_name
+        - executive_summary
+        - mechanisms_and_drivers
+        - scientific_uncertainty
+        - recommended_next_steps
+        - model_used
+      properties:
+        variable_id:
+          type: string
+          example: T2M
+        location_name:
+          type: string
+          example: Amazon Basin
+        executive_summary:
+          type: string
+          example: Surface air temperature over the Amazon Basin exhibits a statistically significant warming rate of +0.35 °C/decade.
+        mechanisms_and_drivers:
+          type: string
+          example: Land-atmosphere coupling and reduced evapotranspirative cooling amplify regional warming during the dry season.
+        scientific_uncertainty:
+          type: string
+          example: Station density is sparse in western Amazonia; satellite reanalysis assimilations introduce grid-cell uncertainty.
+        recommended_next_steps:
+          type: array
+          items:
+            type: string
+          example: ["Correlate with GWETROOT root-zone moisture", "Inspect MODIS NDVI vegetation index anomalies"]
+        model_used:
+          type: string
+          example: gemini-3.8-live-extended-thinking
+
+    AudioBriefRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          example: "This is TPBD Mission Control with your Earth System debrief. Surface air temperatures in the Amazon Basin..."
+        voice:
+          type: string
+          default: Puck
+          example: Puck
+        model:
+          type: string
+          default: auto
+          example: auto
+
+    AudioBriefResponse:
+      type: object
+      required:
+        - audio_base64
+        - mime_type
+        - voice_used
+        - model_used
+      properties:
+        audio_base64:
+          type: string
+          example: "<Gemini-generated audio bytes encoded as Base64>"
+        mime_type:
+          type: string
+          description: MIME type returned by Gemini, such as audio/L16;codec=pcm;rate=24000.
+          example: "audio/L16;codec=pcm;rate=24000"
+        voice_used:
+          type: string
+          example: Puck
+        model_used:
+          type: string
+          example: gemini-3.8-flash-tts
+
+    AppEEARSTaskRequest:
+      type: object
+      required:
+        - task_name
+        - product_and_layer
+        - coordinates
+        - date_range
+      properties:
+        task_name:
+          type: string
+          example: Amazon_NDVI_Investigation
+        product_and_layer:
+          type: string
+          example: MOD13Q1.061,_250m_16_days_NDVI
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        date_range:
+          type: object
+          required: [start_date, end_date]
+          properties:
+            start_date:
+              type: string
+              example: "01-01-2015"
+            end_date:
+              type: string
+              example: "12-31-2023"
+
+    AppEEARSTaskResponse:
+      type: object
+      required:
+        - task_id
+        - status
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: 0974a514-13fd-4bf0-b8c9-65e6e5d6b06a
+        status:
+          type: string
+          example: pending
+
+    AppEEARSTaskStatus:
+      type: object
+      required:
+        - task_id
+        - status
+        - progress_percentage
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: 0974a514-13fd-4bf0-b8c9-65e6e5d6b06a
+        status:
+          type: string
+          enum: [pending, processing, done, error]
+          example: done
+        progress_percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 100
+        downloadable_csv_url:
+          type: string
+          nullable: true
+          example: "http://127.0.0.1:8000/api/v1/integrations/appeears/bundles/0974a514/results.csv"
+
+    AppEEARSLoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: danidev23
+        password:
+          type: string
+          format: password
+          example: "********"
+
+    AppEEARSLoginResponse:
+      type: object
+      required:
+        - token
+        - token_type
+        - expiration
+      properties:
+        token:
+          type: string
+          example: "31ncqphv-1jpPjcTe-hgWXM2xZ1bBqQxST5pcieiHKq0cMwz8IFKOxG3FZgLQonk8hBsLV_ruAqikYXfzWy7kw"
+        token_type:
+          type: string
+          example: Bearer
+        expiration:
+          type: string
+          format: date-time
+          example: "2026-11-15T22:30:40Z"
+
+    AppEEARSAuthStatus:
+      type: object
+      required:
+        - authenticated
+      properties:
+        authenticated:
+          type: boolean
+          example: true
+        username:
+          type: string
+          nullable: true
+          example: danidev23
+        expiration:
+          type: string
+          nullable: true
+          format: date-time
+          example: "2026-11-15T22:30:40Z"
+
+    ProblemDetails:
+      type: object
+      description: Standard RFC 7807 problem details envelope
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://tpbd.nasa.gov/errors/invalid-coordinates"
+        title:
+          type: string
+          example: "Invalid Coordinates"
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "Latitude must be between -90 and 90 degrees."
+        instance:
+          type: string
+          example: "/api/v1/series?lat=95.0&lon=-60.0"
+        invalid_params:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - name
+        - reason
+      properties:
+        name:
+          type: string
+          example: lat
+        reason:
+          type: string
+          example: Value 95.0 exceeds maximum allowed limit 90.0
+
+  responses:
+    BadRequest:
+      description: Invalid query parameters or malformed syntax (RFC 7807)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    Unauthorized:
+      description: Authentication credentials missing or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    NotFound:
+      description: Requested variable, region, or resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    UnprocessableEntity:
+      description: Insufficient data or mathematical conditions prevent trend evaluation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    BadGateway:
+      description: Upstream NASA API timeout or unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    InternalServerError:
+      description: Internal engine error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
