@@ -4,8 +4,12 @@ const routes = new Map([
   ['/api/v1/catalog/variables', 'GET'],
   ['/api/v1/series', 'GET'],
   ['/api/v1/analytics/trends', 'POST'],
+  ['/api/v1/ai/models', 'GET'],
+  ['/api/v1/ai/investigate', 'POST'],
+  ['/api/v1/ai/explain-trend', 'POST'],
+  ['/api/v1/ai/audio-brief', 'POST'],
 ]);
-const seriesParameters = new Set(['variable_id', 'region_id', 'lat', 'lon', 'start_year', 'end_year', 'offline']);
+const seriesParameters = new Set(['variable_id', 'region_id', 'lat', 'lon', 'start_year', 'end_year', 'offline', 'location_name']);
 const limit = 2 * 1024 * 1024;
 
 export function validateRequest(request) {
@@ -42,7 +46,7 @@ export async function requestLocalApi(request) {
     headers: request.method === 'POST' ? { 'Content-Type': 'application/json' } : {},
     body: request.body,
     redirect: 'error',
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(40000),
   });
   const reader = response.body?.getReader();
   const chunks = [];

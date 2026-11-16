@@ -4,8 +4,12 @@ from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+ROOT_DIR = Path(__file__).resolve().parents[4]
+ROOT_ENV_FILE = ROOT_DIR / ".env"
+
+
 class Settings(BaseSettings):
-    """Application settings loaded from environment or .env."""
+    """Application settings loaded from environment or root .env."""
 
     PROJECT_NAME: str = "TPBD Earth System Trend Detective API"
     VERSION: str = "2.1.0"
@@ -38,7 +42,7 @@ class Settings(BaseSettings):
     ]
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env", "../../.env"),
+        env_file=(str(ROOT_ENV_FILE), ".env", "../.env", "../../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

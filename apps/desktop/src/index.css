@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --color-orbital-cyan: #38bdf8;
+  --color-sensor-emerald: #10b981;
+  --color-space-dark: #060e1c;
+  --color-space-surface: #0b1526;
+  --color-space-elevated: #112038;
+  --color-star-ivory: #d6c7b2;
+}
+
+/* Clean Micro-interactions & Inner Highlights */
+.shadow-bevel {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.shadow-bevel-subtle {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Tactile press feedback across interactive controls */
+.btn-tactile {
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-tactile:active {
+  transform: scale(0.98);
+}
+
+/* Hairline border token */
+.border-hairline {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Global scrollbar suppression to eliminate 17px native Windows bars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.25) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.4);
+}

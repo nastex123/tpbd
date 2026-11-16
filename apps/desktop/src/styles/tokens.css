@@ -1,0 +1,100 @@
+/* Hallmark Stamp: theme=voyager-nasa-mission-control; genre=atmospheric-scientific; layout=hud-workbench */
+/* TPBD — The Pale Blue Dot: NASA Mission Control Design System */
+
+:root {
+  /* Brand Palette (Derived from the Official TPBD Logo) */
+  --space-black: #030712;
+  --sphere-navy: #0c1829;
+  --sphere-navy-surface: #112238;
+  --sphere-navy-elevated: #162c49;
+  
+  --pale-blue-dot: #79dcff;
+  --pale-blue-glow: rgba(121, 220, 255, 0.45);
+  --orbit-cyan: #38bdf8;
+  
+  --sand-ivory: #d6c7b2;
+  --sand-ivory-dim: #9e917f;
+  
+  --sensor-amber: #f59e0b;
+  --sensor-amber-dim: #b45309;
+  --sensor-emerald: #10b981;
+  --sensor-rose: #f43f5e;
+  
+  --text-primary: #f0f6fc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --terminal-border: rgba(121, 220, 255, 0.16);
+  --terminal-border-bright: rgba(121, 220, 255, 0.38);
+  --terminal-grid-line: rgba(121, 220, 255, 0.06);
+
+  /* Typography Tokens */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Space Mono', 'SF Mono', Consolas, monospace;
+  --font-display: 'Space Grotesk', 'Inter Display', sans-serif;
+
+  /* Elevation & Geometry */
+  --radius-hud: 4px;
+  --radius-panel: 6px;
+  --header-height: 54px;
+}
+
+/* Global Mission Control Canvas */
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--space-black);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hallmark Floor: Focus Visibility */
+:focus-visible {
+  outline: 2px solid var(--pale-blue-dot);
+  outline-offset: 2px;
+}
+
+/* Monospace Telemetry Numerics */
+.telemetry-mono,
+.hud-metric,
+.status-pill {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Pale Blue Dot Pulsing Glow */
+@keyframes pale-blue-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px var(--pale-blue-glow);
+  }
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 14px var(--pale-blue-dot);
+  }
+}
+
+.pale-blue-beacon {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--pale-blue-dot);
+  animation: pale-blue-pulse 3s ease-in-out infinite;
+}
+
+/* Hallmark Floor: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .pale-blue-beacon {
+    animation: none;
+    box-shadow: 0 0 8px var(--pale-blue-glow);
+  }
+}

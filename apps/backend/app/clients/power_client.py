@@ -12,7 +12,7 @@ class PowerClient(BaseAsyncClient):
 
     BASE_URL = "https://power.larc.nasa.gov"
 
-    def __init__(self, timeout: float = 15.0):
+    def __init__(self, timeout: float = 35.0):
         super().__init__(base_url=self.BASE_URL, provider_name="NASA POWER", timeout=timeout)
 
     async def fetch_monthly_point(
