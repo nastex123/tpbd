@@ -205,6 +205,8 @@ export function StudyRegionsDrawer({
 
   return (
     <aside
+      inert={!isOpen || undefined}
+      aria-hidden={!isOpen}
       className={`absolute inset-y-0 left-0 w-84 sm:w-96 z-40 flex flex-col bg-slate-950/85 backdrop-blur-xl border-r border-sky-500/20 shadow-2xl transition-transform duration-300 ease-in-out select-none ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}

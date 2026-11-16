@@ -95,4 +95,18 @@ class SeederService:
             except Exception as exc:
                 logger.error("Error seeding fixture %s: %s", rel_file, exc)
 
+        # Pre-seed comprehensive offline coverage for all 12 benchmark regions (T2M, PRECTOTCORR, MOD13Q1_NDVI)
+        try:
+            import sys
+            backend_dir = Path(__file__).resolve().parent.parent.parent
+            if str(backend_dir) not in sys.path:
+                sys.path.insert(0, str(backend_dir))
+            from seed_demo_cache import seed_database
+            seed_database(self.cache_repo.db_path)
+            from app.repositories.region_repository import CURATED_REGIONS
+            for r in CURATED_REGIONS:
+                seeded_regions.add(r.region_id)
+        except Exception as exc:
+            logger.debug("Demo cache pre-seeding helper notice: %s", exc)
+
         return sorted(list(seeded_regions))

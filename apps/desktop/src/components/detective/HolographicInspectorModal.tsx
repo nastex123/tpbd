@@ -33,7 +33,7 @@ export interface HolographicInspectorModalProps {
   playing: boolean;
   onSetPlaying: (p: boolean | ((val: boolean) => boolean)) => void;
   bounds: readonly [number, number];
-  screenCoords?: { x: number; y: number } | null;
+  onExportReport?: () => void;
   teleconnectionPresets: TeleconnectionPreset[];
   onLoadTeleconnectionPreset: (presetId: string) => void;
   onGoToA?: () => void;
@@ -65,6 +65,7 @@ export function HolographicInspectorModal({
   playing,
   onSetPlaying,
   bounds,
+  onExportReport,
   teleconnectionPresets,
   onLoadTeleconnectionPreset,
   onGoToA,
@@ -129,6 +130,23 @@ export function HolographicInspectorModal({
         </div>
 
         <div className="deck-header-actions">
+          {onExportReport && reportA?.series && (
+            <button
+              type="button"
+              className="deck-btn-tool btn-tactile"
+              onClick={onExportReport}
+              title="Export scientific investigation report (Print / PDF)"
+              aria-label="Export scientific report"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M6 9V2h12v7" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              <span>Export PDF</span>
+            </button>
+          )}
+
           {location?.kind === 'coordinates' && compare?.kind !== 'coordinates' && (
             <button
               type="button"

@@ -1136,6 +1136,31 @@
   color: var(--text-muted, #94a3b8);
 }
 
+.badge-provenance {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 3px;
+  padding: 0.08rem 0.35rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-provenance.provenance-official {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.2);
+}
+
+.badge-provenance.provenance-analytical {
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.14);
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.2);
+}
+
 /* Floating Caveat Badge with Hover Popover */
 .caveat-corner-badge {
   position: relative;

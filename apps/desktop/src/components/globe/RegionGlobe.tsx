@@ -7,7 +7,6 @@ import { distanceKm, findCountryAt, gridOutline, initialView, type CountryCollec
 import { addNightLayer } from './nightLayer';
 import { locationKey, pointValue, useLocationReport, useVariableAvailability, variableOptions } from './globeData';
 import { InvestigationReport } from './InvestigationReport';
-import { prefetchExplanation } from './ScientificExplanation';
 import { HolographicInspectorModal } from '../detective/HolographicInspectorModal';
 import { FloatingCopilotTrigger } from '../copilot/FloatingCopilotTrigger';
 import { StudyRegionsDrawer, type Region } from '../navigation/StudyRegionsDrawer';
@@ -236,23 +235,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const [selectedDateB, setSelectedDateB] = useState('');
   const [playing, setPlaying] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [screenCoords, setScreenCoords] = useState<{ x: number; y: number } | null>(null);
+  const [isExportingReport, setIsExportingReport] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  function updateScreenPosition(lat: number, lng: number) {
-    if (globe.current) {
-      const coords = globe.current.getScreenCoords(lat, lng, 0.05);
-      if (coords && Number.isFinite(coords.x) && Number.isFinite(coords.y)) {
-        setScreenCoords((prev) => {
-          if (!prev) return coords;
-          if (Math.hypot(coords.x - prev.x, coords.y - prev.y) > 1.5) {
-            return coords;
-          }
-          return prev;
-        });
-      }
-    }
-  }
   const flightTimers = useRef<number[]>([]);
   const selectedId = location?.kind === 'region' ? location.id : null;
   const selected = useMemo(() => {
@@ -323,12 +307,6 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   const comparable = issues.length === 0;
   const trendIssue = trendComparisonIssue(reportA?.trend, reportB?.trend);
 
-  // Background AI synthesis prefetch: caches Gemini 3 response once, preventing token waste on reopen
-  useEffect(() => {
-    if (selected && reportA?.series && reportA?.trend && reportA.trend.direction !== 'not_evaluable') {
-      void prefetchExplanation(selected.name, reportA.series, reportA.trend);
-    }
-  }, [selected?.name, reportA?.series, reportA?.trend]);
   const reports = [
     { key: keyA, place: selected, report: reportA, color: '#197caa' },
     { key: keyB, place: targetB, report: reportB, color: '#a04194' },
@@ -641,13 +619,8 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     const key = locationKey(next);
     setHistory((previous) => [next, ...previous.filter((item) => locationKey(item) !== key)].slice(0, 8));
     cameraTo({ ...point, altitude: 0.85 }, flight);
-    updateScreenPosition(point.lat, point.lng);
     setIsInspectorOpen(true);
     setIsDrawerOpen(false);
-    if (flight) {
-      window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 700);
-      window.setTimeout(() => updateScreenPosition(point.lat, point.lng), 1100);
-    }
   }
 
   function selectMarker(marker: object) {
@@ -859,17 +832,6 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     visibleDate,
   ]);
 
-  // Track 3D screen coordinate of active target during rotations / interactions without idle thrashing
-  useEffect(() => {
-    if (!selected) return;
-    updateScreenPosition(selected.lat, selected.lng);
-    if (!idleRotation) return;
-    const interval = window.setInterval(() => {
-      updateScreenPosition(selected.lat, selected.lng);
-    }, 250);
-    return () => window.clearInterval(interval);
-  }, [selected?.lat, selected?.lng, isInspectorOpen, idleRotation]);
-
   function handleSelectCoordinates(lat: number, lng: number) {
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       setInputError('Enter a latitude from −90 to 90 and a longitude from −180 to 180. Use a decimal point.');
@@ -888,6 +850,14 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   function handleSelectHistory(item: LocationSelection) {
     const place = item.kind === 'region' ? regions.find(({ id }) => id === item.id) : item;
     if (place) visit(item, place);
+  }
+
+  function handleExportReport() {
+    setIsExportingReport(true);
+    requestAnimationFrame(() => {
+      window.print();
+      setTimeout(() => setIsExportingReport(false), 500);
+    });
   }
 
   function handleSaveInvestigation(name: string) {
@@ -980,16 +950,12 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
               onZoom={({ altitude }) => {
                 setZoomed((current) => current ? altitude < 1.55 : altitude < 1.35);
                 updateLabelSpacing();
-                if (selected) {
-                  updateScreenPosition(selected.lat, selected.lng);
-                }
               }}
               onGlobeClick={({ lat, lng }) => {
                 const point = { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
                 const country = findCountryAt(point.lat, point.lng, countries);
                 if (measure) addMeasurement(point);
                 else {
-                  updateScreenPosition(point.lat, point.lng);
                   visit({ kind: 'coordinates', ...point, label: country }, point, false);
                 }
               }}
@@ -1045,7 +1011,6 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                 const country = (feature as CountryFeature)?.properties?.name || (feature as CountryFeature)?.properties?.nameEn;
                 if (measure) addMeasurement(point);
                 else {
-                  updateScreenPosition(point.lat, point.lng);
                   visit({ kind: 'coordinates', ...point, label: country }, point, false);
                 }
               }}
@@ -1284,9 +1249,9 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
         {children}
       </StudyRegionsDrawer>
 
-      {/* Layer: Off-screen Investigation Report (Export / Print / Zero Layout Impact) */}
-      {reportA?.series && selected && (
-        <div className="hidden" aria-hidden="true">
+      {/* Layer: On-demand Investigation Report (Rendered only during active print/export) */}
+      {isExportingReport && reportA?.series && selected && (
+        <div className="pdf-report-print-container" aria-hidden="false">
           <InvestigationReport
             variableName={variableRange.name}
             variable={variable}
@@ -1310,10 +1275,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
           <span className="text-xs text-slate-200 font-medium">{selected.name}</span>
           <button
             type="button"
-            onClick={() => {
-              setIsInspectorOpen(true);
-              updateScreenPosition(selected.lat, selected.lng);
-            }}
+            onClick={() => setIsInspectorOpen(true)}
             className="px-2.5 py-1 text-xs font-semibold rounded bg-sky-600 hover:bg-sky-500 text-white transition-colors cursor-pointer"
           >
             Open Telemetry Deck
@@ -1325,7 +1287,7 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
       <HolographicInspectorModal
         isOpen={isInspectorOpen && !!selected}
         onClose={() => setIsInspectorOpen(false)}
-        screenCoords={screenCoords}
+        onExportReport={handleExportReport}
         place={selected ?? null}
         location={location}
         targetB={targetB ?? null}

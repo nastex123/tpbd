@@ -572,6 +572,20 @@ export function CMIP6ProjectionsView({
                 <div className="badge-projected-container">
                   <span className="badge-projected">PROJECTED</span>
                   <span className="badge-variable-tag">{variableName} ({effectiveUnit})</span>
+                  {projection?.source && (
+                    <span
+                      className={`badge-provenance ${
+                        projection.source.includes('NEX-GDDP') ? 'provenance-official' : 'provenance-analytical'
+                      }`}
+                      title={
+                        projection.source.includes('NEX-GDDP')
+                          ? 'NASA Earth Exchange Global Daily Downscaled Projections (NEX-GDDP-CMIP6)'
+                          : 'IPCC AR6 scenario pathways parameterized over NASA MERRA-2 monthly climatology'
+                      }
+                    >
+                      {projection.source.includes('NEX-GDDP') ? 'NASA NEX-GDDP' : 'IPCC AR6 (MERRA-2)'}
+                    </span>
+                  )}
                 </div>
 
                 {/* Floating Caveat Badge with Tooltip in Chart Corner */}
@@ -817,6 +831,20 @@ export function CMIP6ProjectionsView({
                   <div className="badge-projected-container">
                     <span className="badge-projected">PROJECTED</span>
                     <span className="badge-variable-tag">{variableName} ({effectiveUnit})</span>
+                    {projection?.source && (
+                      <span
+                        className={`badge-provenance ${
+                          projection.source.includes('NEX-GDDP') ? 'provenance-official' : 'provenance-analytical'
+                        }`}
+                        title={
+                          projection.source.includes('NEX-GDDP')
+                            ? 'NASA Earth Exchange Global Daily Downscaled Projections (NEX-GDDP-CMIP6)'
+                            : 'IPCC AR6 scenario pathways parameterized over NASA MERRA-2 monthly climatology'
+                        }
+                      >
+                        {projection.source.includes('NEX-GDDP') ? 'NASA NEX-GDDP' : 'IPCC AR6 (MERRA-2)'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

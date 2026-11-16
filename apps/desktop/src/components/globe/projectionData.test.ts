@@ -93,6 +93,7 @@ test('fetchProjectionSeries sends GET query and parses points with years and mon
       scenario: 'ssp245',
       model: 'ensemble',
       unit: '°C',
+      source: 'NASA POWER Projection API / NEX-GDDP-CMIP6',
       location_name: 'Manaus, Brazil',
       points: [
         { date: '2050-01', value: 28.5 },
@@ -128,6 +129,7 @@ test('fetchProjectionSeries sends GET query and parses points with years and mon
 
     assert.equal(result.variable_id, 'T2M');
     assert.equal(result.scenario, 'ssp245');
+    assert.equal(result.source, 'NASA POWER Projection API / NEX-GDDP-CMIP6');
     assert.equal(result.location_name, 'Manaus, Brazil');
     assert.equal(result.points.length, 3);
     assert.equal(result.points[0].year, 2050);
