@@ -108,3 +108,120 @@ def test_projection_series_applies_ipcc_ar6_fallback_when_all_points_missing(cli
     assert all(p["value"] is not None for p in data["points"])
     assert 20.0 < data["points"][0]["value"] < 35.0
 
+
+def test_projection_physical_seasonal_warming_asymmetry_in_mediterranean(client):
+    """Verify IPCC AR6 summer warming amplification over winter in Mediterranean mid-latitudes."""
+    # Build a 12-month fill-value payload for year 2090 in Seville (lat 37.4, lon -5.9)
+    months = [f"2090{m:02d}" for m in range(1, 13)]
+    payload = {
+        "properties": {"parameter": {"T2M": {"ssp245": {m: -999 for m in months}}}},
+        "parameters": {"T2M": {"units": "C", "longname": "Temperature at 2 Meters"}},
+        "geometry": {"coordinates": [-5.9, 37.4, 20]},
+        "header": {"model": "ensemble"},
+    }
+    with (
+        patch.object(ProjectionClient, "list_models", new_callable=AsyncMock) as mock_models,
+        patch.object(ProjectionClient, "fetch_monthly_point", new_callable=AsyncMock) as mock_fetch,
+    ):
+        mock_models.return_value = {"temporal": "monthly", "models": ["ensemble"]}
+        mock_fetch.return_value = payload
+        response = client.get(
+            "/api/v1/projections/series?variable_id=T2M&latitude=37.4&longitude=-5.9"
+            "&start_year=2090&end_year=2090&scenario=ssp245&model=ensemble"
+        )
+    assert response.status_code == 200
+    points = response.json()["points"]
+    # Curated baseline for Seville: Jan (m=1) is 11.0°C, Jul (m=7) is 29.5°C
+    jan_val = next(p["value"] for p in points if p["date"] == "2090-01")
+    jul_val = next(p["value"] for p in points if p["date"] == "2090-07")
+    jan_warming = jan_val - 11.0
+    jul_warming = jul_val - 29.5
+    # Summer warming must exceed winter warming due to soil moisture drying feedback
+    assert jul_warming > jan_warming
+    assert jul_warming > 2.0
+
+
+def test_projection_interannual_variability_not_static_barcode(client):
+    """Verify that multi-year projections display natural atmospheric variance instead of static barcode."""
+    years = list(range(2030, 2041))
+    jul_keys = [f"{y}07" for y in years]
+    payload = {
+        "properties": {"parameter": {"T2M": {"ssp245": {k: -999 for k in jul_keys}}}},
+        "parameters": {"T2M": {"units": "C", "longname": "Temperature at 2 Meters"}},
+        "geometry": {"coordinates": [-5.9, 37.4, 20]},
+        "header": {"model": "ensemble"},
+    }
+    with (
+        patch.object(ProjectionClient, "list_models", new_callable=AsyncMock) as mock_models,
+        patch.object(ProjectionClient, "fetch_monthly_point", new_callable=AsyncMock) as mock_fetch,
+    ):
+        mock_models.return_value = {"temporal": "monthly", "models": ["ensemble"]}
+        mock_fetch.return_value = payload
+        response = client.get(
+            "/api/v1/projections/series?variable_id=T2M&latitude=37.4&longitude=-5.9"
+            "&start_year=2030&end_year=2040&scenario=ssp245&model=ensemble"
+        )
+    assert response.status_code == 200
+    points = response.json()["points"]
+    values = [p["value"] for p in points]
+    diffs = [values[i + 1] - values[i] for i in range(len(values) - 1)]
+    # Consecutive year-to-year deltas must NOT be identical (not a linear monotonic barcode)
+    unique_diffs = set(round(d, 2) for d in diffs)
+    assert len(unique_diffs) > 3
+    # Check that fluctuations include both positive and negative year-over-year steps
+    assert any(d > 0 for d in diffs)
+    assert any(d < 0 for d in diffs)
+
+
+def test_projection_determinism_and_reproducibility(client):
+    """Verify that identical queries return bit-for-bit identical projection values without random jitter."""
+    payload = {
+        "properties": {"parameter": {"T2M": {"ssp245": {"205006": -999, "205007": -999}}}},
+        "parameters": {"T2M": {"units": "C", "longname": "Temperature at 2 Meters"}},
+        "geometry": {"coordinates": [-5.9, 37.4, 20]},
+        "header": {"model": "ensemble"},
+    }
+    with (
+        patch.object(ProjectionClient, "list_models", new_callable=AsyncMock) as mock_models,
+        patch.object(ProjectionClient, "fetch_monthly_point", new_callable=AsyncMock) as mock_fetch,
+    ):
+        mock_models.return_value = {"temporal": "monthly", "models": ["ensemble"]}
+        mock_fetch.return_value = payload
+        res1 = client.get(
+            "/api/v1/projections/series?variable_id=T2M&latitude=37.4&longitude=-5.9"
+            "&start_year=2050&end_year=2050&scenario=ssp245&model=ensemble"
+        )
+        res2 = client.get(
+            "/api/v1/projections/series?variable_id=T2M&latitude=37.4&longitude=-5.9"
+            "&start_year=2050&end_year=2050&scenario=ssp245&model=ensemble"
+        )
+    assert res1.json()["points"] == res2.json()["points"]
+
+
+def test_projection_long_term_warming_scenario_hierarchy(client):
+    """Verify that long-term warming respects IPCC AR6 hierarchy: SSP3-7.0 > SSP2-4.5 > SSP1-2.6."""
+    results = {}
+    for scn in ["ssp126", "ssp245", "ssp370"]:
+        payload = {
+            "properties": {"parameter": {"T2M": {scn: {"210007": -999}}}},
+            "parameters": {"T2M": {"units": "C", "longname": "Temperature at 2 Meters"}},
+            "geometry": {"coordinates": [-5.9, 37.4, 20]},
+            "header": {"model": "ensemble"},
+        }
+        with (
+            patch.object(ProjectionClient, "list_models", new_callable=AsyncMock) as mock_models,
+            patch.object(ProjectionClient, "fetch_monthly_point", new_callable=AsyncMock) as mock_fetch,
+        ):
+            mock_models.return_value = {"temporal": "monthly", "models": ["ensemble"]}
+            mock_fetch.return_value = payload
+            resp = client.get(
+                f"/api/v1/projections/series?variable_id=T2M&latitude=37.4&longitude=-5.9"
+                f"&start_year=2100&end_year=2100&scenario={scn}&model=ensemble"
+            )
+            assert resp.status_code == 200
+            results[scn] = resp.json()["points"][0]["value"]
+
+    # End of century warming under SSP3-7.0 must be significantly greater than SSP2-4.5, which is greater than SSP1-2.6
+    assert results["ssp370"] > results["ssp245"] > results["ssp126"]
+    assert results["ssp370"] - results["ssp126"] > 2.0
+
