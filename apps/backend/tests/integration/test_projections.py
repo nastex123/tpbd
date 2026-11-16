@@ -80,3 +80,31 @@ def test_projection_series_rejects_unavailable_model_and_unapproved_variable(cli
     assert unsupported_model.status_code == 422
     assert unsupported_variable.status_code == 404
     assert unsupported_projection_parameter.status_code == 404
+
+
+def test_projection_series_applies_ipcc_ar6_fallback_when_all_points_missing(client):
+    payload = {
+        "properties": {"parameter": {"T2M": {"ssp245": {"205001": -999, "205002": -999}}}},
+        "parameters": {"T2M": {"units": "C", "longname": "Temperature at 2 Meters"}},
+        "geometry": {"coordinates": [-60.125, -3.125, 20]},
+        "header": {"model": "ensemble"},
+    }
+    with (
+        patch.object(ProjectionClient, "list_models", new_callable=AsyncMock) as mock_models,
+        patch.object(ProjectionClient, "fetch_monthly_point", new_callable=AsyncMock) as mock_fetch,
+    ):
+        mock_models.return_value = {"temporal": "monthly", "models": ["ensemble"]}
+        mock_fetch.return_value = payload
+        response = client.get(
+            "/api/v1/projections/series?variable_id=T2M&latitude=-3.1&longitude=-60.0"
+            "&start_year=2050&end_year=2050&scenario=ssp245&model=ensemble"
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "NASA POWER MERRA-2 Climatology / IPCC AR6 CMIP6 Scenario Model"
+    assert "IPCC AR6 CMIP6 scenario pathways" in data["caveat"]
+    assert len(data["points"]) == 2
+    assert all(p["quality"] == "projected" for p in data["points"])
+    assert all(p["value"] is not None for p in data["points"])
+    assert 20.0 < data["points"][0]["value"] < 35.0
+

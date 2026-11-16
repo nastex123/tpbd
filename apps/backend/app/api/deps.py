@@ -111,9 +111,11 @@ def get_projection_client() -> ProjectionClient:
 def get_projection_service(
     client: Annotated[ProjectionClient, Depends(get_projection_client)],
     catalog: Annotated[CatalogService, Depends(get_catalog_service)],
+    power_client: Annotated[PowerClient, Depends(get_power_client)] = None,
+    cache_repo: Annotated[CacheRepository, Depends(get_cache_repository)] = None,
 ) -> ProjectionService:
     """Build the projection service with shared data client and curated catalog."""
-    return ProjectionService(client=client, catalog=catalog)
+    return ProjectionService(client=client, catalog=catalog, power_client=power_client, cache_repo=cache_repo)
 
 
 def get_series_service(
