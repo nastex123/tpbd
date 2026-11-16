@@ -342,6 +342,15 @@ export function CMIP6ProjectionsView({
     }
   }, [chartData, showHistorical]);
 
+  // Clamp hover tooltip to prevent off-screen overflow near right/left chart edges
+  const isNearRightEdge = hoveredPoint ? hoveredPoint.x > chartData.viewBoxWidth * 0.75 : false;
+  const isNearLeftEdge = hoveredPoint ? hoveredPoint.x < chartData.viewBoxWidth * 0.20 : false;
+  const tooltipTransform = isNearRightEdge
+    ? 'translate(-105%, -115%)'
+    : isNearLeftEdge
+      ? 'translate(5%, -115%)'
+      : 'translate(-50%, -115%)';
+
   return (
     <div className="deck-pane-projections-panoramic" role="region" aria-label="CMIP6 Climate Projections">
       {!isSupported && (
@@ -693,7 +702,11 @@ export function CMIP6ProjectionsView({
                 {hoveredPoint && (
                   <div
                     className="chart-tooltip"
-                    style={{ left: `${hoveredPoint.x}px`, top: `${hoveredPoint.y}px` }}
+                    style={{
+                      left: `${(hoveredPoint.x / chartData.viewBoxWidth) * 100}%`,
+                      top: `${(hoveredPoint.y / chartData.viewBoxHeight) * 100}%`,
+                      transform: tooltipTransform,
+                    }}
                   >
                     <span className="tooltip-date">{hoveredPoint.date}</span>
                     <span className="tooltip-val">
@@ -711,7 +724,7 @@ export function CMIP6ProjectionsView({
         )}
       </div>
 
-      {/* High-Definition Cinema Projection Modal */}
+      {/* High-Definition Cinema Projection Modal (Lightbox) */}
       {isExpandedModal && (
         <div
           className="projections-modal-overlay"
@@ -723,7 +736,7 @@ export function CMIP6ProjectionsView({
           <div className="projections-modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-group">
-                <span className="modal-kicker">NASA CMIP6 CLIMATE PROJECTION SUITE</span>
+                <span className="modal-kicker">NASA CMIP6 CLIMATE PROJECTION SUITE · LIGHTBOX</span>
                 <h3 className="modal-heading">
                   {place.name} — Trajectory & Scenarios (1981–2100)
                 </h3>
@@ -733,90 +746,50 @@ export function CMIP6ProjectionsView({
               </div>
               <button
                 type="button"
-                className="btn-modal-close"
+                className="btn-modal-close-prominent"
                 onClick={() => setIsExpandedModal(false)}
                 title="Close projection modal"
                 aria-label="Close projection modal"
               >
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
+                <span>Cerrar</span>
               </button>
             </div>
 
             <div className="modal-body">
-              {/* Modal Controls Toolbar */}
-              <div className="modal-controls-bar">
-                <div className="ssp-scenario-selector">
-                  <button
-                    type="button"
-                    className={`ssp-badge-btn ${scenario === 'ssp126' ? 'active ssp-low' : ''}`}
-                    onClick={() => setScenario('ssp126')}
-                  >
-                    <span className="ssp-badge-dot" />
-                    <span className="ssp-badge-text">SSP1-2.6 · Low (+2.6 W/m²)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`ssp-badge-btn ${scenario === 'ssp245' ? 'active ssp-medium' : ''}`}
-                    onClick={() => setScenario('ssp245')}
-                  >
-                    <span className="ssp-badge-dot" />
-                    <span className="ssp-badge-text">SSP2-4.5 · Medium (+4.5 W/m²)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`ssp-badge-btn ${scenario === 'ssp370' ? 'active ssp-high' : ''}`}
-                    onClick={() => setScenario('ssp370')}
-                  >
-                    <span className="ssp-badge-dot" />
-                    <span className="ssp-badge-text">SSP3-7.0 · High (+7.0 W/m²)</span>
-                  </button>
+              {/* Modal Legend & Status Bar */}
+              <div className="chart-legend-bar modal-legend-bar">
+                <div className="legend-items">
+                  {showHistorical && chartData.hasHistorical && (
+                    <div className="legend-item">
+                      <span className="legend-line line-historical" />
+                      <span>Historical (1981–2024)</span>
+                    </div>
+                  )}
+                  <div className="legend-item">
+                    <span className="legend-line line-projected" />
+                    <span>Forward ({activeScenarioMeta.name}, 2025–2100)</span>
+                  </div>
                 </div>
 
-                <div className="projections-secondary-controls">
-                  <label htmlFor="modal-model-select" className="model-select-label">
-                    <span>MODEL:</span>
-                    <select
-                      id="modal-model-select"
-                      className="model-select-dropdown"
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      disabled={loading}
-                    >
-                      {models.length > 0 ? (
-                        models.map((m) => (
-                          <option key={m.model_id} value={m.model_id}>
-                            {m.name} ({m.institution})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="ensemble">Multi-Model Ensemble (NASA POWER / NEX-GDDP-CMIP6)</option>
-                      )}
-                    </select>
-                  </label>
-
-                  <label className="historical-toggle-btn">
-                    <input
-                      type="checkbox"
-                      checked={showHistorical}
-                      onChange={(e) => setShowHistorical(e.target.checked)}
-                      disabled={!historicalPoints || historicalPoints.length === 0}
-                    />
-                    <span className="toggle-label-text">
-                      Compare Observations (1981–2024) vs Projections (2025–2100)
-                    </span>
-                  </label>
+                <div className="chart-legend-actions">
+                  <div className="badge-projected-container">
+                    <span className="badge-projected">PROJECTED</span>
+                    <span className="badge-variable-tag">{variableName} ({effectiveUnit})</span>
+                  </div>
                 </div>
               </div>
 
-              {/* High Definition SVG Stage */}
+              {/* Large Panoramic SVG Stage */}
               <div className="modal-chart-stage">
                 <svg
                   viewBox={`0 0 ${chartData.viewBoxWidth} ${chartData.viewBoxHeight}`}
                   className="modal-svg-chart"
                   preserveAspectRatio="xMidYMid meet"
+                  aria-label={`Expanded time series projection for ${variableName}`}
                   onMouseLeave={() => setHoveredPoint(null)}
                 >
                   {/* Horizontal Gridlines & Y Axis Ticks */}
@@ -951,10 +924,11 @@ export function CMIP6ProjectionsView({
 
                 {hoveredPoint && (
                   <div
-                    className="svg-chart-tooltip"
+                    className="chart-tooltip"
                     style={{
                       left: `${(hoveredPoint.x / chartData.viewBoxWidth) * 100}%`,
                       top: `${(hoveredPoint.y / chartData.viewBoxHeight) * 100}%`,
+                      transform: tooltipTransform,
                     }}
                   >
                     <span className="tooltip-date">{hoveredPoint.date}</span>
