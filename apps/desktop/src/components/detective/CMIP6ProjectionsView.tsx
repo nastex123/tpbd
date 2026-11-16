@@ -290,6 +290,15 @@ export function CMIP6ProjectionsView({
     const transitionDate = `${projectionStartYear}-01`;
     const transitionX = dateToX(transitionDate, projectionStartYear, 1);
 
+    const projectedMap = new Map<string, { date: string; value: number; year: number; month: number }>();
+    for (const p of validProjected) {
+      projectedMap.set(p.date, p);
+    }
+    const historicalMap = new Map<string, { date: string; value: number }>();
+    for (const p of validHistorical) {
+      historicalMap.set(p.date, p);
+    }
+
     return {
       viewBoxWidth,
       viewBoxHeight,
@@ -314,44 +323,58 @@ export function CMIP6ProjectionsView({
       validHistorical,
       validProjected,
       validProjectedCount: validProjected.length,
+      projectedMap,
+      historicalMap,
       lastHistoricalYear,
       projectionStartYear,
     };
   }, [historicalPoints, projection?.points, showHistorical]);
 
+  const rafRef = useRef<number | null>(null);
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGRectElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.clientX - rect.left;
-    const fraction = Math.max(0, Math.min(1, clientX / rect.width));
-    const yearFraction = chartData.minYear + fraction * (chartData.maxYear - chartData.minYear);
-    const targetYear = Math.floor(yearFraction);
-    const targetMonth = Math.min(12, Math.max(1, Math.floor((yearFraction - targetYear) * 12) + 1));
-    const targetDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+    const rectWidth = rect.width;
 
-    const projPt = chartData.validProjected.find((p) => p.date === targetDate);
-    if (projPt && projPt.value !== null) {
-      setHoveredPoint({
-        date: projPt.date,
-        value: projPt.value,
-        kind: 'projected',
-        x: chartData.dateToX(projPt.date, projPt.year, projPt.month),
-        y: chartData.valToY(projPt.value),
-      });
-      return;
-    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const fraction = Math.max(0, Math.min(1, clientX / rectWidth));
+      const yearFraction = chartData.minYear + fraction * (chartData.maxYear - chartData.minYear);
+      const targetYear = Math.floor(yearFraction);
+      const targetMonth = Math.min(12, Math.max(1, Math.floor((yearFraction - targetYear) * 12) + 1));
+      const targetDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
 
-    if (showHistorical) {
-      const histPt = chartData.validHistorical.find((p) => p.date === targetDate);
-      if (histPt && histPt.value !== null) {
-        setHoveredPoint({
-          date: histPt.date,
-          value: histPt.value,
-          kind: 'historical',
-          x: chartData.dateToX(histPt.date),
-          y: chartData.valToY(histPt.value),
+      const projPt = chartData.projectedMap.get(targetDate);
+      if (projPt && projPt.value !== null) {
+        setHoveredPoint((prev) => {
+          if (prev && prev.date === projPt.date && prev.value === projPt.value) return prev;
+          return {
+            date: projPt.date,
+            value: projPt.value,
+            kind: 'projected',
+            x: chartData.dateToX(projPt.date, projPt.year, projPt.month),
+            y: chartData.valToY(projPt.value),
+          };
         });
+        return;
       }
-    }
+
+      if (showHistorical) {
+        const histPt = chartData.historicalMap.get(targetDate);
+        if (histPt && histPt.value !== null) {
+          setHoveredPoint((prev) => {
+            if (prev && prev.date === histPt.date && prev.value === histPt.value) return prev;
+            return {
+              date: histPt.date,
+              value: histPt.value,
+              kind: 'historical',
+              x: chartData.dateToX(histPt.date),
+              y: chartData.valToY(histPt.value),
+            };
+          });
+        }
+      }
+    });
   }, [chartData, showHistorical]);
 
   // Clamp hover tooltip to prevent off-screen overflow near right/left chart edges
