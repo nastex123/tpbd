@@ -11,6 +11,7 @@ import {
 import {
   getScenarioMetadata,
   calculateProjectionMetrics,
+  calculateProjectionStartYear,
   MANDATORY_PROJECTION_CAVEAT,
   CMIP6_SUPPORTED_VARIABLES,
   type ProjectionMetrics,
@@ -194,11 +195,17 @@ export function CMIP6ProjectionsView({
       ? (historicalPoints ?? []).filter((p): p is { date: string; value: number } => p.value !== null && Number.isFinite(p.value))
       : [];
 
+    const projectionStartYear = calculateProjectionStartYear(validHistorical, showHistorical);
+    const lastHistoricalPoint = validHistorical.at(-1);
+    const lastHistoricalYear = lastHistoricalPoint
+      ? parseInt(lastHistoricalPoint.date.slice(0, 4), 10)
+      : projectionStartYear - 1;
+
     const projectedPoints = projection?.points ?? [];
-    // Displays projected monthly points (2025-2100) as dashed line
+    // Displays projected monthly points as dashed line starting at projectionStartYear
     const validProjected = projectedPoints.filter(
       (p): p is { date: string; value: number; year: number; month: number; unit: string } =>
-        p.value !== null && Number.isFinite(p.value) && p.year >= 2025,
+        p.value !== null && Number.isFinite(p.value) && p.year >= projectionStartYear,
     );
 
     let minHistoricalYear = 1981;
@@ -207,7 +214,7 @@ export function CMIP6ProjectionsView({
       if (!isNaN(parsed)) minHistoricalYear = parsed;
     }
 
-    const minYear = (showHistorical && validHistorical.length > 0) ? minHistoricalYear : 2025;
+    const minYear = (showHistorical && validHistorical.length > 0) ? minHistoricalYear : projectionStartYear;
     const maxYear = 2100;
 
     const allValues: number[] = [
@@ -256,7 +263,7 @@ export function CMIP6ProjectionsView({
       historicalPath += i === 0 ? `M ${x.toFixed(1)} ${y.toFixed(1)}` : ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
     }
 
-    // Projected path (2025-2100)
+    // Projected path
     let projectedPath = '';
     for (let i = 0; i < validProjected.length; i++) {
       const p = validProjected[i];
@@ -265,11 +272,13 @@ export function CMIP6ProjectionsView({
       projectedPath += i === 0 ? `M ${x.toFixed(1)} ${y.toFixed(1)}` : ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
     }
 
-    // Year ticks: Always include 2025, 2040, 2060, 2080, 2100
-    const projectionTicks = [2025, 2040, 2060, 2080, 2100];
-    const yearTicks = (showHistorical && validHistorical.length > 0)
-      ? [1985, 2005, ...projectionTicks]
-      : projectionTicks;
+    // Year ticks: Dynamically include projectionStartYear along with future anchor years
+    const futureTicks = [2040, 2060, 2080, 2100].filter((yr) => yr > projectionStartYear);
+    const projectionTicks = Array.from(new Set([projectionStartYear, ...futureTicks])).sort((a, b) => a - b);
+    const historicalTicks = (showHistorical && validHistorical.length > 0)
+      ? [1985, 2005].filter((yr) => yr < projectionStartYear)
+      : [];
+    const yearTicks = Array.from(new Set([...historicalTicks, ...projectionTicks])).sort((a, b) => a - b);
 
     // Y ticks
     const yTicks = [
@@ -278,7 +287,8 @@ export function CMIP6ProjectionsView({
       { val: maxVal, y: valToY(maxVal) },
     ];
 
-    const transitionX = dateToX('2025-01', 2025, 1);
+    const transitionDate = `${projectionStartYear}-01`;
+    const transitionX = dateToX(transitionDate, projectionStartYear, 1);
 
     return {
       viewBoxWidth,
@@ -304,6 +314,8 @@ export function CMIP6ProjectionsView({
       validHistorical,
       validProjected,
       validProjectedCount: validProjected.length,
+      lastHistoricalYear,
+      projectionStartYear,
     };
   }, [historicalPoints, projection?.points, showHistorical]);
 
@@ -465,7 +477,9 @@ export function CMIP6ProjectionsView({
               aria-label="Compare Historical Observations vs Projections"
             />
             <span className="toggle-label-text">
-              Compare Observations (1981–2024) vs Projections (2025–2100)
+              {chartData.hasHistorical
+                ? `Compare Observations (${chartData.minYear}–${chartData.lastHistoricalYear}) vs Projections (${chartData.projectionStartYear}–2100)`
+                : `Projections (${chartData.projectionStartYear}–2100)`}
             </span>
           </label>
         </div>
@@ -521,12 +535,12 @@ export function CMIP6ProjectionsView({
                 {showHistorical && chartData.hasHistorical && (
                   <div className="legend-item">
                     <span className="legend-line line-historical" />
-                    <span>Historical (1981–2024)</span>
+                    <span>Historical ({chartData.minYear}–{chartData.lastHistoricalYear})</span>
                   </div>
                 )}
                 <div className="legend-item">
                   <span className="legend-line line-projected" />
-                  <span>Forward (2025–2100)</span>
+                  <span>Forward ({chartData.projectionStartYear}–2100)</span>
                 </div>
               </div>
 
@@ -614,7 +628,7 @@ export function CMIP6ProjectionsView({
                         <text
                           x={x}
                           y={chartData.padTop + chartData.plotHeight + 18}
-                          className={`svg-axis-text svg-axis-x ${yr === 2025 ? 'highlight-2025' : ''}`}
+                          className={`svg-axis-text svg-axis-x ${yr === chartData.projectionStartYear ? 'highlight-transition' : ''}`}
                           textAnchor="middle"
                         >
                           {yr}
@@ -623,7 +637,7 @@ export function CMIP6ProjectionsView({
                     );
                   })}
 
-                  {/* Vertical 2025 Transition Separator */}
+                  {/* Dynamic Projection Transition Separator */}
                   {showHistorical && chartData.hasHistorical && (
                     <g className="svg-transition-group">
                       <line
@@ -640,7 +654,7 @@ export function CMIP6ProjectionsView({
                         y={chartData.padTop - 2}
                         className="svg-transition-label"
                       >
-                        2025 CMIP6 Projections →
+                        {chartData.projectionStartYear} CMIP6 Projections →
                       </text>
                     </g>
                   )}
@@ -738,7 +752,7 @@ export function CMIP6ProjectionsView({
               <div className="modal-title-group">
                 <span className="modal-kicker">NASA CMIP6 CLIMATE PROJECTION SUITE · LIGHTBOX</span>
                 <h3 className="modal-heading">
-                  {place.name} — Trajectory & Scenarios (1981–2100)
+                  {place.name} — Trajectory & Scenarios ({chartData.minYear}–2100)
                 </h3>
                 <span className="modal-meta">
                   Scenario: <strong>{activeScenarioMeta.name}</strong> · Model: <strong>{selectedModel.toUpperCase()}</strong> · Variable: <strong>{variableName} ({effectiveUnit})</strong>
@@ -766,12 +780,12 @@ export function CMIP6ProjectionsView({
                   {showHistorical && chartData.hasHistorical && (
                     <div className="legend-item">
                       <span className="legend-line line-historical" />
-                      <span>Historical (1981–2024)</span>
+                      <span>Historical ({chartData.minYear}–{chartData.lastHistoricalYear})</span>
                     </div>
                   )}
                   <div className="legend-item">
                     <span className="legend-line line-projected" />
-                    <span>Forward ({activeScenarioMeta.name}, 2025–2100)</span>
+                    <span>Forward ({activeScenarioMeta.name}, {chartData.projectionStartYear}–2100)</span>
                   </div>
                 </div>
 
@@ -829,7 +843,7 @@ export function CMIP6ProjectionsView({
                         <text
                           x={x}
                           y={chartData.padTop + chartData.plotHeight + 18}
-                          className={`svg-axis-text svg-axis-x ${yr === 2025 ? 'highlight-2025' : ''}`}
+                          className={`svg-axis-text svg-axis-x ${yr === chartData.projectionStartYear ? 'highlight-transition' : ''}`}
                           textAnchor="middle"
                         >
                           {yr}
@@ -838,7 +852,7 @@ export function CMIP6ProjectionsView({
                     );
                   })}
 
-                  {/* Vertical 2025 Transition Separator */}
+                  {/* Dynamic Projection Transition Separator */}
                   {showHistorical && chartData.hasHistorical && (
                     <g className="svg-transition-group">
                       <line
@@ -855,7 +869,7 @@ export function CMIP6ProjectionsView({
                         y={chartData.padTop - 2}
                         className="svg-transition-label"
                       >
-                        2025 CMIP6 Projections →
+                        {chartData.projectionStartYear} CMIP6 Projections →
                       </text>
                     </g>
                   )}

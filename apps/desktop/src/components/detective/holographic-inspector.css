@@ -1245,6 +1245,7 @@
   fill: #94a3b8;
 }
 
+.svg-axis-x.highlight-transition,
 .svg-axis-x.highlight-2025 {
   fill: #f59e0b;
   font-weight: 700;
