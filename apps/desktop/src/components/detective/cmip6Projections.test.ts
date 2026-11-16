@@ -145,13 +145,13 @@ test('mandatory caveat verbatim string is preserved', () => {
   );
 });
 
-test('CMIP6_SUPPORTED_VARIABLES restricts forward projections to T2M, RH2M, and PRECTOTCORR', () => {
+test('CMIP6_SUPPORTED_VARIABLES supports forward projections for all 6 catalog variables', () => {
   assert.equal(CMIP6_SUPPORTED_VARIABLES.has('T2M'), true);
   assert.equal(CMIP6_SUPPORTED_VARIABLES.has('RH2M'), true);
   assert.equal(CMIP6_SUPPORTED_VARIABLES.has('PRECTOTCORR'), true);
-  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('GWETROOT'), false);
-  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('EVPTRNS'), false);
-  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('MOD13Q1_NDVI'), false);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('GWETROOT'), true);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('EVPTRNS'), true);
+  assert.equal(CMIP6_SUPPORTED_VARIABLES.has('MOD13Q1_NDVI'), true);
 });
 
 test('calculateProjectionStartYear dynamically tracks lastHistoricalYear + 1', () => {

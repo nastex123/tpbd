@@ -3,9 +3,10 @@ from app.clients.power_client import PowerClient
 from app.repositories.cache_repository import CacheRepository
 from app.repositories.region_repository import RegionRepository
 from app.services.catalog_service import CatalogService
+from app.schemas.catalog import DataSourceProvider
 from app.schemas.series import TimeSeriesResponse, DataPoint
 from app.schemas.common import Coordinates
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import AppException, NotFoundError
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -41,21 +42,49 @@ class SeriesService:
         if not var_meta:
             raise NotFoundError(resource="Variable", identifier=variable_id)
 
-        # 1. Check local cache (exact match)
+        # 1. Check local cache (exact match or broader range)
         cached_dict = self.cache_repo.get_series(variable_id, lat, lon, start_year, end_year)
         if cached_dict:
             logger.info("Serving %s series for (%.2f, %.2f) from SQLite cache", variable_id, lat, lon)
             cached_dict["is_cached"] = True
             return TimeSeriesResponse.model_validate(cached_dict)
 
+        # Check if any cached series exists for this location that covers the requested years
+        cached_broader = self.cache_repo.find_any_series(variable_id, lat, lon)
+        if cached_broader and isinstance(cached_broader.get("points"), list):
+            sliced_pts = [
+                p for p in cached_broader["points"]
+                if len(p.get("date", "")) >= 4 and start_year <= int(p["date"][:4]) <= end_year
+            ]
+            if sliced_pts:
+                cached_broader["points"] = sliced_pts
+                cached_broader["temporal_range"] = f"{start_year}-01 to {end_year}-12"
+                cached_broader["sample_count"] = len(sliced_pts)
+                cached_broader["valid_count"] = sum(1 for p in sliced_pts if p.get("value") is not None)
+                cached_broader["missing_count"] = sum(1 for p in sliced_pts if p.get("value") is None)
+                cached_broader["is_cached"] = True
+                logger.info("Serving %s series for (%.2f, %.2f) [%d-%d] sliced from cache", variable_id, lat, lon, start_year, end_year)
+                return TimeSeriesResponse.model_validate(cached_broader)
+
         if offline_only:
-            cached_period = self.cache_repo.find_any_series(variable_id, lat, lon)
-            if cached_period:
-                cached_period["is_cached"] = True
-                return TimeSeriesResponse.model_validate(cached_period)
+            if cached_broader:
+                cached_broader["is_cached"] = True
+                return TimeSeriesResponse.model_validate(cached_broader)
             raise NotFoundError(resource="Cached observations for", identifier=f"{variable_id} at ({lat:.2f}, {lon:.2f})")
 
-        # 2. Cache miss: fetch the requested period from NASA POWER.
+        # 2. Check if provider is NASA_APPEEARS (AppEEARS does not use NASA POWER API)
+        if var_meta.provider == DataSourceProvider.NASA_APPEEARS:
+            raise AppException(
+                title="AppEEARS Extraction Required",
+                status_code=404,
+                detail=(
+                    f"Time series for '{variable_id}' at ({lat:.2f}, {lon:.2f}) is not yet cached. "
+                    "NASA AppEEARS requires an asynchronous point extraction task via /api/v1/integrations/appeears/tasks."
+                ),
+                error_type="https://tpbd.nasa.gov/errors/appeears-extraction-required",
+            )
+
+        # 3. Cache miss for NASA POWER: fetch the requested period from NASA POWER.
         logger.info("Fetching %s from NASA POWER for (%.2f, %.2f) [%d-%d]", variable_id, lat, lon, start_year, end_year)
         community_code = var_meta.data_community.split()[0] if getattr(var_meta, "data_community", None) else "AG"
 
