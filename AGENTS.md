@@ -17,7 +17,7 @@ This document defines the mandatory project rules, team boundaries, and behavior
 
 ## 2. API Contract Inviolability (Contract-First)
 
-- The OpenAPI 3.1 specification located at [`docs/openapi.yaml`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/openapi.yaml) is the **single, immutable source of truth** for all data exchanges between the desktop frontend and the Python backend.
+- The OpenAPI 3.1 specification located at [`docs/openapi.yaml`](docs/openapi.yaml) is the **single, immutable source of truth** for all data exchanges between the desktop frontend and the Python backend.
 - **No silent mutations:** Neither frontend nor backend developers/agents may unilaterally alter endpoint routes, query parameters, request bodies, or response schemas.
 - **Contract modifications:** Any modification to the API specification requires an explicit discussion, an accepted Architecture Decision Record (ADR), and team consensus before code changes are made.
 - **Typed client & server:** Frontend models and backend Pydantic schemas must be derived directly from `docs/openapi.yaml`.
@@ -26,18 +26,18 @@ This document defines the mandatory project rules, team boundaries, and behavior
 
 ## 3. Team Concurrency & Work Division
 
-To maximize velocity during the hackathon and prevent code collisions, responsibilities and file paths are strictly partitioned:
+To maximize velocity and prevent code collisions, responsibilities and file paths are strictly partitioned across engineering domains:
 
-| Role / Owner | Domain Ownership | Allowed File Scopes | Forbidden Scopes |
+| Engineering Domain | Domain Responsibilities | Allowed File Scopes | Forbidden Scopes |
 |---|---|---|---|
-| **Daniel (Backend & Data Science)** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall & Sen's slope engine | `apps/backend/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
-| **Brandon (Desktop Core & Spatial)** | Tauri 2 runtime, window management, WebGL 3D Globe, geolocation state | `apps/desktop/src-tauri/**`, `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts` | `apps/backend/**`, `apps/desktop/src/components/charts/**` |
-| **Dylan (UI/UX & Visual Analytics)** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets | `apps/desktop/src/components/{charts,catalog,layout}/**`, `apps/desktop/src/styles/**` | `apps/backend/**`, `apps/desktop/src-tauri/**` |
-| **Shared / Architecture** | Global documentation, API contracts, ADRs, Done Reports | `docs/**`, `documentation/**`, `README.md`, `ROADMAP_TPBD.md`, `HISTORIAS_USUARIO_TPBD.md` | — |
+| **Backend & Scientific Data Engineering** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall, Sen's slope, and CMIP6 climate engine | `apps/backend/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
+| **Desktop Core & Geospatial Engineering** | Electron runtime, window management, WebGL 3D Globe, geolocation state, volumetric thematic visors | `apps/desktop/electron/**`, `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts` | `apps/backend/**`, `apps/desktop/src/components/charts/**` |
+| **Frontend & Visual Analytics Engineering** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets, CMIP6 UI | `apps/desktop/src/components/{charts,catalog,layout,detective}/**`, `apps/desktop/src/styles/**` | `apps/backend/**`, `apps/desktop/electron/**` |
+| **Shared Architecture & Documentation** | Global documentation, API contracts, ADRs, Done Reports, Docker assets | `docs/**`, `documentation/**`, `README.md`, `CONTRIBUTING.md`, `docker-compose.yml` | — |
 
 ### Code Collision Rule:
-- **Never overwrite another team member's code** without prior consultation and explicit authorization.
-- If a feature requires cross-boundary adjustments, communicate via the API contract or create an interface mock before touching shared paths.
+- **Never overwrite another domain's code** without prior consultation, contract updates, and explicit peer authorization.
+- If a feature requires cross-boundary adjustments, communicate via the API contract (`docs/openapi.yaml`) or create an interface mock before touching shared paths.
 
 ---
 
@@ -86,7 +86,7 @@ Upon completing each User Story (HU) and before/during its Pull Request:
 ## 6. Agentic Behavior Guidelines
 
 When an AI agent operates autonomously on the repository:
-1. **Scope Confinement:** Agents must strictly operate within the allowed directory paths of the persona they are currently embodying (Daniel, Brandon, or Dylan).
+1. **Scope Confinement:** Agents and contributors must strictly operate within the allowed directory paths of the engineering domain they are addressing (Backend, Desktop Core/Spatial, or Frontend/Visual Analytics).
 2. **Contract Compliance Verification:** Before generating backend endpoints or frontend query hooks, verify against `docs/openapi.yaml`.
 3. **Test-Driven Delivery:** An agent's task is only complete when corresponding unit/contract tests pass cleanly and edge cases (missing data, non-evaluable states, network timeouts) are handled.
 4. **Zero Hallucination of Data:** Never generate synthetic or mock numbers as real NASA observations. If data is unavailable, return explicit nulls with `"quality": "missing"` or `"status": "not_evaluable"`.

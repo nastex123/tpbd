@@ -43,7 +43,7 @@
 
 > *"¿Y por qué decidimos hacer este proyecto y no uno de exploración espacial?"*  
 > **"Porque hay que cuidar este pequeño punto pálido azul del que hablaba Carl Sagan. Antes de pensar en el espacio exterior, debemos pensar en el interior del planeta Tierra, nuestro único hogar."**  
-> — *Daniel Echeverría & the TPBD Development Team*
+> — *The TPBD Development Team (NASA Space Apps Challenge 2026)*
 
 **TPBD (The Pale Blue Dot)** was conceived and developed exclusively for the **NASA Space Apps Challenge 2026** under the challenge track **"Be An Earth System Trend Detective!"**.
 

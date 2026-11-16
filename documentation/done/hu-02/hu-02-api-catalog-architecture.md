@@ -29,7 +29,7 @@
 
 ## 2. Technical Architecture & Structural Hygiene
 
-The implementation strictly satisfies the Layered Service-Repository Architecture defined in [`docs/architecture.md`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/architecture.md) and governed by [`docs/adr/0002-backend-architecture.md`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/adr/0002-backend-architecture.md):
+The implementation strictly satisfies the Layered Service-Repository Architecture defined in [`docs/architecture.md`](../../../docs/architecture.md) and governed by [`docs/adr/0002-backend-architecture.md`](../../../docs/adr/0002-backend-architecture.md):
 
 ```text
 apps/backend/
@@ -69,7 +69,7 @@ uv run python -m pytest
 ```text
 ============================= test session starts =============================
 platform win32 -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
-rootdir: C:\Users\LENOVO\Documents\DANI DOCS\tpbd\apps\backend
+rootdir: apps/backend
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.16.0, asyncio-1.5.0

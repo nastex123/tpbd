@@ -4,7 +4,7 @@
 **Event:** NASA Space Apps Challenge 2026  
 **Contract Authority:** [`docs/openapi.yaml`](openapi.yaml)  
 **Governance ADRs:** [`docs/adr/`](adr/)  
-**Owners:** Daniel (Backend & Data Science), Brandon (Desktop Core & Spatial), Dylan (UI/UX & Visual Analytics)
+**Engineering Domains:** Backend & Scientific Data Engineering, Desktop Core & Geospatial Engineering, UI/UX & Visual Analytics
 
 ---
 
@@ -60,17 +60,17 @@ flowchart TD
 
 To maximize developer velocity and prevent code collisions, responsibilities and paths are partitioned:
 
-| Role / Owner | Domain Ownership | Allowed File Scopes | Forbidden Scopes |
+| Engineering Domain | Domain Responsibilities | Allowed File Scopes | Forbidden Scopes |
 |---|---|---|---|
-| **Daniel (Backend & Data Science)** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall, Sen's slope, and CMIP6 engine | `apps/backend/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
-| **Brandon (Desktop Core & Spatial)** | Electron runtime, window management, WebGL 3D Globe, geolocation state, thematic region visors | `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts`, `apps/desktop/electron/**` | `apps/backend/**`, `apps/desktop/src/components/charts/**` |
-| **Dylan (UI/UX & Visual Analytics)** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets, CMIP6 UI | `apps/desktop/src/components/{charts,catalog,layout,detective}/**`, `apps/desktop/src/styles/**` | `apps/backend/**`, `apps/desktop/electron/**` |
-| **Shared / Architecture** | Global documentation, API contracts, ADRs, Done Reports, Docker assets | `docs/**`, `documentation/**`, `README.md`, `docker-compose.yml` | — |
+| **Backend & Scientific Data Engineering** | FastAPI backend, NASA POWER/AppEEARS adapters, caching, Seasonal Mann-Kendall, Sen's slope, and CMIP6 climate engine | `apps/backend/**`, `tests/**`, `data/fixtures/**` | `apps/desktop/**` |
+| **Desktop Core & Geospatial Engineering** | Electron runtime, window management, WebGL 3D Globe, geolocation state, volumetric thematic visors | `apps/desktop/electron/**`, `apps/desktop/src/components/globe/**`, `apps/desktop/src/stores/navigationStore.ts` | `apps/backend/**`, `apps/desktop/src/components/charts/**` |
+| **Frontend & Visual Analytics Engineering** | Data Detective design system, Recharts series, variable catalog, comparison UI, demo presets, CMIP6 UI | `apps/desktop/src/components/{charts,catalog,layout,detective}/**`, `apps/desktop/src/styles/**` | `apps/backend/**`, `apps/desktop/electron/**` |
+| **Shared Architecture & Documentation** | Global documentation, API contracts, ADRs, Done Reports, Docker assets | `docs/**`, `documentation/**`, `README.md`, `CONTRIBUTING.md`, `docker-compose.yml` | — |
 
 ```text
 tpbd/
 ├── apps/
-│   ├── backend/                        # Daniel's Domain: FastAPI Climate Engine
+│   ├── backend/                        # Backend Domain: FastAPI Climate Engine
 │   │   ├── app/
 │   │   │   ├── api/                    # HTTP Routers (health, catalog, series, analytics, ai)
 │   │   │   ├── clients/                # NASA POWER and AppEEARS async HTTP clients
@@ -81,7 +81,7 @@ tpbd/
 │   │   ├── tests/                      # Pytest suite (85 unit and integration tests)
 │   │   ├── Dockerfile                  # Multi-stage production container definition
 │   │   └── pyproject.toml              # Python dependencies (uv / pip)
-│   └── desktop/                        # Brandon & Dylan's Domain: Desktop Client
+│   └── desktop/                        # Desktop & UI Domain: Desktop Client
 │       ├── electron/                   # Electron main process and local API bridge
 │       ├── public/                     # High-resolution Earth textures, clouds, topography
 │       ├── src/
