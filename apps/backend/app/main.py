@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
 from app.core.exceptions import register_exception_handlers
+from app.core.rate_limit import AIRateLimitMiddleware
 from app.api.v1.health import router as health_router
 from app.api.v1.router import api_router
 
@@ -77,6 +78,9 @@ def create_app() -> FastAPI:
 
     # Register RFC 7807 problem details exception handlers
     register_exception_handlers(app)
+
+    # In-memory rate limiting defense-in-depth for Gemini AI Copilot routes
+    app.add_middleware(AIRateLimitMiddleware)
 
     # Root health check (required by Brandon's Electron diagnostic proxy /api/local/health)
     app.include_router(health_router)
