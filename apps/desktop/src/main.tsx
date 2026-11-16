@@ -51,7 +51,7 @@ function App() {
             <p>Investigate planetary climate trends, regime shifts, and opposing teleconnections across Earth system biomes.</p>
           </>}
         >
-          {import.meta.env.DEV && (
+          {import.meta.env.DEV && window.location.search.includes('debug=1') && (
             <section id="diagnostico" aria-labelledby="diagnostico-titulo">
               <h2 id="diagnostico-titulo">Mission Telemetry & Diagnostics</h2>
               <button onClick={checkBackend} disabled={checking}>Probe local API</button>{' '}
