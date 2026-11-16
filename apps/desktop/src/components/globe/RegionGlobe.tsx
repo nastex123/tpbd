@@ -16,7 +16,14 @@ import { trendLine } from './trendLine';
 import { nextObservationDate, observationDates } from './historyTimeline';
 import { comparisonIssues, trendComparisonIssue } from './seriesComparison';
 import { computeArcAltitude, sphericalMidpoint } from './teleconnectionComparison';
-import { computeRadarRangeRings, getVariableProfile } from './variableVisualization';
+import {
+  buildThematicRegionFeature,
+  computeRadarCrosshairs,
+  computeRadarRangeRings,
+  getVariableProfile,
+  hexToRgba,
+  type ThematicRegionFeature,
+} from './variableVisualization';
 import { VariableRadarLegend } from './VariableRadarLegend';
 import naturalEarth from './natural-earth-110m.json';
 import './region-globe.css';
@@ -86,6 +93,38 @@ const countryColors = [
 const emptyCountries: CountryFeature[] = [];
 const polygonSideColorStatic = () => 'rgba(16, 37, 52, 0.58)';
 const polygonStrokeColorStatic = () => '#c4e0e8';
+
+/**
+ * Resolves closed GeoPath outline for a location (study area, grid cell, or custom bounding box).
+ */
+function getRegionPath(
+  place: { lat: number; lng: number; id?: string | null } | null | undefined,
+  areaPath: GeoPath | null,
+  cellPath: GeoPath | null
+): GeoPath | null {
+  if (areaPath && areaPath.length >= 4) return areaPath;
+  if (cellPath && cellPath.length >= 4) return cellPath;
+  if (place && Number.isFinite(place.lat) && Number.isFinite(place.lng)) {
+    const d = 1.5;
+    const lat = place.lat;
+    const lng = place.lng;
+    return [
+      [lat - d, lng - d],
+      [lat + d, lng - d],
+      [lat + d, lng + d],
+      [lat - d, lng + d],
+      [lat - d, lng - d],
+    ];
+  }
+  return null;
+}
+
+/**
+ * Converts a closed GeoPath [[lat, lng], ...] into standard GeoJSON coordinates [[[lng, lat], ...]].
+ */
+function geoPathToGeoJsonCoordinates(path: GeoPath): number[][][] {
+  return [path.map(([lat, lng]) => [lng, lat])];
+}
 
 function motionAllowed() {
   return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -314,27 +353,111 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
   // Active scientific profile defining variable-specific color ramps and kinematics
   const activeProfile = useMemo(() => getVariableProfile(variable), [variable]);
 
+  const outlineA = useMemo(() => getRegionPath(selected, area, cell), [selected, area, cell]);
+  const areaB = useMemo(() => (targetB?.id && targetB.id in studyAreas ? studyAreas[targetB.id] : null), [targetB?.id]);
+  const cellB = useMemo(() => gridOutline(reportB?.series?.representative_grid_cell, reportB?.series?.spatial_resolution), [
+    reportB?.series?.representative_grid_cell,
+    reportB?.series?.spatial_resolution,
+  ]);
+  const outlineB = useMemo(() => (targetB && keyA !== keyB ? getRegionPath(targetB, areaB, cellB) : null), [targetB, keyA, keyB, areaB, cellB]);
+
+  const regionThematicPolygons = useMemo<ThematicRegionFeature[]>(() => {
+    const features: ThematicRegionFeature[] = [];
+
+    if (selected && outlineA) {
+      const valA = pointValue(reportA?.series?.points, visibleDate);
+      features.push(buildThematicRegionFeature({
+        regionId: selected.id ?? 'coord-A',
+        name: selected.name,
+        variableId: variable,
+        coordinates: geoPathToGeoJsonCoordinates(outlineA),
+        value: valA,
+        unit: activeProfile.unit,
+        targetLetter: targetB && keyA !== keyB ? 'A' : undefined,
+      }));
+    }
+
+    if (targetB && keyA !== keyB && outlineB) {
+      const valB = pointValue(reportB?.series?.points, visibleDate);
+      features.push(buildThematicRegionFeature({
+        regionId: targetB.id ?? 'coord-B',
+        name: targetB.name,
+        variableId: variable,
+        coordinates: geoPathToGeoJsonCoordinates(outlineB),
+        value: valB,
+        unit: activeProfile.unit,
+        targetLetter: 'B',
+      }));
+    }
+
+    return features;
+  }, [
+    selected,
+    targetB,
+    keyA,
+    keyB,
+    outlineA,
+    outlineB,
+    reportA?.series?.points,
+    reportB?.series?.points,
+    visibleDate,
+    variable,
+    activeProfile.unit,
+  ]);
+
+  const combinedPolygons = useMemo(() => {
+    const base = boundaries ? countries : emptyCountries;
+    if (!regionThematicPolygons.length) return base;
+    return [...base, ...regionThematicPolygons];
+  }, [boundaries, countries, regionThematicPolygons]);
+
   const paths = useMemo(() => {
     const path = (points: GeoPath, color: string, altitude: number) => ({
       points: points.map(([lat, lng]) => ({ lat, lng, altitude })),
       color,
     });
+    const valA = pointValue(reportA?.series?.points, visibleDate);
+    const colorA = activeProfile.getPointColor(valA);
+    const valB = pointValue(reportB?.series?.points, visibleDate);
+    const colorB = activeProfile.getPointColor(valB);
+
     const result = [
       ...(zoomed && boundaries ? worldMap.paths.map((points) => path(points, '#b7ccd5', 0.012)) : []),
-      ...(area ? [path(area, '#ffcd70', 0.018)] : []),
-      ...(cell ? [path(cell, '#90f5b1', 0.022)] : []),
+      ...(outlineA ? [path(outlineA, colorA, 0.019)] : []),
+      ...(outlineB ? [path(outlineB, colorB, 0.019)] : []),
+      ...(cell ? [path(cell, hexToRgba(colorA, 0.65), 0.022)] : []),
     ];
 
-    // Geodesic Doppler weather radar range rings for precipitation
+    // Meteorological Doppler weather radar range rings & cardinal crosshairs for precipitation
     if (variable === 'PRECTOTCORR' && selected) {
-      result.push(...computeRadarRangeRings(selected.lat, selected.lng, [60, 160], 0.014));
+      result.push(...computeRadarRangeRings(selected.lat, selected.lng, [75, 175], 0.015, colorA));
+      result.push(...computeRadarCrosshairs(selected.lat, selected.lng, 175, 0.015, hexToRgba(colorA, 0.40)));
     }
     if (variable === 'PRECTOTCORR' && targetB && keyA !== keyB) {
-      result.push(...computeRadarRangeRings(targetB.lat, targetB.lng, [60, 160], 0.014));
+      result.push(...computeRadarRangeRings(targetB.lat, targetB.lng, [75, 175], 0.015, colorB));
+      result.push(...computeRadarCrosshairs(targetB.lat, targetB.lng, 175, 0.015, hexToRgba(colorB, 0.40)));
     }
 
     return result;
-  }, [zoomed, boundaries, worldMap, area, cell, variable, selected?.lat, selected?.lng, targetB?.lat, targetB?.lng, keyA, keyB]);
+  }, [
+    zoomed,
+    boundaries,
+    worldMap,
+    outlineA,
+    outlineB,
+    cell,
+    variable,
+    activeProfile,
+    reportA?.series?.points,
+    reportB?.series?.points,
+    visibleDate,
+    selected?.lat,
+    selected?.lng,
+    targetB?.lat,
+    targetB?.lng,
+    keyA,
+    keyB,
+  ]);
   const searchItems: (Region | Place)[] = search.trim() ? [...regions,
     ...countries.map(({ properties: { name, lat, lng } }) => ({ name, lat, lng }))]
     .filter(({ name }) => name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -870,13 +993,54 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                   visit({ kind: 'coordinates', ...point, label: country }, point, false);
                 }
               }}
-              polygonsData={boundaries ? countries : emptyCountries}
-              polygonCapColor={(feature) => countryColors[(feature as CountryFeature).properties.color % countryColors.length]}
-              polygonSideColor={polygonSideColorStatic}
-              polygonStrokeColor={polygonStrokeColorStatic}
-              polygonAltitude={0.0015}
-              polygonLabel={(feature) => (feature as CountryFeature).properties.name}
+              polygonsData={combinedPolygons}
+              polygonCapColor={(feature) => {
+                const feat = feature as unknown as { properties?: { isRegionOverlay?: boolean; capColor?: string; color?: number } };
+                if (feat.properties?.isRegionOverlay && feat.properties.capColor) {
+                  return feat.properties.capColor;
+                }
+                const colorIdx = typeof feat.properties?.color === 'number' ? feat.properties.color : 0;
+                return countryColors[colorIdx % countryColors.length];
+              }}
+              polygonSideColor={(feature) => {
+                const feat = feature as unknown as { properties?: { isRegionOverlay?: boolean; sideColor?: string } };
+                if (feat.properties?.isRegionOverlay && feat.properties.sideColor) {
+                  return feat.properties.sideColor;
+                }
+                return polygonSideColorStatic();
+              }}
+              polygonStrokeColor={(feature) => {
+                const feat = feature as unknown as { properties?: { isRegionOverlay?: boolean; strokeColor?: string } };
+                if (feat.properties?.isRegionOverlay && feat.properties.strokeColor) {
+                  return feat.properties.strokeColor;
+                }
+                return polygonStrokeColorStatic();
+              }}
+              polygonAltitude={(feature) => {
+                const feat = feature as unknown as { properties?: { isRegionOverlay?: boolean; altitude?: number } };
+                if (feat.properties?.isRegionOverlay && typeof feat.properties.altitude === 'number') {
+                  return feat.properties.altitude;
+                }
+                return 0.0015;
+              }}
+              polygonLabel={(feature) => {
+                const feat = feature as unknown as { properties?: { isRegionOverlay?: boolean; tooltipHtml?: string; name?: string } };
+                if (feat.properties?.isRegionOverlay && feat.properties.tooltipHtml) {
+                  return feat.properties.tooltipHtml;
+                }
+                return (feature as CountryFeature).properties.name;
+              }}
+              polygonsTransitionDuration={0}
               onPolygonClick={(feature, _, coords) => {
+                const feat = feature as unknown as { properties?: { isRegionOverlay?: boolean; name?: string; nameEn?: string } };
+                if (feat.properties?.isRegionOverlay) {
+                  const point = { lat: Number(coords.lat.toFixed(5)), lng: Number(coords.lng.toFixed(5)) };
+                  if (measure) addMeasurement(point);
+                  else {
+                    setIsInspectorOpen(true);
+                  }
+                  return;
+                }
                 const point = { lat: Number(coords.lat.toFixed(5)), lng: Number(coords.lng.toFixed(5)) };
                 const country = (feature as CountryFeature)?.properties?.name || (feature as CountryFeature)?.properties?.nameEn;
                 if (measure) addMeasurement(point);
