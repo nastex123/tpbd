@@ -28,7 +28,7 @@
 
 ---
 
-## 🌟 Live Deployments & Project Links
+## Live Deployments & Project Links
 
 * **Live Web & Desktop App:** [`https://desktop-nastex.vercel.app`](https://desktop-nastex.vercel.app) *(currently requires Vercel authentication for preview access)*
 * **Backend Health & Diagnostics:** [`https://tpbd.onrender.com/health`](https://tpbd.onrender.com/health)
@@ -37,7 +37,7 @@
 
 ---
 
-## 🌍 Project Identity & Genesis
+## Project Identity & Genesis
 
 ### *Why an Earth observation detective tool rather than a deep space mission?*
 
@@ -51,7 +51,7 @@ While the cosmos beckons with infinite frontiers, our existence depends entirely
 
 ---
 
-## 🔬 How We Developed Our Tool & Solution
+## How We Developed Our Tool & Solution
 
 ### 1. The Core Scientific Challenge
 Detecting genuine environmental trends across Earth's climate system is fraught with mathematical pitfalls:
@@ -89,7 +89,7 @@ To solve this, TPBD implements a non-parametric mathematical engine decoupled fr
 
 ---
 
-## 🛠️ Technologies & Languages Used
+## Technologies & Languages Used
 
 | Domain | Technology / Library | Purpose in TPBD |
 |---|---|---|
@@ -110,7 +110,7 @@ To solve this, TPBD implements a non-parametric mathematical engine decoupled fr
 
 ---
 
-## 📡 NASA & External APIs Catalog
+## NASA & External APIs Catalog
 
 TPBD integrates multiple authoritative Earth observation platforms, combining satellite radiometry with numerical assimilation models:
 
@@ -124,7 +124,7 @@ TPBD integrates multiple authoritative Earth observation platforms, combining sa
 
 ---
 
-## 🏛️ System Architecture & Contract Governance
+## System Architecture & Contract Governance
 
 ```
 +------------------------------------------------------------------------------------------+
@@ -170,7 +170,7 @@ TPBD integrates multiple authoritative Earth observation platforms, combining sa
 
 ---
 
-## 🚀 How to Run the Project
+## How to Run the Project
 
 You can run TPBD locally via native tools or containerized via Docker.
 
@@ -271,7 +271,7 @@ docker compose down
 
 ---
 
-## 🧪 Automated Test Verification
+## Automated Test Verification
 
 TPBD enforces rigorous automated testing across both scientific mathematical algorithms and desktop interfaces.
 
@@ -296,7 +296,7 @@ npm --prefix apps/desktop run test:local-api
 
 ---
 
-## 🔒 Security & Defensive Architecture
+## Security & Defensive Architecture
 
 The Climate Engine has undergone exhaustive security auditing under Cloudflare defensive security guidelines:
 * **Loopback Boundary:** Binds strictly to `127.0.0.1`, rejecting all public interface requests.
@@ -308,7 +308,7 @@ For the comprehensive security audit, refer to [`documentation/security/cloudfla
 
 ---
 
-## 📜 Architecture Decision Records (ADRs)
+## Architecture Decision Records (ADRs)
 
 Key architectural and scientific decisions are documented under [`docs/adr/`](docs/adr/):
 * **[ADR-0001:](docs/adr/0001-team-standards-api-governance-and-concurrency.md)** Team Standards, API Governance, and Concurrency Guidelines
@@ -324,9 +324,10 @@ Key architectural and scientific decisions are documented under [`docs/adr/`](do
 
 ---
 
-## 📄 License & Dedication
+## License & Dedication
 
-**Proprietary — Developed for the NASA Space Apps Challenge 2026.**  
+**MIT License — Open Source Software**  
+*Developed for the NASA Space Apps Challenge 2026.*  
 *Dedicated to the preservation and scientific stewardship of our Pale Blue Dot.*
 
 Special gratitude to the **NASA Earth Science Division**, the **NASA POWER Project Team** at NASA Langley, the **LP DAAC Team** at USGS EROS, and the **Earth System Grid Federation (ESGF)** for providing open scientific access to our planet's living data.
