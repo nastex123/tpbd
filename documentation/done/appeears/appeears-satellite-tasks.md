@@ -38,7 +38,7 @@
    - Headless test and offline demo sandbox bypass for evaluation without personal Earthdata credentials.
 
 2. **API Layer (`apps/backend/app/api/v1/integrations.py`):**
-   - Implements endpoints conforming 100% with [`docs/openapi.yaml`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/openapi.yaml).
+   - Implements endpoints conforming 100% with [`docs/openapi.yaml`](../../../docs/openapi.yaml).
    - Mounted in master API router (`apps/backend/app/api/v1/router.py`).
 
 ---

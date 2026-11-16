@@ -32,6 +32,7 @@ export interface ProjectionSeriesResponse {
   scenario: SSPScenario;
   model: string;
   unit?: string;
+  source?: string;
   lat: number;
   lon: number;
   location_name: string;
@@ -265,6 +266,7 @@ export async function fetchProjectionSeries(params: {
     scenario: (record.scenario as SSPScenario) ?? params.scenario,
     model: typeof record.model === 'string' ? record.model : model,
     unit: unit || undefined,
+    source: typeof record.source === 'string' ? record.source : undefined,
     lat: typeof record.lat === 'number' ? record.lat : params.lat,
     lon: typeof record.lon === 'number' ? record.lon : params.lon,
     location_name: locationName,

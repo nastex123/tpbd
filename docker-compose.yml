@@ -1,0 +1,25 @@
+# Docker Compose for TPBD - The Pale Blue Dot (Earth System Trend Detective)
+# NASA Space Apps Challenge 2026
+services:
+  climate-engine:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: tpbd-climate-engine
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - APPEEARS_USERNAME=${APPEEARS_USERNAME:-}
+      - APPEEARS_PASSWORD=${APPEEARS_PASSWORD:-}
+    volumes:
+      # Mount cache database for continuous persistence across container rebuilds
+      - ./apps/backend/tpbd_cache.db:/app/tpbd_cache.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

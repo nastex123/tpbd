@@ -11,7 +11,7 @@ The backend service (`apps/backend/`) must serve historical Earth science observ
 
 Under a 30-hour hackathon timeframe and a single backend developer (Daniel), the architecture must satisfy four critical constraints:
 1. **Mathematical Isolation:** Statistical functions must be pure, testable with `pytest`, and completely decoupled from HTTP frameworks.
-2. **Contract Compliance:** Data transfer objects must derive 100% from [`docs/openapi.yaml`](file:///c:/Users/LENOVO/Documents/DANI%20DOCS/tpbd/docs/openapi.yaml) using Pydantic v2.
+2. **Contract Compliance:** Data transfer objects must derive 100% from [`docs/openapi.yaml`](../openapi.yaml) using Pydantic v2.
 3. **Offline Reliability:** Seamless caching using an embedded database (SQLite) without requiring external services like Redis or PostgreSQL.
 4. **Minimalism (Ponytail YAGNI):** Eliminate unnecessary boilerplate, premature abstractions, or heavy dependency injection frameworks.
 
