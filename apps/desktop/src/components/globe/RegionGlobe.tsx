@@ -83,6 +83,10 @@ const countryColors = [
   'rgba(152, 105, 126, 0.44)', 'rgba(102, 133, 91, 0.44)',
 ];
 
+const emptyCountries: CountryFeature[] = [];
+const polygonSideColorStatic = () => 'rgba(16, 37, 52, 0.58)';
+const polygonStrokeColorStatic = () => '#c4e0e8';
+
 function motionAllowed() {
   return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
@@ -859,10 +863,10 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
                   visit({ kind: 'coordinates', ...point, label: country }, point, false);
                 }
               }}
-              polygonsData={countries}
+              polygonsData={boundaries ? countries : emptyCountries}
               polygonCapColor={(feature) => countryColors[(feature as CountryFeature).properties.color % countryColors.length]}
-              polygonSideColor={() => 'rgba(16, 37, 52, 0.58)'}
-              polygonStrokeColor={() => '#c4e0e8'}
+              polygonSideColor={polygonSideColorStatic}
+              polygonStrokeColor={polygonStrokeColorStatic}
               polygonAltitude={0.0015}
               polygonLabel={(feature) => (feature as CountryFeature).properties.name}
               onPolygonClick={(feature, _, coords) => {

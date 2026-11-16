@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   getScenarioMetadata,
   calculateProjectionMetrics,
+  calculateProjectionStartYear,
   MANDATORY_PROJECTION_CAVEAT,
   CMIP6_SUPPORTED_VARIABLES,
   SCENARIO_METADATA_MAP,
@@ -151,4 +152,49 @@ test('CMIP6_SUPPORTED_VARIABLES restricts forward projections to T2M, RH2M, and 
   assert.equal(CMIP6_SUPPORTED_VARIABLES.has('GWETROOT'), false);
   assert.equal(CMIP6_SUPPORTED_VARIABLES.has('EVPTRNS'), false);
   assert.equal(CMIP6_SUPPORTED_VARIABLES.has('MOD13Q1_NDVI'), false);
+});
+
+test('calculateProjectionStartYear dynamically tracks lastHistoricalYear + 1', () => {
+  // Scenario 1: Historical observations ending in 2024-12 -> Projections start in 2025
+  const obsEnding2024 = [
+    { date: '1981-01', value: 14.2 },
+    { date: '2024-11', value: 15.1 },
+    { date: '2024-12', value: 15.3 },
+  ];
+  assert.equal(calculateProjectionStartYear(obsEnding2024, true), 2025);
+
+  // Scenario 2: Historical observations extending through 2025-12 -> Projections start in 2026
+  const obsEnding2025 = [
+    { date: '1981-01', value: 14.2 },
+    { date: '2024-12', value: 15.3 },
+    { date: '2025-06', value: 16.0 },
+    { date: '2025-12', value: 15.8 },
+  ];
+  assert.equal(calculateProjectionStartYear(obsEnding2025, true), 2026);
+
+  // Scenario 3: Historical observations ending in 2023-08 -> Projections start in 2024
+  const obsEnding2023 = [
+    { date: '2020-01', value: 18.0 },
+    { date: '2023-08', value: 19.4 },
+  ];
+  assert.equal(calculateProjectionStartYear(obsEnding2023, true), 2024);
+
+  // Scenario 4: Historical observations extending through 2026-12 -> Projections start in 2027
+  const obsEnding2026 = [
+    { date: '1981-01', value: 14.2 },
+    { date: '2026-12', value: 16.5 },
+  ];
+  assert.equal(calculateProjectionStartYear(obsEnding2026, true), 2027);
+
+  // Scenario 5: Historical observations disabled (showHistorical = false) -> Defaults to 2025
+  assert.equal(calculateProjectionStartYear(obsEnding2025, false), 2025);
+
+  // Scenario 6: Empty, null, or undefined historical observations -> Defaults safely to 2025
+  assert.equal(calculateProjectionStartYear([], true), 2025);
+  assert.equal(calculateProjectionStartYear(null, true), 2025);
+  assert.equal(calculateProjectionStartYear(undefined, true), 2025);
+
+  // Scenario 7: Last point with unparseable date -> Falls back safely to 2025 (2024 + 1)
+  const malformedObs = [{ date: 'invalid-date', value: 10.0 }];
+  assert.equal(calculateProjectionStartYear(malformedObs, true), 2025);
 });

@@ -77,6 +77,27 @@ export function parseYearFromPoint(point: { date: string; year?: number }): numb
 }
 
 /**
+ * Resolves the dynamic projection start year based on the last valid historical observation.
+ * Projections automatically begin in January of the year following the last valid historical observation (Year + 1).
+ * If historical points are absent, empty, or historical view is disabled, defaults safely to 2025.
+ */
+export function calculateProjectionStartYear(
+  validHistorical?: Array<{ date: string; value?: number | null }> | null,
+  showHistorical: boolean = true,
+): number {
+  if (!showHistorical || !validHistorical || validHistorical.length === 0) {
+    return 2025;
+  }
+  const lastHistoricalPoint = validHistorical.at(-1);
+  if (!lastHistoricalPoint) {
+    return 2025;
+  }
+  const parsedYear = parseInt(lastHistoricalPoint.date.slice(0, 4), 10);
+  const lastHistoricalYear = Number.isFinite(parsedYear) ? parsedYear : 2024;
+  return lastHistoricalYear + 1;
+}
+
+/**
  * Calculates Baseline (2015-2025 mean), End-of-Century (2090-2100 mean), and Net Change (Delta).
  * Strictly handles nulls and empty arrays without hallucination or NaN.
  */
