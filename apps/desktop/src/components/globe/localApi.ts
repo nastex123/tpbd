@@ -10,7 +10,8 @@ declare global {
 export async function localApiFetch(path: string, options: { method?: 'GET' | 'POST'; body?: string; signal?: AbortSignal } = {}) {
   const localApi = typeof window !== 'undefined' ? window.localApi : undefined;
   if (!localApi) {
-    return fetch(`/api/local${path}`, {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '');
+    return fetch(apiBaseUrl ? `${apiBaseUrl}${path}` : `/api/local${path}`, {
       method: options.method ?? 'GET',
       headers: options.body ? { 'Content-Type': 'application/json' } : {},
       body: options.body,
