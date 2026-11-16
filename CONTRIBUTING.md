@@ -7,7 +7,7 @@ Before contributing, please review this guide to ensure alignment with our scien
 
 ---
 
-## 🌍 Guiding Principles & Scientific Ethos
+## Guiding Principles & Scientific Ethos
 
 1. **Protecting Our Pale Blue Dot:** As Carl Sagan reminded humanity, planet Earth is our only home. Our work serves to understand and safeguard its living systems.
 2. **Zero Hallucination of Data:** We never fabricate, impute, or mock numerical data as real NASA observations. If data is missing or incomplete, we return explicit `null` with `"quality": "missing"` or `"status": "not_evaluable"`.
@@ -16,7 +16,7 @@ Before contributing, please review this guide to ensure alignment with our scien
 
 ---
 
-## 🏛️ Engineering Domains & Repository Partitioning
+## Engineering Domains & Repository Partitioning
 
 To maintain code velocity and prevent collisions, file ownership is divided into functional engineering domains:
 
@@ -29,7 +29,7 @@ To maintain code velocity and prevent collisions, file ownership is divided into
 
 ---
 
-## 📐 Contract-First Governance (OpenAPI 3.1)
+## Contract-First Governance (OpenAPI 3.1)
 
 The OpenAPI 3.1 specification located at [`docs/openapi.yaml`](docs/openapi.yaml) is the **single, immutable source of truth** for all data exchanges between the desktop frontend and the backend Climate Engine.
 
@@ -43,7 +43,7 @@ The OpenAPI 3.1 specification located at [`docs/openapi.yaml`](docs/openapi.yaml
 
 ---
 
-## 🌿 Git Flow & Branching Strategy
+## Git Flow & Branching Strategy
 
 We follow a structured Git Flow model:
 
@@ -65,7 +65,7 @@ We follow a structured Git Flow model:
 
 ---
 
-## 💻 Local Development Setup
+## Local Development Setup
 
 ### Prerequisites
 * **Python:** 3.12 or higher with [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`.
@@ -95,7 +95,7 @@ docker compose up --build -d
 
 ---
 
-## 🧪 Testing & Verification Standards
+## Testing & Verification Standards
 
 Every Pull Request must pass all automated test suites prior to merge approval.
 
@@ -120,7 +120,7 @@ npm --prefix apps/desktop run test:local-api
 
 ---
 
-## ✅ Pull Request Checklist (Definition of Done)
+## Pull Request Checklist (Definition of Done)
 
 Before submitting a Pull Request, ensure:
 - [ ] Your branch is branched from and rebased against the latest `dev`.
@@ -132,6 +132,6 @@ Before submitting a Pull Request, ensure:
 
 ---
 
-## 📜 Questions or Feedback?
+## Questions or Feedback?
 
 Feel free to open an issue or start a discussion on our [GitHub Repository](https://github.com/nastex123/tpbd/issues). Thank you for helping us advance Earth system science!
