@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   fetchProjectionScenarios,
   fetchProjectionModels,
@@ -762,7 +763,7 @@ export function CMIP6ProjectionsView({
       </div>
 
       {/* High-Definition Cinema Projection Modal (Lightbox) */}
-      {isExpandedModal && (
+      {isExpandedModal && typeof document !== 'undefined' && createPortal(
         <div
           className="projections-modal-overlay"
           onClick={() => setIsExpandedModal(false)}
@@ -980,7 +981,8 @@ export function CMIP6ProjectionsView({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
