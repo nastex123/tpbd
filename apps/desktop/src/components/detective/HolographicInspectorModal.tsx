@@ -6,6 +6,7 @@ import { HistoryChart } from '../globe/HistoryChart';
 import { ScientificExplanation } from '../globe/ScientificExplanation';
 import { TemporalComparison } from '../globe/TemporalComparison';
 import { TeleconnectionRadar } from './TeleconnectionRadar';
+import { CMIP6ProjectionsView } from './CMIP6ProjectionsView';
 import type { RegionItem, TeleconnectionPreset, VariableItem } from './DataDetectiveWorkbench';
 import './holographic-inspector.css';
 
@@ -23,6 +24,7 @@ export interface HolographicInspectorModalProps {
   variableRange: VariableItem;
   availableVariables?: readonly VariableItem[];
   onSelectVariable?: (variableId: string) => void;
+  onSelectRegion?: (regionId: string) => void;
   period: { start: number; end: number };
   dates: string[];
   visibleDate: string;
@@ -39,7 +41,7 @@ export interface HolographicInspectorModalProps {
   regions: RegionItem[];
 }
 
-type InspectorTab = 'series' | 'trend' | 'teleconnections' | 'epochs' | 'ai';
+type InspectorTab = 'series' | 'trend' | 'teleconnections' | 'epochs' | 'ai' | 'projections';
 
 export function HolographicInspectorModal({
   isOpen,
@@ -55,6 +57,7 @@ export function HolographicInspectorModal({
   variableRange,
   availableVariables,
   onSelectVariable,
+  onSelectRegion,
   dates,
   visibleDate,
   onSetVisibleDate,
@@ -112,7 +115,7 @@ export function HolographicInspectorModal({
           <span className="deck-pulse-indicator" />
           <h2 className="deck-target-title">{place.name}</h2>
           <span className="deck-coords-tag">
-            {place.lat.toFixed(2)}°, {place.lng.toFixed(2)}° · {seriesA?.representative_grid_cell || '0.5° grid'}
+            {place.lat.toFixed(2)}°, {place.lng.toFixed(2)}° · {seriesA?.representative_grid_cell || '0.5° grid'}{seriesA?.spatial_resolution ? ` · ${seriesA.spatial_resolution}` : ''}
           </span>
           <span className="deck-source-pill">
             {seriesA?.is_cached
@@ -463,6 +466,19 @@ export function HolographicInspectorModal({
                 )}
               </div>
             )}
+
+            {/* DIMENSION 6: CMIP6 PROJECTIONS & SSP SCENARIOS */}
+            {activeTab === 'projections' && (
+              <CMIP6ProjectionsView
+                place={place}
+                variableId={variable}
+                variableName={variableRange.name}
+                unit={seriesA?.unit || variableRange.unit || ''}
+                historicalPoints={seriesA?.points}
+                onSelectVariable={onSelectVariable}
+                onSelectRegion={onSelectRegion}
+              />
+            )}
           </div>
 
           {/* 3. RIGHT COLUMN: Multi-Dimension Tabs */}
@@ -540,6 +556,20 @@ export function HolographicInspectorModal({
                 <line x1="15" y1="20" x2="15" y2="23" />
               </svg>
               <span>AI Synthesis</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'projections'}
+              className={`deck-tab-button ${activeTab === 'projections' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('projections')}
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              <span>Projections (2100)</span>
             </button>
           </div>
         </div>

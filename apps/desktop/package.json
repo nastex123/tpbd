@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test:globe": "node --experimental-strip-types --test src/components/globe/trendLine.test.ts src/components/globe/seriesComparison.test.ts src/components/globe/temporalPeriod.test.ts src/components/globe/historyTimeline.test.ts src/components/globe/investigationReportData.test.ts src/components/globe/teleconnectionComparison.test.ts src/components/copilot/copilotAudio.test.ts",
+    "test:globe": "node --experimental-strip-types --test src/components/globe/trendLine.test.ts src/components/globe/seriesComparison.test.ts src/components/globe/temporalPeriod.test.ts src/components/globe/historyTimeline.test.ts src/components/globe/investigationReportData.test.ts src/components/globe/teleconnectionComparison.test.ts src/components/globe/projectionData.test.ts src/components/copilot/copilotAudio.test.ts src/components/detective/cmip6Projections.test.ts",
     "test:local-api": "node --test electron/local-api.test.mjs",
     "test:investigations": "node --experimental-strip-types --test src/stores/investigations.test.ts",
     "desktop": "electron . --dev",
