@@ -72,14 +72,26 @@ def test_projection_series_rejects_unavailable_model_and_unapproved_variable(cli
             "/api/v1/projections/series?variable_id=T2M&latitude=0&longitude=0&scenario=ssp245&model=cesm2"
         )
         unsupported_variable = client.get(
-            "/api/v1/projections/series?variable_id=MOD13Q1_NDVI&latitude=0&longitude=0&scenario=ssp245"
+            "/api/v1/projections/series?variable_id=NONEXISTENT_VAR&latitude=0&longitude=0&scenario=ssp245"
         )
         unsupported_projection_parameter = client.get(
-            "/api/v1/projections/series?variable_id=GWETROOT&latitude=0&longitude=0&scenario=ssp245"
+            "/api/v1/projections/series?variable_id=INVALID_METRIC&latitude=0&longitude=0&scenario=ssp245"
         )
     assert unsupported_model.status_code == 422
     assert unsupported_variable.status_code == 404
     assert unsupported_projection_parameter.status_code == 404
+
+
+def test_projection_series_supports_ndvi_soil_moisture_and_evapotranspiration(client):
+    for var in ["MOD13Q1_NDVI", "GWETROOT", "EVPTRNS"]:
+        response = client.get(
+            f"/api/v1/projections/series?variable_id={var}&latitude=37.4&longitude=-5.9&start_year=2026&end_year=2030&scenario=ssp245"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["variable_id"] == var
+        assert len(data["points"]) == 60
+        assert all(p["quality"] == "projected" for p in data["points"])
 
 
 def test_projection_series_applies_ipcc_ar6_fallback_when_all_points_missing(client):

@@ -17,12 +17,19 @@ class BaseAsyncClient:
 
     async def get_client(self) -> httpx.AsyncClient:
         """Get or initialize the persistent httpx.AsyncClient."""
-        if self._client is None or self._client.is_closed:
+        import asyncio
+        current_loop = asyncio.get_running_loop()
+        if (
+            self._client is None
+            or self._client.is_closed
+            or getattr(self._client, "_event_loop", None) is not current_loop
+        ):
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 timeout=httpx.Timeout(self.timeout, connect=5.0),
                 headers={"User-Agent": "TPBD-EarthSystemTrendDetective/2.1.0"},
             )
+            setattr(self._client, "_event_loop", current_loop)
         return self._client
 
     async def aclose(self) -> None:

@@ -204,7 +204,13 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     if (globe.current) {
       const coords = globe.current.getScreenCoords(lat, lng, 0.05);
       if (coords && Number.isFinite(coords.x) && Number.isFinite(coords.y)) {
-        setScreenCoords(coords);
+        setScreenCoords((prev) => {
+          if (!prev) return coords;
+          if (Math.hypot(coords.x - prev.x, coords.y - prev.y) > 1.5) {
+            return coords;
+          }
+          return prev;
+        });
       }
     }
   }
@@ -730,15 +736,16 @@ export function RegionGlobe({ location, onSelect, heading, children }: {
     visibleDate,
   ]);
 
-  // Continuously track 3D screen coordinate of active target during rotations / interactions
+  // Track 3D screen coordinate of active target during rotations / interactions without idle thrashing
   useEffect(() => {
     if (!selected) return;
     updateScreenPosition(selected.lat, selected.lng);
+    if (!idleRotation) return;
     const interval = window.setInterval(() => {
       updateScreenPosition(selected.lat, selected.lng);
-    }, 120);
+    }, 250);
     return () => window.clearInterval(interval);
-  }, [selected?.lat, selected?.lng, isInspectorOpen]);
+  }, [selected?.lat, selected?.lng, isInspectorOpen, idleRotation]);
 
   function handleSelectCoordinates(lat: number, lng: number) {
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
