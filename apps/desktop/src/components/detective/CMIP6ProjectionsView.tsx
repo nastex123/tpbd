@@ -290,6 +290,15 @@ export function CMIP6ProjectionsView({
     const transitionDate = `${projectionStartYear}-01`;
     const transitionX = dateToX(transitionDate, projectionStartYear, 1);
 
+    const projectedMap = new Map<string, { date: string; value: number; year: number; month: number }>();
+    for (const p of validProjected) {
+      projectedMap.set(p.date, p);
+    }
+    const historicalMap = new Map<string, { date: string; value: number }>();
+    for (const p of validHistorical) {
+      historicalMap.set(p.date, p);
+    }
+
     return {
       viewBoxWidth,
       viewBoxHeight,
@@ -314,44 +323,58 @@ export function CMIP6ProjectionsView({
       validHistorical,
       validProjected,
       validProjectedCount: validProjected.length,
+      projectedMap,
+      historicalMap,
       lastHistoricalYear,
       projectionStartYear,
     };
   }, [historicalPoints, projection?.points, showHistorical]);
 
+  const rafRef = useRef<number | null>(null);
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGRectElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.clientX - rect.left;
-    const fraction = Math.max(0, Math.min(1, clientX / rect.width));
-    const yearFraction = chartData.minYear + fraction * (chartData.maxYear - chartData.minYear);
-    const targetYear = Math.floor(yearFraction);
-    const targetMonth = Math.min(12, Math.max(1, Math.floor((yearFraction - targetYear) * 12) + 1));
-    const targetDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+    const rectWidth = rect.width;
 
-    const projPt = chartData.validProjected.find((p) => p.date === targetDate);
-    if (projPt && projPt.value !== null) {
-      setHoveredPoint({
-        date: projPt.date,
-        value: projPt.value,
-        kind: 'projected',
-        x: chartData.dateToX(projPt.date, projPt.year, projPt.month),
-        y: chartData.valToY(projPt.value),
-      });
-      return;
-    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const fraction = Math.max(0, Math.min(1, clientX / rectWidth));
+      const yearFraction = chartData.minYear + fraction * (chartData.maxYear - chartData.minYear);
+      const targetYear = Math.floor(yearFraction);
+      const targetMonth = Math.min(12, Math.max(1, Math.floor((yearFraction - targetYear) * 12) + 1));
+      const targetDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
 
-    if (showHistorical) {
-      const histPt = chartData.validHistorical.find((p) => p.date === targetDate);
-      if (histPt && histPt.value !== null) {
-        setHoveredPoint({
-          date: histPt.date,
-          value: histPt.value,
-          kind: 'historical',
-          x: chartData.dateToX(histPt.date),
-          y: chartData.valToY(histPt.value),
+      const projPt = chartData.projectedMap.get(targetDate);
+      if (projPt && projPt.value !== null) {
+        setHoveredPoint((prev) => {
+          if (prev && prev.date === projPt.date && prev.value === projPt.value) return prev;
+          return {
+            date: projPt.date,
+            value: projPt.value,
+            kind: 'projected',
+            x: chartData.dateToX(projPt.date, projPt.year, projPt.month),
+            y: chartData.valToY(projPt.value),
+          };
         });
+        return;
       }
-    }
+
+      if (showHistorical) {
+        const histPt = chartData.historicalMap.get(targetDate);
+        if (histPt && histPt.value !== null) {
+          setHoveredPoint((prev) => {
+            if (prev && prev.date === histPt.date && prev.value === histPt.value) return prev;
+            return {
+              date: histPt.date,
+              value: histPt.value,
+              kind: 'historical',
+              x: chartData.dateToX(histPt.date),
+              y: chartData.valToY(histPt.value),
+            };
+          });
+        }
+      }
+    });
   }, [chartData, showHistorical]);
 
   // Clamp hover tooltip to prevent off-screen overflow near right/left chart edges
@@ -954,61 +977,6 @@ export function CMIP6ProjectionsView({
                     </span>
                   </div>
                 )}
-              </div>
-
-              {/* Modal Metrics Cards Row */}
-              <div className="modal-metrics-panel">
-                <div className="modal-metric-card">
-                  <span className="metric-header-tag">BASELINE MEAN (2015–2025)</span>
-                  <span className="metric-primary-value">
-                    {metrics.baselineMean !== null ? `${metrics.baselineMean.toFixed(2)} ${effectiveUnit}` : 'N/A'}
-                  </span>
-                  <span className="metric-context-note">
-                    {metrics.baselinePointsCount > 0 ? `10-year reference window (${metrics.baselinePointsCount} observations)` : 'Reference window not available'}
-                  </span>
-                </div>
-
-                <div className="modal-metric-card">
-                  <span className="metric-header-tag">END-OF-CENTURY (2090–2100)</span>
-                  <span className="metric-primary-value highlight-amber">
-                    {metrics.endOfCenturyMean !== null ? `${metrics.endOfCenturyMean.toFixed(2)} ${effectiveUnit}` : 'N/A'}
-                  </span>
-                  <span className="metric-context-note">
-                    {metrics.endOfCenturyPointsCount > 0 ? `10-year CMIP6 projection (${metrics.endOfCenturyPointsCount} months)` : 'Forward window not loaded'}
-                  </span>
-                </div>
-
-                <div className="modal-metric-card">
-                  <span className="metric-header-tag">NET CHANGE (DELTA Δ)</span>
-                  <span
-                    className={`metric-primary-value ${
-                      metrics.delta !== null && metrics.delta > 0
-                        ? 'delta-positive'
-                        : metrics.delta !== null && metrics.delta < 0
-                          ? 'delta-negative'
-                          : ''
-                    }`}
-                  >
-                    {metrics.delta !== null
-                      ? `${metrics.delta > 0 ? '+' : ''}${metrics.delta.toFixed(2)} ${effectiveUnit}`
-                      : 'N/A'}
-                  </span>
-                  <span className="metric-context-note">
-                    {metrics.delta !== null ? 'End-of-century relative to baseline' : 'Insufficient data'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Modal Scientific Caveat Banner */}
-              <div className="modal-caveat-banner" role="note" aria-label="Scientific Caveat">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                <div className="modal-caveat-text">
-                  <strong>SCIENTIFIC CAVEAT:</strong> {MANDATORY_PROJECTION_CAVEAT}
-                </div>
               </div>
             </div>
           </div>
