@@ -1,0 +1,9 @@
+{
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/local/:path*",
+      "destination": "https://tpbd.onrender.com/api/v1/:path*"
+    }
+  ]
+}

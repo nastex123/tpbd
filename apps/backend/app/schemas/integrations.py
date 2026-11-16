@@ -57,3 +57,11 @@ class AppEEARSAuthStatus(BaseModel):
     authenticated: bool = Field(..., description="True if a valid unexpired token is stored")
     username: str | None = Field(default=None, description="Active Earthdata username")
     expiration: datetime | None = Field(default=None, description="Expiration date-time")
+
+
+class AppEEARSLogoutResponse(BaseModel):
+    """Response returned upon terminating AppEEARS session."""
+
+    authenticated: bool = Field(default=False, description="Authentication state after logout")
+    message: str = Field(default="AppEEARS session successfully terminated", description="Status message")
+
