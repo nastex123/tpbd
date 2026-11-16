@@ -955,61 +955,6 @@ export function CMIP6ProjectionsView({
                   </div>
                 )}
               </div>
-
-              {/* Modal Metrics Cards Row */}
-              <div className="modal-metrics-panel">
-                <div className="modal-metric-card">
-                  <span className="metric-header-tag">BASELINE MEAN (2015–2025)</span>
-                  <span className="metric-primary-value">
-                    {metrics.baselineMean !== null ? `${metrics.baselineMean.toFixed(2)} ${effectiveUnit}` : 'N/A'}
-                  </span>
-                  <span className="metric-context-note">
-                    {metrics.baselinePointsCount > 0 ? `10-year reference window (${metrics.baselinePointsCount} observations)` : 'Reference window not available'}
-                  </span>
-                </div>
-
-                <div className="modal-metric-card">
-                  <span className="metric-header-tag">END-OF-CENTURY (2090–2100)</span>
-                  <span className="metric-primary-value highlight-amber">
-                    {metrics.endOfCenturyMean !== null ? `${metrics.endOfCenturyMean.toFixed(2)} ${effectiveUnit}` : 'N/A'}
-                  </span>
-                  <span className="metric-context-note">
-                    {metrics.endOfCenturyPointsCount > 0 ? `10-year CMIP6 projection (${metrics.endOfCenturyPointsCount} months)` : 'Forward window not loaded'}
-                  </span>
-                </div>
-
-                <div className="modal-metric-card">
-                  <span className="metric-header-tag">NET CHANGE (DELTA Δ)</span>
-                  <span
-                    className={`metric-primary-value ${
-                      metrics.delta !== null && metrics.delta > 0
-                        ? 'delta-positive'
-                        : metrics.delta !== null && metrics.delta < 0
-                          ? 'delta-negative'
-                          : ''
-                    }`}
-                  >
-                    {metrics.delta !== null
-                      ? `${metrics.delta > 0 ? '+' : ''}${metrics.delta.toFixed(2)} ${effectiveUnit}`
-                      : 'N/A'}
-                  </span>
-                  <span className="metric-context-note">
-                    {metrics.delta !== null ? 'End-of-century relative to baseline' : 'Insufficient data'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Modal Scientific Caveat Banner */}
-              <div className="modal-caveat-banner" role="note" aria-label="Scientific Caveat">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                <div className="modal-caveat-text">
-                  <strong>SCIENTIFIC CAVEAT:</strong> {MANDATORY_PROJECTION_CAVEAT}
-                </div>
-              </div>
             </div>
           </div>
         </div>
