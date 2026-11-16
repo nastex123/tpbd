@@ -31,7 +31,7 @@ export interface VariableVisualProfile {
 /**
  * Helper to convert hex color (#rrggbb) to rgba string with custom alpha.
  */
-function hexToRgba(hex: string, alpha: number): string {
+export function hexToRgba(hex: string, alpha: number): string {
   const cleanHex = hex.replace('#', '');
   if (cleanHex.length !== 6) return `rgba(56, 189, 248, ${alpha})`;
   const r = parseInt(cleanHex.slice(0, 2), 16);
@@ -370,8 +370,9 @@ export function getCategoryLabel(
 export function computeRadarRangeRings(
   lat: number,
   lng: number,
-  radiiKm: number[] = [60, 160],
-  altitude = 0.003
+  radiiKm: number[] = [75, 175],
+  altitude = 0.015,
+  baseColor = '#38bdf8'
 ): { points: { lat: number; lng: number; altitude: number }[]; color: string }[] {
   const earthRadiusKm = 6371;
   const latRad = (lat * Math.PI) / 180;
@@ -380,7 +381,7 @@ export function computeRadarRangeRings(
 
   return radiiKm.map((radius, idx) => {
     const dRad = radius / earthRadiusKm;
-    const ringColor = idx === 0 ? 'rgba(56, 189, 248, 0.45)' : 'rgba(56, 189, 248, 0.22)';
+    const ringColor = idx === 0 ? hexToRgba(baseColor, 0.55) : hexToRgba(baseColor, 0.28);
     const points: { lat: number; lng: number; altitude: number }[] = [];
 
     for (let i = 0; i <= numPoints; i++) {
@@ -405,4 +406,131 @@ export function computeRadarRangeRings(
       color: ringColor,
     };
   });
+}
+
+/**
+ * Computes cardinal Doppler crosshair lines (North-South, East-West) across a radar footprint.
+ */
+export function computeRadarCrosshairs(
+  lat: number,
+  lng: number,
+  radiusKm = 175,
+  altitude = 0.015,
+  color = 'rgba(56, 189, 248, 0.35)'
+): { points: { lat: number; lng: number; altitude: number }[]; color: string }[] {
+  const earthRadiusKm = 6371;
+  const latRad = (lat * Math.PI) / 180;
+  const lngRad = (lng * Math.PI) / 180;
+  const dRad = radiusKm / earthRadiusKm;
+
+  function getPoint(bearingDeg: number) {
+    const bearing = (bearingDeg * Math.PI) / 180;
+    const pLat = Math.asin(
+      Math.sin(latRad) * Math.cos(dRad) +
+      Math.cos(latRad) * Math.sin(dRad) * Math.cos(bearing)
+    );
+    const pLng = lngRad + Math.atan2(
+      Math.sin(bearing) * Math.sin(dRad) * Math.cos(latRad),
+      Math.cos(dRad) - Math.sin(latRad) * Math.sin(pLat)
+    );
+    return {
+      lat: (pLat * 180) / Math.PI,
+      lng: (((pLng * 180) / Math.PI + 540) % 360) - 180,
+      altitude,
+    };
+  }
+
+  return [
+    {
+      points: [getPoint(180), { lat, lng, altitude }, getPoint(0)],
+      color,
+    },
+    {
+      points: [getPoint(270), { lat, lng, altitude }, getPoint(90)],
+      color,
+    },
+  ];
+}
+
+export interface ThematicRegionProperties {
+  isRegionOverlay: true;
+  regionId: string;
+  name: string;
+  variableId: string;
+  capColor: string;
+  sideColor: string;
+  strokeColor: string;
+  altitude: number;
+  valueText: string;
+  tooltipHtml: string;
+  color?: number;
+}
+
+export interface ThematicRegionFeature {
+  type: 'Feature';
+  isRegionOverlay: true;
+  geometry: {
+    type: 'Polygon';
+    coordinates: number[][][];
+  };
+  properties: ThematicRegionProperties;
+}
+
+/**
+ * Builds a 3D volumetric GeoJSON Feature representing a study region with dynamic variable-specific thematic styling.
+ */
+export function buildThematicRegionFeature(options: {
+  regionId: string;
+  name: string;
+  variableId: string;
+  coordinates: number[][][];
+  value: number | null;
+  unit: string;
+  targetLetter?: 'A' | 'B';
+}): ThematicRegionFeature {
+  const { regionId, name, variableId, coordinates, value, unit, targetLetter } = options;
+  const profile = getVariableProfile(variableId);
+  const color = profile.getPointColor(value);
+  const cat = profile.getCategoryLabel(value);
+  const valueDisplay = value !== null && Number.isFinite(value)
+    ? `${value.toFixed(2)} ${unit}`
+    : 'No Data';
+
+  // Cap opacity: 0.42 translucent visor; side opacity: 0.22 3D volumetric extrusion
+  const capColor = hexToRgba(color, 0.42);
+  const sideColor = hexToRgba(color, 0.22);
+  const strokeColor = color;
+  const prefix = targetLetter ? `${targetLetter} · ` : '';
+
+  const tooltipHtml = `<div style="padding: 6px 10px; background: rgba(8, 15, 29, 0.92); border: 1px solid ${strokeColor}; border-radius: 6px; font-family: monospace; font-size: 11px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+    <div style="font-weight: 700; color: #f1f5f9; margin-bottom: 2px;">${prefix}${name}</div>
+    <div style="color: #94a3b8; font-size: 10px; margin-bottom: 4px;">${profile.name} (${profile.sensor.split(' · ')[0]})</div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${strokeColor};"></span>
+      <span style="font-weight: 700; color: ${strokeColor};">${valueDisplay}</span>
+      <span style="color: #cbd5e1; font-size: 10px;">(${cat.label})</span>
+    </div>
+  </div>`;
+
+  return {
+    type: 'Feature',
+    isRegionOverlay: true,
+    geometry: {
+      type: 'Polygon',
+      coordinates,
+    },
+    properties: {
+      isRegionOverlay: true,
+      regionId,
+      name,
+      variableId,
+      capColor,
+      sideColor,
+      strokeColor,
+      altitude: 0.0075,
+      valueText: valueDisplay,
+      tooltipHtml,
+      color: 0,
+    },
+  };
 }
