@@ -5,6 +5,7 @@ from app.schemas.integrations import (
     AppEEARSLoginRequest,
     AppEEARSLoginResponse,
     AppEEARSAuthStatus,
+    AppEEARSLogoutResponse,
     AppEEARSTaskRequest,
     AppEEARSTaskResponse,
     AppEEARSTaskStatus,
@@ -42,6 +43,24 @@ async def get_auth_status(
 ) -> AppEEARSAuthStatus:
     """Return current session validity and username."""
     return client.get_auth_status()
+
+
+@router.post(
+    "/auth/logout",
+    response_model=AppEEARSLogoutResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Terminate AppEEARS session and purge token",
+    description="Actively purges the in-memory NASA AppEEARS session Bearer token and credentials.",
+)
+async def logout(
+    client: Annotated[AppEEARSClient, Depends(get_appeears_client)],
+) -> AppEEARSLogoutResponse:
+    """Terminate active session and clear token."""
+    client.logout()
+    return AppEEARSLogoutResponse(
+        authenticated=False,
+        message="AppEEARS session successfully terminated",
+    )
 
 
 @router.post(

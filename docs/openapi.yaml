@@ -546,6 +546,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/AppEEARSAuthStatus'
 
+  /api/v1/integrations/appeears/auth/logout:
+    post:
+      tags:
+        - Integrations
+      summary: Terminate AppEEARS session and purge token
+      description: Actively purges the in-memory NASA AppEEARS session Bearer token and credentials.
+      operationId: logoutAppEEARS
+      responses:
+        '200':
+          description: Session terminated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEEARSLogoutResponse'
+
   /api/v1/projections/scenarios:
     get:
       tags: [Projections]
@@ -1614,6 +1629,19 @@ components:
           nullable: true
           format: date-time
           example: "2026-11-15T22:30:40Z"
+
+    AppEEARSLogoutResponse:
+      type: object
+      required:
+        - authenticated
+        - message
+      properties:
+        authenticated:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: AppEEARS session successfully terminated
 
     ProblemDetails:
       type: object

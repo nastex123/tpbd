@@ -54,6 +54,12 @@ class AppEEARSClient:
             expiration=self._token_expiration if authenticated else None,
         )
 
+    def logout(self) -> None:
+        """Invalidate active session token and purge credentials from client memory."""
+        self._token = None
+        self._token_expiration = None
+        self._username = None
+
     async def auto_authenticate(
         self,
         username: str | None = None,
